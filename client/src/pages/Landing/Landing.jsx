@@ -20,7 +20,7 @@ function Landing() {
           </div>
 
           <div className="landing-brand-text">
-            <strong>Giri Govardhan BASE</strong>
+            <strong>Giri Govardhan BACE</strong>
           </div>
 
         </div>
