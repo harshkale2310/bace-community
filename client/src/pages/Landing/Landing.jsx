@@ -86,7 +86,7 @@ function Landing() {
             <p className="landing-description">
               A simple and organized platform for managing
               devotees, attendance, sadhana, seva, rooms,
-              leave and daily temple activities.
+              leave and daily community activities.
             </p>
 
 
@@ -224,7 +224,7 @@ function Landing() {
         <div className="landing-section-heading">
 
           <span>
-            GIRI GOVARDHAN BASE
+            GIRI GOVARDHAN BACE
           </span>
 
           <h2>
@@ -232,7 +232,7 @@ function Landing() {
           </h2>
 
           <p>
-            Organize daily temple activities with clarity,
+            Organize daily community activities with clarity,
             simplicity and devotion.
           </p>
 
@@ -254,7 +254,7 @@ function Landing() {
 
             <p>
               Manage devotee information,
-              profiles and temple records.
+              profiles and community records.
             </p>
 
           </div>
@@ -273,7 +273,7 @@ function Landing() {
 
             <p>
               Record and monitor daily
-              temple attendance.
+              community attendance.
             </p>
 
           </div>
@@ -349,7 +349,7 @@ function Landing() {
 
             <p>
               View useful reports and
-              temple activity records.
+              community activity records.
             </p>
 
           </div>
@@ -399,7 +399,7 @@ function Landing() {
           </span>
 
           <h2>
-            Begin your temple management journey.
+            Begin your BACE journey.
           </h2>
 
         </div>
