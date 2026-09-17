@@ -1,0 +1,330 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap");
+
+/* =========================================
+   ROOT VARIABLES
+========================================= */
+
+:root {
+  font-family: "Inter", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: #2d241f;
+  background: #faf7f2;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* -----------------------------------------
+     BRAND COLORS
+  ----------------------------------------- */
+
+  --primary: #8b4513;
+  --primary-dark: #6d330d;
+  --primary-light: #f3dfc8;
+
+  --secondary: #d4a017;
+  --secondary-light: #f8edc9;
+
+  /* -----------------------------------------
+     BACKGROUNDS
+  ----------------------------------------- */
+
+  --background: #faf7f2;
+  --surface: #ffffff;
+  --surface-soft: #f7f1e9;
+
+  /* -----------------------------------------
+     TEXT
+  ----------------------------------------- */
+
+  --text: #2d241f;
+  --text-light: #6e6259;
+  --text-muted: #958a82;
+
+  /* -----------------------------------------
+     BORDERS
+  ----------------------------------------- */
+
+  --border: #e8ded3;
+
+  /* -----------------------------------------
+     STATUS COLORS
+  ----------------------------------------- */
+
+  --success: #3f7d4a;
+  --success-light: #e3f1e5;
+
+  --warning: #b7791f;
+  --warning-light: #fff2d7;
+
+  --danger: #b33a3a;
+  --danger-light: #f9e2e2;
+
+  --info: #3c6e91;
+  --info-light: #e3eff7;
+
+  /* -----------------------------------------
+     SHADOWS
+  ----------------------------------------- */
+
+  --shadow-sm: 0 2px 8px rgba(70, 45, 25, 0.06);
+  --shadow-md: 0 6px 20px rgba(70, 45, 25, 0.09);
+  --shadow-lg: 0 12px 35px rgba(70, 45, 25, 0.12);
+
+  /* -----------------------------------------
+     BORDER RADIUS
+  ----------------------------------------- */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* -----------------------------------------
+     TRANSITION
+  ----------------------------------------- */
+
+  --transition: 0.2s ease;
+}
+
+/* =========================================
+   GLOBAL RESET
+========================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================================
+   HTML
+========================================= */
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+/* =========================================
+   BODY
+========================================= */
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+
+  margin: 0;
+
+  background: var(--background);
+  color: var(--text);
+
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+
+  overflow-x: hidden;
+}
+
+/* =========================================
+   ROOT
+========================================= */
+
+#root {
+  min-width: 320px;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* =========================================
+   TYPOGRAPHY
+========================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text);
+  font-family: "Playfair Display", serif;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.65rem;
+}
+
+h3 {
+  font-size: 1.35rem;
+}
+
+h4 {
+  font-size: 1.15rem;
+}
+
+p {
+  color: var(--text-light);
+}
+
+/* =========================================
+   LINKS
+========================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================
+   BUTTONS
+========================================= */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* =========================================
+   FORM ELEMENTS
+========================================= */
+
+input,
+select,
+textarea {
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* =========================================
+   IMAGES
+========================================= */
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* =========================================
+   LISTS
+========================================= */
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* =========================================
+   TABLES
+========================================= */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* =========================================
+   TEXT SELECTION
+========================================= */
+
+::selection {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* =========================================
+   FOCUS ACCESSIBILITY
+========================================= */
+
+:focus-visible {
+  outline: 3px solid rgba(212, 160, 23, 0.35);
+  outline-offset: 2px;
+}
+
+/* =========================================
+   MOBILE TYPOGRAPHY
+========================================= */
+
+@media (max-width: 600px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  h2 {
+    font-size: 1.45rem;
+  }
+
+  h3 {
+    font-size: 1.2rem;
+  }
+}
+
+/* =========================================
+   REDUCED MOTION
+========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,867 @@
+.leave-page {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  animation: leave-page-enter 0.25s ease-out;
+}
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
+.leave-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.leave-eyebrow,
+.leave-card-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.leave-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(29px, 3vw, 38px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.leave-header p {
+  max-width: 700px;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.leave-primary-button,
+.leave-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.leave-primary-button {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(70, 45, 25, 0.1);
+}
+
+.leave-primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--primary-dark);
+  background: var(--primary-dark);
+  box-shadow: 0 8px 20px rgba(70, 45, 25, 0.15);
+}
+
+.leave-primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.leave-primary-button:disabled,
+.leave-secondary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.leave-secondary-button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.leave-secondary-button:hover:not(:disabled) {
+  border-color: #d5c6b8;
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+
+/* ============================================================
+   ERROR
+   ============================================================ */
+
+.leave-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 13px 16px;
+  border: 1px solid rgba(179, 58, 58, 0.18);
+  border-radius: 10px;
+  background: var(--danger-light);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   STATS
+   ============================================================ */
+
+.leave-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.leave-stat-card {
+  position: relative;
+  min-height: 126px;
+  padding: 20px 21px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.leave-stat-card::after {
+  position: absolute;
+  right: -35px;
+  bottom: -42px;
+  width: 105px;
+  height: 105px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  opacity: 0.18;
+  content: "";
+  pointer-events: none;
+}
+
+.leave-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 69, 19, 0.14);
+  box-shadow: var(--shadow-md);
+}
+
+.leave-stat-card span,
+.leave-stat-card strong,
+.leave-stat-card small {
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+
+.leave-stat-card span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.leave-stat-card strong {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.leave-stat-card small {
+  margin-top: 9px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.leave-stat-card.pending strong {
+  color: var(--warning);
+}
+
+.leave-stat-card.approved strong {
+  color: var(--success);
+}
+
+.leave-stat-card.rejected strong {
+  color: var(--danger);
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.leave-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.leave-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.leave-search:hover {
+  border-color: #d8cabb;
+}
+
+.leave-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+  background: #fffdfb;
+}
+
+.leave-search span {
+  display: grid;
+  width: 24px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 19px;
+}
+
+.leave-search input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.leave-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.leave-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.leave-filter span {
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.leave-filter select {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.leave-filter select:hover {
+  border-color: #d8cabb;
+}
+
+.leave-filter select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.leave-card,
+.leave-form-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.leave-form-card {
+  margin-bottom: 28px;
+}
+
+.leave-card-header,
+.leave-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.leave-card-header h2,
+.leave-form-header h2 {
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.leave-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   REQUEST
+   ============================================================ */
+
+.leave-request {
+  display: grid;
+  grid-template-columns: 155px minmax(0, 1fr) 190px;
+  gap: 25px;
+  align-items: center;
+  padding: 25px 24px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.16s ease;
+}
+
+.leave-request:last-child {
+  border-bottom: 0;
+}
+
+.leave-request:hover {
+  background: #fdfaf7;
+}
+
+.leave-request-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.leave-request-dates span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.leave-request-dates strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.leave-request-dates small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.leave-request-main {
+  min-width: 0;
+}
+
+.leave-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.leave-avatar {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.leave-user strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leave-user small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leave-reason {
+  margin: 15px 0 8px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.leave-request-id {
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+}
+
+.leave-admin-note {
+  margin-top: 9px;
+  color: #725d4d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.leave-request-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 11px;
+}
+
+.leave-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.leave-status.pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.leave-status.approved {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.leave-status.rejected {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.leave-status.cancelled {
+  background: #eeeeee;
+  color: #686868;
+}
+
+.leave-review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.leave-approve-button,
+.leave-reject-button,
+.leave-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 35px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.leave-approve-button {
+  border: 1px solid #b9e3c4;
+  color: var(--success);
+}
+
+.leave-approve-button:hover:not(:disabled) {
+  background: var(--success-light);
+  border-color: #9ed2aa;
+}
+
+.leave-reject-button {
+  border: 1px solid #efc0c0;
+  color: var(--danger);
+}
+
+.leave-reject-button:hover:not(:disabled) {
+  background: var(--danger-light);
+  border-color: #e4a7a7;
+}
+
+.leave-cancel-button {
+  border: 1px solid #e0d2c5;
+  color: #77675c;
+}
+
+.leave-cancel-button:hover:not(:disabled) {
+  background: var(--surface-soft);
+  border-color: #cdbbab;
+}
+
+.leave-approve-button:active:not(:disabled),
+.leave-reject-button:active:not(:disabled),
+.leave-cancel-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.leave-approve-button:disabled,
+.leave-reject-button:disabled,
+.leave-cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   FORM
+   ============================================================ */
+
+.leave-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+.leave-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.leave-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.leave-form label > span {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.leave-form input,
+.leave-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.leave-form input {
+  height: 44px;
+  padding: 0 12px;
+}
+
+.leave-form textarea {
+  min-height: 105px;
+  padding: 11px 12px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.leave-form input::placeholder,
+.leave-form textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.leave-form input:hover,
+.leave-form textarea:hover {
+  border-color: #d8cabb;
+}
+
+.leave-form input:focus,
+.leave-form textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+  background: #fffdfb;
+}
+
+.leave-form input:disabled,
+.leave-form textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  background: var(--surface-soft);
+}
+
+.leave-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+/* ============================================================
+   EMPTY
+   ============================================================ */
+
+.leave-empty {
+  padding: 65px 25px;
+  text-align: center;
+}
+
+.leave-empty-icon {
+  display: flex;
+  width: 54px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 14px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 22px;
+}
+
+.leave-empty h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.leave-empty p {
+  max-width: 450px;
+  margin: 8px auto 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  .leave-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .leave-request {
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .leave-request-actions {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .leave-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .leave-header h1 {
+    font-size: 31px;
+  }
+
+  .leave-header .leave-primary-button {
+    width: 100%;
+  }
+
+  .leave-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-request {
+    grid-template-columns: 1fr;
+    gap: 17px;
+    padding-top: 21px;
+    padding-bottom: 21px;
+  }
+
+  .leave-request-actions {
+    grid-column: auto;
+    align-items: flex-start;
+  }
+
+  .leave-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .leave-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-card-header,
+  .leave-form-header,
+  .leave-request,
+  .leave-form {
+    padding-left: 17px;
+    padding-right: 17px;
+  }
+
+  .leave-card-header,
+  .leave-form-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .leave-review-actions {
+    width: 100%;
+  }
+
+  .leave-approve-button,
+  .leave-reject-button,
+  .leave-cancel-button {
+    flex: 1;
+  }
+
+  .leave-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .leave-form-actions button {
+    width: 100%;
+  }
+
+  .leave-empty {
+    padding: 55px 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .leave-header h1 {
+    font-size: 27px;
+  }
+
+  .leave-header p {
+    font-size: 12px;
+  }
+
+  .leave-stat-card {
+    min-height: 112px;
+    padding: 17px;
+  }
+
+  .leave-stat-card strong {
+    font-size: 26px;
+  }
+
+  .leave-card,
+  .leave-form-card {
+    border-radius: 14px;
+  }
+}
+
+/* ============================================================
+   PAGE ANIMATION
+   ============================================================ */
+
+@keyframes leave-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .leave-page,
+  .leave-stat-card,
+  .leave-primary-button,
+  .leave-secondary-button,
+  .leave-search,
+  .leave-filter select,
+  .leave-form input,
+  .leave-form textarea,
+  .leave-review-actions button,
+  .leave-request {
+    animation: none;
+    transition: none;
+  }
+
+  .leave-stat-card:hover,
+  .leave-primary-button:hover:not(:disabled) {
+    transform: none;
+  }
+}

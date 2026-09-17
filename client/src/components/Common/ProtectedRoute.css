@@ -1,0 +1,91 @@
+/* ==========================================================================
+   PROTECTED ROUTE
+========================================================================== */
+
+.protected-route-loading {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(248, 237, 201, 0.45) 0%,
+      rgba(250, 247, 242, 0.92) 38%,
+      var(--background) 100%
+    );
+}
+
+/* ==========================================================================
+   LOADER CONTAINER
+========================================================================== */
+
+.protected-route-loading .app-loader {
+  width: min(100%, 360px);
+
+  padding: 34px 30px;
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+
+  background: rgba(255, 255, 255, 0.92);
+
+  box-shadow: var(--shadow-lg);
+
+  text-align: center;
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ==========================================================================
+   LOADER TEXT
+========================================================================== */
+
+.protected-route-loading .app-loader p {
+  margin-top: 14px;
+
+  color: var(--text-light);
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   MOBILE
+========================================================================== */
+
+@media (max-width: 600px) {
+  .protected-route-loading {
+    padding: 18px;
+  }
+
+  .protected-route-loading .app-loader {
+    width: 100%;
+
+    padding: 30px 22px;
+
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .protected-route-loading .app-loader {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

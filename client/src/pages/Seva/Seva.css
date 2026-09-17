@@ -1,0 +1,1174 @@
+/* =========================================================
+   SEVA PAGE
+========================================================= */
+
+.seva-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  animation: seva-page-enter 0.25s ease-out;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.seva-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.page-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.seva-page-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.seva-page-header p {
+  max-width: 650px;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.primary-button,
+.secondary-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 10px 17px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.primary-button {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(70, 45, 25, 0.1);
+}
+
+.primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--primary-dark);
+  background: var(--primary-dark);
+  box-shadow: 0 8px 20px rgba(70, 45, 25, 0.14);
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.secondary-button {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: #d8c9ba;
+  background: var(--surface);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.seva-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 13px 15px;
+  border: 1px solid #f0caca;
+  border-radius: 12px;
+  background: #fff4f4;
+  color: #a83232;
+}
+
+.seva-error > span {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: #f5dada;
+  color: #a83232;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.seva-error p {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.seva-error button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font-size: 19px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.seva-error button:hover {
+  background: rgba(168, 50, 50, 0.08);
+}
+
+/* =========================================================
+   FORM CARD
+========================================================= */
+
+.seva-form-card {
+  margin-bottom: 20px;
+  padding: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  box-shadow: var(--shadow-sm);
+}
+
+.section-heading {
+  margin-bottom: 22px;
+}
+
+.card-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.section-heading p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.seva-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.seva-form-grid label,
+.seva-filter-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.seva-form-grid input,
+.seva-form-grid select,
+.seva-form-grid textarea,
+.seva-filter-card input,
+.seva-filter-card select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.seva-form-grid input,
+.seva-form-grid select,
+.seva-filter-card input,
+.seva-filter-card select {
+  height: 43px;
+  padding: 0 12px;
+}
+
+.seva-form-grid textarea {
+  min-height: 100px;
+  padding: 11px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.seva-form-grid input:hover,
+.seva-form-grid select:hover,
+.seva-form-grid textarea:hover,
+.seva-filter-card input:hover,
+.seva-filter-card select:hover {
+  border-color: #d7c8b9;
+}
+
+.seva-form-grid input:focus,
+.seva-form-grid select:focus,
+.seva-form-grid textarea:focus,
+.seva-filter-card input:focus,
+.seva-filter-card select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+  background: #fffdfb;
+}
+
+.seva-form-grid input:disabled,
+.seva-form-grid select:disabled,
+.seva-form-grid textarea:disabled,
+.seva-filter-card input:disabled,
+.seva-filter-card select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-soft);
+}
+
+.seva-form-full {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+.seva-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.devotee-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.seva-summary-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 88px;
+  padding: 15px 17px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.seva-summary-card::after {
+  position: absolute;
+  right: -22px;
+  bottom: -28px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.025);
+  content: "";
+}
+
+.seva-summary-card:hover {
+  transform: translateY(-2px);
+  border-color: #dfd2c6;
+  box-shadow: var(--shadow-md);
+}
+
+.summary-icon {
+  width: 41px;
+  height: 41px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.summary-icon.total {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.summary-icon.assigned {
+  background: #fff4dd;
+  color: #a56a00;
+}
+
+.summary-icon.accepted {
+  background: #edf0ff;
+  color: #5969b5;
+}
+
+.summary-icon.progress {
+  background: #edf0ff;
+  color: #5969b5;
+}
+
+.summary-icon.completed {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.seva-summary-card span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.seva-summary-card strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 23px;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+/* =========================================================
+   FILTERS
+========================================================= */
+
+.seva-filter-card {
+  display: flex;
+  align-items: flex-end;
+  gap: 13px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  box-shadow: var(--shadow-sm);
+}
+
+.seva-filter-card label {
+  min-width: 180px;
+}
+
+.seva-filter-card .seva-search-field {
+  flex: 1;
+}
+
+.clear-filter-button {
+  height: 43px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0 14px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.clear-filter-button:hover {
+  border-color: #d5c5b6;
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   DIRECTORY
+========================================================= */
+
+.seva-directory-card {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  box-shadow: var(--shadow-sm);
+}
+
+.seva-directory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 23px 25px;
+  border-bottom: 1px solid var(--border);
+}
+
+.seva-directory-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.seva-directory-header p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid #d8e9de;
+  border-radius: 20px;
+  background: #f2faf4;
+  color: #23833d;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.live-indicator span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #35a85a;
+  box-shadow: 0 0 0 3px rgba(53, 168, 90, 0.1);
+}
+
+/* =========================================================
+   SEVA LIST
+========================================================= */
+
+.seva-list {
+  display: grid;
+}
+
+.seva-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 21px 25px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.18s ease;
+}
+
+.seva-card:last-child {
+  border-bottom: 0;
+}
+
+.seva-card:hover {
+  background: #fffdfa;
+}
+
+.seva-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  min-width: 0;
+  flex: 1;
+}
+
+.seva-icon {
+  width: 49px;
+  height: 49px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-soft);
+  font-size: 21px;
+}
+
+.seva-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.seva-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.seva-title-row h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.seva-department {
+  margin: 5px 0 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.seva-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.seva-status > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.seva-status.assigned {
+  background: #fff4dd;
+  color: #a56a00;
+}
+
+.seva-status.assigned > span {
+  background: #c68b17;
+}
+
+.seva-status.accepted {
+  background: #edf0ff;
+  color: #5969b5;
+}
+
+.seva-status.accepted > span {
+  background: #6877c1;
+}
+
+.seva-status.in-progress {
+  background: #edf0ff;
+  color: #5969b5;
+}
+
+.seva-status.in-progress > span {
+  background: #6877c1;
+}
+
+.seva-status.completed {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.seva-status.completed > span {
+  background: #35a85a;
+}
+
+.seva-status.cancelled {
+  background: #f1f1f1;
+  color: #777;
+}
+
+.seva-status.cancelled > span {
+  background: #888;
+}
+
+/* =========================================================
+   ASSIGNED PERSON
+========================================================= */
+
+.assigned-person {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 11px;
+}
+
+.mini-avatar {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.assigned-person strong,
+.assigned-person span {
+  display: block;
+}
+
+.assigned-person strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.assigned-person span {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+/* =========================================================
+   META
+========================================================= */
+
+.seva-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.seva-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.seva-meta b {
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   NOTES
+========================================================= */
+
+.seva-notes {
+  max-width: 650px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid rgba(232, 222, 211, 0.7);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+
+.seva-notes span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.seva-notes p {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.seva-card-actions {
+  flex-shrink: 0;
+}
+
+.action-primary,
+.action-complete {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 13px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.action-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.action-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--primary-dark);
+  box-shadow: 0 6px 15px rgba(70, 45, 25, 0.12);
+}
+
+.action-complete {
+  background: var(--success);
+  color: #fff;
+}
+
+.action-complete:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #356b40;
+  box-shadow: 0 6px 15px rgba(63, 125, 74, 0.16);
+}
+
+.action-primary:disabled,
+.action-complete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.admin-status-actions button {
+  min-height: 35px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.admin-status-actions button:hover {
+  transform: translateY(-1px);
+  border-color: #d6c7b9;
+  background: var(--surface-soft);
+}
+
+.admin-status-actions .admin-complete {
+  border-color: #cfe7d5;
+  background: #f0faf2;
+  color: #23833d;
+}
+
+.admin-status-actions .admin-complete:hover {
+  border-color: #b8dcc1;
+  background: #e8f7ed;
+}
+
+.admin-status-actions .admin-cancel {
+  color: #a83232;
+}
+
+.admin-status-actions .admin-cancel:hover {
+  border-color: #edc7c7;
+  background: #fff4f4;
+}
+
+.completed-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #d2ead8;
+  border-radius: 9px;
+  background: var(--success-light);
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.seva-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 330px;
+  padding: 50px 20px;
+  text-align: center;
+}
+
+.seva-empty-icon {
+  width: 55px;
+  height: 55px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 15px;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 15px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 20px;
+}
+
+.seva-empty h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.seva-empty p {
+  max-width: 430px;
+  margin: 7px 0 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1200px) {
+  .seva-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .devotee-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1050px) {
+  .seva-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .devotee-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seva-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seva-form-full {
+    grid-column: 1 / -1;
+  }
+
+  .seva-card {
+    align-items: flex-start;
+  }
+
+  .seva-card-actions {
+    max-width: 210px;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 800px) {
+  .seva-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 17px;
+  }
+
+  .seva-page-header .primary-button {
+    width: 100%;
+  }
+
+  .seva-summary-grid,
+  .devotee-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seva-filter-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .seva-filter-card label,
+  .seva-filter-card .seva-search-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .clear-filter-button {
+    width: 100%;
+  }
+
+  .seva-card {
+    flex-direction: column;
+    gap: 17px;
+  }
+
+  .seva-card-main {
+    width: 100%;
+  }
+
+  .seva-card-actions {
+    width: 100%;
+    max-width: none;
+  }
+
+  .action-primary,
+  .action-complete {
+    width: 100%;
+  }
+
+  .admin-status-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-status-actions button {
+    flex: 1;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 550px) {
+  .seva-page-header h1 {
+    font-size: 28px;
+  }
+
+  .seva-page-header p {
+    font-size: 12px;
+  }
+
+  .seva-form-card {
+    padding: 19px;
+    border-radius: 15px;
+  }
+
+  .seva-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seva-form-full {
+    grid-column: auto;
+  }
+
+  .seva-summary-grid,
+  .devotee-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .seva-summary-card {
+    min-height: 80px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .summary-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    font-size: 14px;
+  }
+
+  .seva-summary-card strong {
+    font-size: 20px;
+  }
+
+  .seva-directory-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 19px;
+  }
+
+  .seva-card {
+    padding: 18px;
+  }
+
+  .seva-card-main {
+    align-items: flex-start;
+  }
+
+  .seva-icon {
+    width: 43px;
+    height: 43px;
+    border-radius: 11px;
+    font-size: 18px;
+  }
+
+  .seva-title-row h3 {
+    font-size: 14px;
+  }
+
+  .seva-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+  }
+
+  .admin-status-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-status-actions button {
+    width: 100%;
+  }
+
+  .seva-empty {
+    min-height: 280px;
+    padding: 40px 18px;
+  }
+}
+
+/* =========================================================
+   VERY SMALL DEVICES
+========================================================= */
+
+@media (max-width: 380px) {
+  .seva-summary-grid,
+  .devotee-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .seva-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .seva-directory-header h2 {
+    font-size: 18px;
+  }
+
+  .seva-card {
+    padding: 16px;
+  }
+
+  .seva-card-main {
+    gap: 11px;
+  }
+
+  .admin-status-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   PAGE ANIMATION
+========================================================= */
+
+@keyframes seva-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .seva-page,
+  .primary-button,
+  .secondary-button,
+  .seva-summary-card,
+  .clear-filter-button,
+  .seva-card,
+  .action-primary,
+  .action-complete,
+  .admin-status-actions button {
+    animation: none;
+    transition: none;
+  }
+
+  .primary-button:hover,
+  .clear-filter-button:hover,
+  .seva-summary-card:hover,
+  .action-primary:hover,
+  .action-complete:hover,
+  .admin-status-actions button:hover {
+    transform: none;
+  }
+}

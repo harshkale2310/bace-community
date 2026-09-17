@@ -1,0 +1,415 @@
+import { NavLink, useNavigate } from "react-router-dom";
+
+import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
+
+import "./Sidebar.css";
+
+
+/* ==========================================================================
+   ADMINISTRATOR MENU
+========================================================================== */
+
+const adminMenu = [
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    icon: "⌂",
+  },
+  {
+    label: "Devotees",
+    path: "/devotees",
+    icon: "♙",
+  },
+  {
+    label: "Attendance",
+    path: "/attendance",
+    icon: "✓",
+  },
+  {
+    label: "Sadhana",
+    path: "/sadhana",
+    icon: "ॐ",
+  },
+  {
+    label: "Seva",
+    path: "/seva",
+    icon: "✦",
+  },
+  {
+    label: "Leave",
+    path: "/leave",
+    icon: "◷",
+  },
+  {
+    label: "Rooms",
+    path: "/rooms",
+    icon: "▦",
+  },
+  {
+    label: "Reports",
+    path: "/reports",
+    icon: "▤",
+  },
+];
+
+
+/* ==========================================================================
+   DEVOTEE MENU
+========================================================================== */
+
+const devoteeMenu = [
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    icon: "⌂",
+  },
+  {
+    label: "My Profile",
+    path: "/devotee-profile",
+    icon: "♙",
+  },
+  {
+    label: "Attendance",
+    path: "/attendance",
+    icon: "✓",
+  },
+  {
+    label: "Sadhana",
+    path: "/sadhana",
+    icon: "ॐ",
+  },
+  {
+    label: "Seva",
+    path: "/seva",
+    icon: "✦",
+  },
+  {
+    label: "Leave",
+    path: "/leave",
+    icon: "◷",
+  },
+  {
+    label: "My Room",
+    path: "/my-room",
+    icon: "▦",
+  },
+  {
+    label: "My Reports",
+    path: "/my-reports",
+    icon: "▤",
+  },
+];
+
+
+/* ==========================================================================
+   SIDEBAR
+========================================================================== */
+
+function Sidebar() {
+  const navigate = useNavigate();
+
+  const {
+    user,
+    isAdministrator,
+    isDevotee,
+  } = useAuth();
+
+  const {
+    sidebarOpen,
+    closeSidebar,
+  } = useApp();
+
+
+  /* ==========================================================================
+     MENU BASED ON USER ROLE
+  ========================================================================== */
+
+  const menuItems = isAdministrator
+    ? adminMenu
+    : devoteeMenu;
+
+
+  /* ==========================================================================
+     INITIALS
+  ========================================================================== */
+
+  const getInitials = (name = "") => {
+    const cleanName = name.trim();
+
+    if (!cleanName) {
+      return "U";
+    }
+
+    return cleanName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
+
+
+  /* ==========================================================================
+     ROLE LABEL
+  ========================================================================== */
+
+  const getRoleLabel = () => {
+    if (isAdministrator) {
+      return "Administrator";
+    }
+
+    if (isDevotee) {
+      return "Devotee";
+    }
+
+    return "User";
+  };
+
+
+  /* ==========================================================================
+     MOBILE DETECTION
+  ========================================================================== */
+
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth <= 900) {
+      closeSidebar();
+    }
+  };
+
+
+  /* ==========================================================================
+     NAVIGATION
+  ========================================================================== */
+
+  const handleNavigation = () => {
+    closeSidebarOnMobile();
+  };
+
+
+  /* ==========================================================================
+     BRAND CLICK
+  ========================================================================== */
+
+  const handleBrandClick = () => {
+    navigate("/dashboard");
+    closeSidebarOnMobile();
+  };
+
+
+  /* ==========================================================================
+     CURRENT USER
+  ========================================================================== */
+
+  const initials = getInitials(user?.name);
+  const roleLabel = getRoleLabel();
+
+
+  return (
+    <>
+      {/* ======================================================================
+          SIDEBAR
+      ====================================================================== */}
+
+      <aside
+        className={`sidebar ${
+          sidebarOpen ? "open" : "closed"
+        }`}
+        aria-label="Main navigation"
+      >
+
+        {/* ====================================================================
+            BRAND
+        ==================================================================== */}
+
+        <div className="sidebar-brand">
+
+          <button
+            type="button"
+            className="sidebar-brand-mark"
+            onClick={handleBrandClick}
+            aria-label="Go to dashboard"
+            title="Dashboard"
+          >
+            ॐ
+          </button>
+
+          <button
+            type="button"
+            className="sidebar-brand-text"
+            onClick={handleBrandClick}
+            aria-label="Go to dashboard"
+          >
+            <strong>Temple Base</strong>
+
+            <span>
+              Management System
+            </span>
+          </button>
+
+        </div>
+
+
+        {/* ====================================================================
+            CURRENT USER
+        ==================================================================== */}
+
+        <div
+          className="sidebar-user"
+          title={user?.name || "User"}
+        >
+          <div
+            className="sidebar-user-avatar"
+            aria-hidden="true"
+          >
+            {initials}
+          </div>
+
+          <div className="sidebar-user-info">
+            <strong>
+              {user?.name || "User"}
+            </strong>
+
+            <span>
+              {roleLabel}
+            </span>
+          </div>
+        </div>
+
+
+        {/* ====================================================================
+            NAVIGATION
+        ==================================================================== */}
+
+        <nav
+          className="sidebar-navigation"
+          aria-label="Primary navigation"
+        >
+
+          <p className="sidebar-section-title">
+            MAIN MENU
+          </p>
+
+          <div className="sidebar-menu">
+
+            {menuItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={handleNavigation}
+                title={
+                  !sidebarOpen
+                    ? item.label
+                    : undefined
+                }
+                className={({ isActive }) =>
+                  `sidebar-link ${
+                    isActive ? "active" : ""
+                  }`
+                }
+              >
+                <span
+                  className="sidebar-link-icon"
+                  aria-hidden="true"
+                >
+                  {item.icon}
+                </span>
+
+                <span className="sidebar-link-label">
+                  {item.label}
+                </span>
+              </NavLink>
+            ))}
+
+          </div>
+
+
+          {/* ==================================================================
+              ADMINISTRATOR SYSTEM MENU
+          ================================================================== */}
+
+          {isAdministrator && (
+            <>
+              <p className="sidebar-section-title second">
+                SYSTEM
+              </p>
+
+              <NavLink
+                to="/settings"
+                onClick={handleNavigation}
+                title={
+                  !sidebarOpen
+                    ? "Settings"
+                    : undefined
+                }
+                className={({ isActive }) =>
+                  `sidebar-link ${
+                    isActive ? "active" : ""
+                  }`
+                }
+              >
+                <span
+                  className="sidebar-link-icon"
+                  aria-hidden="true"
+                >
+                  ⚙
+                </span>
+
+                <span className="sidebar-link-label">
+                  Settings
+                </span>
+              </NavLink>
+            </>
+          )}
+
+        </nav>
+
+
+        {/* ====================================================================
+            SIDEBAR FOOTER
+        ==================================================================== */}
+
+        <div className="sidebar-footer">
+
+          <div
+            className="sidebar-footer-symbol"
+            aria-hidden="true"
+          >
+            ॐ
+          </div>
+
+          <div className="sidebar-footer-content">
+
+            <strong>
+              Hare Krishna
+            </strong>
+
+            <span>
+              Serve • Learn • Grow
+            </span>
+
+          </div>
+
+        </div>
+
+      </aside>
+
+
+      {/* ======================================================================
+          MOBILE OVERLAY
+      ====================================================================== */}
+
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="sidebar-overlay"
+          onClick={closeSidebar}
+          aria-label="Close navigation"
+        />
+      )}
+    </>
+  );
+}
+
+export default Sidebar;

@@ -1,0 +1,1333 @@
+/* ============================================================
+   ATTENDANCE PAGE
+   Professional • Clean • Responsive • Temple Theme
+   ============================================================ */
+
+.attendance-page {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 4px 0 40px;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.attendance-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 28px;
+}
+
+.attendance-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.attendance-header p {
+  margin: 9px 0 0;
+  color: var(--text-light);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.attendance-date-box {
+  min-width: 190px;
+  padding: 14px 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+.attendance-date-box:hover {
+  border-color: rgba(139, 69, 19, 0.18);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.attendance-date-box span,
+.attendance-date-box strong {
+  display: block;
+}
+
+.attendance-date-box span {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.attendance-date-box strong {
+  color: var(--primary-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   ERROR
+   ============================================================ */
+
+.attendance-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid rgba(179, 58, 58, 0.2);
+  border-radius: var(--radius-md);
+  background: var(--danger-light);
+  color: var(--danger);
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-error strong {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.attendance-error span {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.attendance-error button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid rgba(179, 58, 58, 0.22);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    transform var(--transition);
+}
+
+.attendance-error button:hover {
+  border-color: rgba(179, 58, 58, 0.4);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   ADMIN STATISTICS
+   ============================================================ */
+
+.admin-attendance-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.admin-attendance-stat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  min-height: 94px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.admin-attendance-stat::after {
+  content: "";
+  position: absolute;
+  right: -28px;
+  bottom: -32px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.025);
+  pointer-events: none;
+}
+
+.admin-attendance-stat:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 69, 19, 0.18);
+  box-shadow: var(--shadow-md);
+}
+
+.attendance-stat-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.attendance-stat-icon.present {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.attendance-stat-icon.absent {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.attendance-stat-icon.leave {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.attendance-stat-icon.pending {
+  background: #eeeaf9;
+  color: #6759a1;
+}
+
+.admin-attendance-stat > div:last-child {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.admin-attendance-stat span,
+.admin-attendance-stat strong {
+  display: block;
+}
+
+.admin-attendance-stat span {
+  margin-bottom: 5px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-attendance-stat strong {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ============================================================
+   ADMIN CONTROLS
+   ============================================================ */
+
+.attendance-admin-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 13px;
+  margin-bottom: 20px;
+  padding: 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-control {
+  min-width: 175px;
+}
+
+.attendance-control label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--text-light);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.attendance-control input,
+.attendance-control select {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.attendance-control input:hover,
+.attendance-control select:hover {
+  border-color: #d8cbbd;
+}
+
+.attendance-control input:focus,
+.attendance-control select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+}
+
+.search-control {
+  flex: 1;
+}
+
+.attendance-search-box {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.attendance-search-box:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+}
+
+.attendance-search-box span {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 19px;
+}
+
+.attendance-search-box input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.attendance-search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.attendance-refresh-button {
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background var(--transition),
+    transform var(--transition);
+}
+
+.attendance-refresh-button:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.attendance-refresh-button:active {
+  transform: translateY(0);
+}
+
+.attendance-refresh-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* ============================================================
+   ADMIN TABLE CARD
+   ============================================================ */
+
+.attendance-admin-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.attendance-admin-card-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.attendance-admin-card-header p {
+  margin: 6px 0 0;
+  color: var(--text-light);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.attendance-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border: 1px solid #cfe5d5;
+  border-radius: 999px;
+  background: #f3faf5;
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.attendance-live-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgba(63, 125, 74, 0.1);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+
+.attendance-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.attendance-table-wrapper::-webkit-scrollbar {
+  height: 7px;
+}
+
+.attendance-table-wrapper::-webkit-scrollbar-track {
+  background: var(--surface-soft);
+}
+
+.attendance-table-wrapper::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d5c9bc;
+}
+
+.attendance-table {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.attendance-table th {
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.attendance-table td {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.attendance-table tbody tr {
+  transition: background var(--transition);
+}
+
+.attendance-table tbody tr:hover {
+  background: rgba(139, 69, 19, 0.025);
+}
+
+.attendance-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.attendance-devotee-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 230px;
+}
+
+.attendance-avatar {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.attendance-devotee-cell strong,
+.attendance-devotee-cell span {
+  display: block;
+}
+
+.attendance-devotee-cell strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.attendance-devotee-cell span {
+  max-width: 230px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.department-text {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.room-text {
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   ATTENDANCE EDITOR
+   ============================================================ */
+
+.attendance-editor {
+  position: relative;
+  min-width: 120px;
+}
+
+.attendance-editor select {
+  width: 100%;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.attendance-editor select:hover {
+  border-color: #d5c7b9;
+}
+
+.attendance-editor select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.07);
+}
+
+.attendance-editor select.present {
+  border-color: #c7e2cf;
+  background: #f2faf4;
+  color: #287d42;
+}
+
+.attendance-editor select.absent {
+  border-color: #eccccc;
+  background: #fff5f5;
+  color: #ae3e3e;
+}
+
+.attendance-editor select.leave {
+  border-color: #ead8ae;
+  background: #fffaf0;
+  color: #986500;
+}
+
+.attendance-editor select.partial {
+  border-color: #d8d8ed;
+  background: #f5f5ff;
+  color: #6067a5;
+}
+
+.attendance-editor select.not-marked {
+  background: var(--surface-soft);
+  color: var(--text-muted);
+}
+
+.attendance-editor select:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.attendance-saving {
+  position: absolute;
+  left: 2px;
+  top: calc(100% + 3px);
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+/* ============================================================
+   STATUS BADGES
+   ============================================================ */
+
+.attendance-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 25px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.attendance-status.present {
+  border-color: #cfe7d5;
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.attendance-status.absent {
+  border-color: #efd0d0;
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.attendance-status.leave {
+  border-color: #eeddb9;
+  background: var(--warning-light);
+  color: #a16b10;
+}
+
+.attendance-status.partial {
+  border-color: #d8daf0;
+  background: #eef0ff;
+  color: #5d68a8;
+}
+
+.attendance-status.not-marked {
+  border-color: #e1e1e1;
+  background: #f3f3f3;
+  color: #777;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.attendance-empty {
+  display: flex;
+  min-height: 330px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 55px 20px;
+  text-align: center;
+}
+
+.attendance-empty-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  margin-bottom: 15px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 22px;
+}
+
+.attendance-empty h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 18px;
+}
+
+.attendance-empty p {
+  max-width: 420px;
+  margin: 7px 0 17px;
+  color: var(--text-light);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.attendance-empty button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  transition:
+    border-color var(--transition),
+    background var(--transition),
+    color var(--transition);
+}
+
+.attendance-empty button:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* ============================================================
+   ADMIN NOTE
+   ============================================================ */
+
+.attendance-admin-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 17px;
+  padding: 15px 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-admin-note > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.attendance-admin-note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.attendance-admin-note p {
+  margin: 0;
+  color: var(--text-light);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* ============================================================
+   DEVOTEE PERSONAL SUMMARY
+   ============================================================ */
+
+.attendance-personal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.personal-attendance-card {
+  position: relative;
+  min-height: 105px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.personal-attendance-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 69, 19, 0.18);
+  box-shadow: var(--shadow-md);
+}
+
+.personal-attendance-card.featured {
+  border-color: rgba(139, 69, 19, 0.3);
+  box-shadow: 0 6px 20px rgba(139, 69, 19, 0.08);
+}
+
+.personal-attendance-card > span:first-child {
+  margin-bottom: 9px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.summary-status {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* ============================================================
+   DEVOTEE PERSONAL PANEL
+   ============================================================ */
+
+.attendance-personal-panel {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.personal-panel-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 23px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.personal-panel-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.personal-panel-header p {
+  margin: 6px 0 0;
+  color: var(--text-light);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.personal-date-control {
+  min-width: 190px;
+}
+
+.personal-date-control span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.personal-date-control input {
+  width: 100%;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.personal-date-control input:hover {
+  border-color: #d8cbbd;
+}
+
+.personal-date-control input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
+}
+
+/* ============================================================
+   PERSONAL TIMELINE
+   ============================================================ */
+
+.personal-attendance-timeline {
+  padding: 7px 24px;
+}
+
+.personal-timeline-item {
+  display: flex;
+  gap: 16px;
+  min-height: 92px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.personal-timeline-item.last {
+  border-bottom: 0;
+}
+
+.timeline-number {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.timeline-content {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+}
+
+.timeline-content > div {
+  min-width: 0;
+}
+
+.timeline-content strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.timeline-content p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   PERSONAL NOTE
+   ============================================================ */
+
+.personal-record-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 24px 24px;
+  padding: 15px;
+  border: 1px solid rgba(139, 69, 19, 0.06);
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+
+.note-icon {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.personal-record-note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.personal-record-note p {
+  margin: 0;
+  color: var(--text-light);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+/* ============================================================
+   PERSONAL FOOTER
+   ============================================================ */
+
+.attendance-personal-footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 18px;
+}
+
+.attendance-personal-footer div {
+  padding: 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-personal-footer span,
+.attendance-personal-footer strong {
+  display: block;
+}
+
+.attendance-personal-footer span {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.attendance-personal-footer strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   ACCESS
+   ============================================================ */
+
+.attendance-access {
+  display: grid;
+  min-height: 450px;
+  place-content: center;
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.attendance-access-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  margin: 0 auto 15px;
+  border: 1px solid #ead9b7;
+  border-radius: 50%;
+  background: var(--warning-light);
+  color: var(--warning);
+  font-weight: 800;
+}
+
+.attendance-access h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 21px;
+}
+
+.attendance-access p {
+  margin: 8px 0 0;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+
+@media (max-width: 1200px) {
+  .admin-attendance-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendance-admin-controls {
+    flex-wrap: wrap;
+  }
+
+  .search-control {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 950px) {
+  .attendance-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .attendance-date-box {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .attendance-personal-summary,
+  .attendance-personal-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .personal-date-control {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 700px) {
+  .attendance-page {
+    padding-bottom: 28px;
+  }
+
+  .attendance-header {
+    gap: 14px;
+    margin-bottom: 21px;
+  }
+
+  .attendance-header h1 {
+    font-size: 29px;
+  }
+
+  .attendance-header p {
+    max-width: 600px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .attendance-date-box {
+    padding: 13px 15px;
+  }
+
+  .admin-attendance-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .admin-attendance-stat {
+    min-height: 82px;
+    padding: 14px;
+  }
+
+  .attendance-stat-icon {
+    flex-basis: 39px;
+    width: 39px;
+    height: 39px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  .admin-attendance-stat strong {
+    font-size: 21px;
+  }
+
+  .attendance-admin-controls {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .attendance-control,
+  .search-control {
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+  }
+
+  .attendance-refresh-button {
+    width: 100%;
+  }
+
+  .attendance-admin-card {
+    border-radius: 15px;
+  }
+
+  .attendance-admin-card-header {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .attendance-admin-card-header h2 {
+    font-size: 19px;
+  }
+
+  .attendance-live-badge {
+    display: none;
+  }
+
+  .personal-panel-header {
+    padding: 19px;
+  }
+
+  .personal-attendance-timeline {
+    padding: 4px 19px;
+  }
+
+  .personal-timeline-item {
+    gap: 11px;
+    padding: 18px 0;
+  }
+
+  .timeline-content {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .personal-record-note {
+    margin: 0 19px 19px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-attendance-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-attendance-stat {
+    min-height: 76px;
+  }
+
+  .attendance-error {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .attendance-error span {
+    flex-basis: calc(100% - 34px);
+  }
+
+  .attendance-error button {
+    margin-left: auto;
+  }
+
+  .attendance-date-box {
+    min-width: 0;
+  }
+
+  .attendance-personal-summary {
+    gap: 10px;
+  }
+
+  .personal-attendance-card {
+    min-height: 90px;
+    padding: 17px;
+  }
+
+  .personal-panel-header {
+    padding: 17px 15px;
+  }
+
+  .personal-attendance-timeline {
+    padding: 3px 15px;
+  }
+
+  .personal-record-note {
+    margin-right: 15px;
+    margin-left: 15px;
+  }
+
+  .attendance-personal-footer {
+    gap: 10px;
+  }
+
+  .attendance-access {
+    min-height: 380px;
+    padding: 25px 18px;
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-page *,
+  .attendance-page *::before,
+  .attendance-page *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
