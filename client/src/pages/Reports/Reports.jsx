@@ -507,7 +507,7 @@ function Reports() {
           <p>
             {isAdministrator
               ? "Community-level operational and spiritual statistics."
-              : "Your personal temple activity summary."}
+              : "Your personal community activity summary."}
           </p>
         </div>
 

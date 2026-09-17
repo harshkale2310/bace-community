@@ -37,6 +37,17 @@ function Navbar() {
   };
 
   /*
+   * Display name for the current account.
+   *
+   * Administrator accounts always display
+   * "BACE Administrator" in the interface.
+   */
+  const displayName =
+    user?.role === "administrator"
+      ? "BACE Administrator"
+      : user?.name || "User";
+
+  /*
    * Close profile dropdown when clicking outside.
    */
   useEffect(() => {
@@ -109,7 +120,7 @@ function Navbar() {
     ? "Account Settings"
     : "My Profile";
 
-  const initials = getInitials(user?.name);
+  const initials = getInitials(displayName);
 
   return (
     <header className="navbar">
@@ -139,8 +150,8 @@ function Navbar() {
           </div>
 
           <div className="navbar-title-text">
-            <strong>Temple Base</strong>
-            <small>Management System</small>
+            <strong>Giri Govardhan BACE</strong>
+            <small>Spiritual Community</small>
           </div>
         </div>
       </div>
@@ -191,9 +202,7 @@ function Navbar() {
             }
             aria-expanded={profileOpen}
             aria-haspopup="menu"
-            aria-label={`Open profile menu for ${
-              user?.name || "User"
-            }`}
+            aria-label={`Open profile menu for ${displayName}`}
           >
             {/* Avatar */}
             <span
@@ -205,9 +214,7 @@ function Navbar() {
 
             {/* User information */}
             <span className="profile-details">
-              <strong>
-                {user?.name || "User"}
-              </strong>
+              <strong>{displayName}</strong>
 
               <small>{displayRole}</small>
             </span>
@@ -243,9 +250,7 @@ function Navbar() {
                 </span>
 
                 <div className="profile-menu-user">
-                  <strong>
-                    {user?.name || "User"}
-                  </strong>
+                  <strong>{displayName}</strong>
 
                   <small>
                     {user?.email || ""}

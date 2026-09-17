@@ -107,7 +107,7 @@
 
 
 /* =========================================================
-   PAGE / BRAND TITLE
+   BRAND TITLE
 ========================================================= */
 
 .navbar-page-title {
@@ -156,7 +156,7 @@
 .navbar-title-text strong {
   display: block;
 
-  max-width: 240px;
+  max-width: 270px;
 
   overflow: hidden;
   text-overflow: ellipsis;
@@ -173,7 +173,7 @@
 .navbar-title-text small {
   display: block;
 
-  margin-top: 2px;
+  margin-top: 3px;
 
   color: #888;
 
@@ -374,6 +374,7 @@
 
   display: flex;
   flex-direction: column;
+
   align-items: flex-start;
 
   text-align: left;
@@ -382,7 +383,7 @@
 .profile-details strong {
   display: block;
 
-  max-width: 145px;
+  max-width: 165px;
 
   overflow: hidden;
   text-overflow: ellipsis;
@@ -422,7 +423,6 @@
   color: #777;
 
   font-size: 16px;
-
   line-height: 1;
 
   transition:
@@ -455,6 +455,7 @@
   background: #fff;
 
   border: 1px solid #e8e8e8;
+
   border-radius: 16px;
 
   box-shadow:
@@ -555,6 +556,7 @@
   font-weight: 700;
 
   text-transform: uppercase;
+
   letter-spacing: 0.4px;
 
   line-height: 1.2;
@@ -597,6 +599,7 @@
   color: #404040;
 
   font-family: inherit;
+
   font-size: 13px;
   font-weight: 600;
 
@@ -662,7 +665,6 @@
 .navbar-notification:focus-visible,
 .sidebar-toggle:focus-visible {
   outline: 2px solid #c47a16;
-
   outline-offset: 2px;
 }
 
@@ -674,7 +676,6 @@
 @media (max-width: 900px) {
   .navbar {
     height: 68px;
-
     padding: 0 16px;
   }
 
@@ -686,6 +687,8 @@
   }
 
   .navbar-title-text strong {
+    max-width: 220px;
+
     font-size: 15px;
   }
 
@@ -698,7 +701,7 @@
   }
 
   .profile-details strong {
-    max-width: 105px;
+    max-width: 120px;
   }
 
   .profile-menu-user strong,
@@ -748,7 +751,7 @@
   }
 
   .navbar-title-text strong {
-    max-width: 120px;
+    max-width: 135px;
 
     font-size: 14px;
   }
@@ -818,7 +821,7 @@
   }
 
   .navbar-title-text strong {
-    max-width: 110px;
+    max-width: 115px;
 
     font-size: 13px;
   }
@@ -829,7 +832,6 @@
 
   .profile-menu {
     top: 61px;
-
     right: 7px;
 
     width: calc(100vw - 14px);
@@ -843,7 +845,7 @@
 
 @media (max-width: 320px) {
   .navbar-title-text strong {
-    max-width: 95px;
+    max-width: 100px;
   }
 
   .sidebar-toggle {
@@ -868,7 +870,6 @@
   .navbar *,
   .profile-menu {
     animation: none !important;
-
     transition: none !important;
   }
 }

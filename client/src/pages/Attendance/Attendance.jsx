@@ -513,14 +513,14 @@ function Attendance() {
             <AttendanceTimelineItem
               number="01"
               title="Morning Program"
-              description="Morning temple program attendance"
+              description="Morning community program attendance"
               status={morning}
             />
 
             <AttendanceTimelineItem
               number="02"
               title="Evening Program"
-              description="Evening temple program attendance"
+              description="Evening community program attendance"
               status={evening}
             />
 
@@ -537,7 +537,7 @@ function Attendance() {
             <span className="note-icon">i</span>
 
             <div>
-              <strong>Attendance is managed by the temple.</strong>
+              <strong>Attendance is managed by the BACE.</strong>
 
               <p>
                 You can view your attendance records here,
@@ -586,7 +586,7 @@ function Attendance() {
 
           <p>
             Monitor and manage community attendance
-            across all temple residents.
+            across all residents.
           </p>
         </div>
 
@@ -717,7 +717,7 @@ function Attendance() {
         <div className="attendance-admin-card-header">
           <div>
             <span className="card-eyebrow">
-              TEMPLE DIRECTORY
+              DEVOTEE DIRECTORY
             </span>
 
             <h2>Daily Attendance</h2>
@@ -874,7 +874,7 @@ function Attendance() {
 
         <div>
           <strong>
-            Administrator attendance management
+            Administrator attendance services
           </strong>
 
           <p>

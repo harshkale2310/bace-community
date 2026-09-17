@@ -15,7 +15,7 @@ import Loader from "../../components/Common/Loader";
 import "./Settings.css";
 
 const DEFAULT_SETTINGS = {
-  templeName: "Temple Base Management",
+  templeName: "Giri Govardhan BACE",
   morningProgram: "04:30",
   eveningProgram: "18:30",
   attendanceRequired: true,
@@ -98,7 +98,7 @@ function Settings() {
     }
 
     if (!settings.templeName.trim()) {
-      setError("Temple / Organization Name is required.");
+      setError("Organization Name is required.");
       return;
     }
 
@@ -182,13 +182,13 @@ function Settings() {
       <div className="page-header settings-page-header">
         <div>
           <span className="page-eyebrow">
-            System Configuration
+            BACE Configuration
           </span>
 
           <h1>Settings</h1>
 
           <p>
-            Manage temple operations, daily schedules, and
+            Manage BACE operations, daily schedules, and
             system rules.
           </p>
         </div>
@@ -285,12 +285,12 @@ function Settings() {
             <h2>General Settings</h2>
 
             <p>
-              Basic information used throughout the temple
-              management system.
+              Basic information used throughout the BACE
+              services.
             </p>
 
             <label>
-              Temple / Organization Name
+              Organization Name
 
               <input
                 type="text"
@@ -301,7 +301,7 @@ function Settings() {
                     event.target.value
                   )
                 }
-                placeholder="Enter temple name"
+                placeholder="Enter organization name"
                 disabled={saving}
               />
             </label>
@@ -371,7 +371,7 @@ function Settings() {
 
             <p>
               Control the operational rules used by the
-              temple management system.
+              BACE services.
             </p>
 
             <div className="setting-toggle">

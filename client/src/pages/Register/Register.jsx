@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
+
 import { Link, useNavigate } from "react-router-dom";
 
-import {
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
-import {
-  doc,
-  serverTimestamp,
-  setDoc,
-} from "firebase/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { useAuth } from "../../context/AuthContext";
+
 import { auth, db } from "../../services/firebase";
+
 import krishnaImage from "../../assets/krishna.png";
 
 import "./Register.css";
@@ -30,12 +27,9 @@ function Register() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [error, setError] = useState("");
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -58,19 +52,22 @@ function Register() {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+
+    if (!trimmedName) {
       return "Please enter your full name.";
     }
 
-    if (formData.name.trim().length < 2) {
+    if (trimmedName.length < 2) {
       return "Name must contain at least 2 characters.";
     }
 
-    if (!formData.email.trim()) {
+    if (!trimmedEmail) {
       return "Please enter your email address.";
     }
 
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
       return "Please enter a valid email address.";
     }
 
@@ -110,6 +107,9 @@ function Register() {
       case "auth/operation-not-allowed":
         return "Email and password registration is not enabled in Firebase.";
 
+      case "auth/too-many-requests":
+        return "Too many attempts. Please wait a moment and try again.";
+
       default:
         return "Unable to create your account. Please try again.";
     }
@@ -129,68 +129,52 @@ function Register() {
     setError("");
 
     try {
-      /*
-       * Create Firebase Authentication account.
-       */
-      const credential =
-        await createUserWithEmailAndPassword(
-          auth,
-          formData.email.trim(),
-          formData.password
-        );
+      const email = formData.email.trim().toLowerCase();
+      const name = formData.name.trim();
+
+      // Create Firebase Authentication account.
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        formData.password
+      );
 
       const firebaseUser = credential.user;
 
       /*
-       * Every public registration is a DEVOTEE.
-       *
-       * Administrator accounts must not be created
-       * through the public registration page.
+       * Every public registration creates a devotee account.
+       * Administrator accounts are created separately.
        */
-      await setDoc(
-        doc(db, "users", firebaseUser.uid),
-        {
-          uid: firebaseUser.uid,
 
-          name: formData.name.trim(),
-
-          email: formData.email.trim(),
-
-          role: "devotee",
-
-          status: "active",
-
-          createdAt: serverTimestamp(),
-
-          updatedAt: serverTimestamp(),
-        }
-      );
+      await setDoc(doc(db, "users", firebaseUser.uid), {
+        uid: firebaseUser.uid,
+        name,
+        email,
+        role: "devotee",
+        status: "active",
+        department: "Giri Govardhan BACE",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
 
       /*
-       * AuthContext will detect the Firebase user
-       * and load the Firestore profile.
+       * AuthContext listens for the Firebase user and
+       * loads the Firestore profile automatically.
        */
-      navigate("/dashboard", { replace: true });
 
+      navigate("/dashboard", { replace: true });
     } catch (submitError) {
       console.error("Registration error:", submitError);
 
-      /*
-       * If the Firebase Auth account was created but
-       * Firestore profile creation failed, show a clear
-       * message instead of pretending registration succeeded.
-       */
       if (
         submitError.code === "permission-denied" ||
         submitError.code === "firestore/permission-denied"
       ) {
         setError(
-          "Your authentication account was created, but your profile could not be saved. Please check Firestore security rules."
+          "Your authentication account was created, but your profile could not be saved. Please check your account permissions."
         );
       } else {
-        setError(
-          getFirebaseErrorMessage(submitError)
-        );
+        setError(getFirebaseErrorMessage(submitError));
       }
     } finally {
       setIsSubmitting(false);
@@ -199,202 +183,124 @@ function Register() {
 
   return (
     <main className="register-page">
-
-      {/* ============================================================
-          TOP NAVIGATION
-      ============================================================ */}
-
+      {/* Top Navigation */}
       <nav className="auth-top-navigation">
-
         <Link
           to="/"
           className="auth-nav-brand"
-          aria-label="Temple Base Home"
+          aria-label="Giri Govardhan BACE Home"
         >
-
-          <span className="auth-nav-brand-icon">
-            ॐ
-          </span>
+          <span className="auth-nav-brand-icon">ॐ</span>
 
           <span className="auth-nav-brand-text">
-            Temple Base
+            Giri Govardhan BACE
           </span>
-
         </Link>
 
-
         <div className="auth-nav-links">
-
-          <Link
-            to="/"
-            className="auth-nav-link"
-          >
+          <Link to="/" className="auth-nav-link">
             Home
           </Link>
 
-          <Link
-            to="/login"
-            className="auth-nav-link"
-          >
+          <Link to="/login" className="auth-nav-link">
             Login
           </Link>
 
-          <Link
-            to="/register"
-            className="auth-nav-link active"
-          >
+          <Link to="/register" className="auth-nav-link active">
             Register
           </Link>
-
         </div>
-
       </nav>
 
-
-      {/* ============================================================
-          REGISTER SHELL
-      ============================================================ */}
-
+      {/* Register Shell */}
       <section className="register-shell">
-
-        {/* ==========================================================
-            LEFT VISUAL PANEL
-        =========================================================== */}
-
+        {/* Left Visual Panel */}
         <div className="register-visual">
-
           <div className="register-visual-image">
+            <img src={krishnaImage} alt="Lord Krishna" />
 
-            <img
-              src={krishnaImage}
-              alt="Lord Krishna"
-            />
-
-            <div className="register-image-overlay"></div>
-
+            <div className="register-image-overlay" />
           </div>
-
 
           <div className="register-visual-content">
-
-            <div className="register-om">
-              ॐ
-            </div>
+            <div className="register-om">ॐ</div>
 
             <p className="register-visual-label">
-              HARE KRISHNA
+              GIRI GOVARDHAN BACE
             </p>
 
-            <h1>
-              Begin Your
-              <span>Temple Journey</span>
+            <h1 className="register-visual-title">
+              <span className="register-title-main">
+                Begin Your
+              </span>
+
+              <span className="register-title-accent">
+                Journey
+              </span>
             </h1>
 
-            <p>
-              Create your devotee account and stay
-              connected with your temple activities,
-              seva, sadhana and attendance.
+            <p className="register-visual-description">
+              Create your devotee account and stay connected
+              with your daily activities, seva, sadhana and
+              attendance.
             </p>
-
           </div>
-
         </div>
 
-
-        {/* ==========================================================
-            RIGHT REGISTER PANEL
-        =========================================================== */}
-
+        {/* Right Register Panel */}
         <div className="register-panel">
-
           <div className="register-card">
-
             {/* Header */}
-
             <div className="register-header">
-
-              <Link
-                to="/"
-                className="register-back-link"
-              >
-                <span aria-hidden="true">
-                  ←
-                </span>
-
+              <Link to="/" className="register-back-link">
+                <span aria-hidden="true">←</span>
                 Back to Home
               </Link>
 
-
-              <div className="register-brand-mark">
-                ॐ
-              </div>
-
+              <div className="register-brand-mark">ॐ</div>
 
               <p className="register-eyebrow">
                 WELCOME
               </p>
 
-
-              <h2>
-                Create your account
-              </h2>
-
+              <h2>Create your account</h2>
 
               <p className="register-description">
-                Register as a devotee to access your
-                personal temple management area.
+                Create your personal account to stay connected
+                with your daily activities, seva, sadhana and
+                attendance.
               </p>
-
             </div>
 
-
-            {/* ======================================================
-                ACCOUNT TYPE
-            ======================================================= */}
-
+            {/* Account Type */}
             <div className="register-account-type">
-
               <div className="register-account-icon">
                 ॐ
               </div>
 
               <div>
-                <strong>
-                  Devotee Account
-                </strong>
-
-                <span>
-                  Personal temple access
-                </span>
+                <strong>Devotee Account</strong>
+                <span>Personal daily access</span>
               </div>
 
               <span className="register-account-check">
                 ✓
               </span>
-
             </div>
 
-
-            {/* ======================================================
-                REGISTER FORM
-            ======================================================= */}
-
+            {/* Registration Form */}
             <form
               className="register-form"
               onSubmit={handleSubmit}
               noValidate
             >
-
               {/* Name */}
-
               <div className="register-form-group">
-
                 <label htmlFor="name">
                   Full name
                 </label>
 
                 <div className="register-input-wrapper">
-
                   <span
                     className="register-input-icon"
                     aria-hidden="true"
@@ -412,22 +318,16 @@ function Register() {
                     autoComplete="name"
                     disabled={isSubmitting}
                   />
-
                 </div>
-
               </div>
 
-
               {/* Email */}
-
               <div className="register-form-group">
-
                 <label htmlFor="register-email">
                   Email address
                 </label>
 
                 <div className="register-input-wrapper">
-
                   <span
                     className="register-input-icon"
                     aria-hidden="true"
@@ -445,22 +345,16 @@ function Register() {
                     autoComplete="email"
                     disabled={isSubmitting}
                   />
-
                 </div>
-
               </div>
 
-
               {/* Password */}
-
               <div className="register-form-group">
-
                 <label htmlFor="register-password">
                   Password
                 </label>
 
                 <div className="register-input-wrapper">
-
                   <span
                     className="register-input-icon password-symbol"
                     aria-hidden="true"
@@ -471,11 +365,7 @@ function Register() {
                   <input
                     id="register-password"
                     name="password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Create a password"
@@ -500,22 +390,16 @@ function Register() {
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
-
                 </div>
-
               </div>
 
-
-              {/* Confirm password */}
-
+              {/* Confirm Password */}
               <div className="register-form-group">
-
                 <label htmlFor="confirm-password">
                   Confirm password
                 </label>
 
                 <div className="register-input-wrapper">
-
                   <span
                     className="register-input-icon password-symbol"
                     aria-hidden="true"
@@ -553,24 +437,17 @@ function Register() {
                         : "Show password"
                     }
                   >
-                    {showConfirmPassword
-                      ? "Hide"
-                      : "Show"}
+                    {showConfirmPassword ? "Hide" : "Show"}
                   </button>
-
                 </div>
-
               </div>
 
-
               {/* Error */}
-
               {error && (
                 <div
                   className="register-error"
                   role="alert"
                 >
-
                   <span
                     className="register-error-icon"
                     aria-hidden="true"
@@ -578,25 +455,19 @@ function Register() {
                     !
                   </span>
 
-                  <span>
-                    {error}
-                  </span>
-
+                  <span>{error}</span>
                 </div>
               )}
 
-
               {/* Submit */}
-
               <button
                 type="submit"
                 className="register-submit"
                 disabled={isSubmitting}
               >
-
                 {isSubmitting ? (
                   <>
-                    <span className="register-spinner"></span>
+                    <span className="register-spinner" />
                     Creating account...
                   </>
                 ) : (
@@ -608,18 +479,11 @@ function Register() {
                     </span>
                   </>
                 )}
-
               </button>
-
             </form>
 
-
-            {/* ======================================================
-                LOGIN LINK
-            ======================================================= */}
-
+            {/* Login Link */}
             <div className="register-login-prompt">
-
               <span>
                 Already have an account?
               </span>
@@ -627,53 +491,37 @@ function Register() {
               <Link to="/login">
                 Sign in
               </Link>
-
             </div>
 
-
-            {/* ======================================================
-                INFORMATION
-            ======================================================= */}
-
+            {/* Information */}
             <div className="register-note">
-
-              <span className="register-note-icon">
+              <span
+                className="register-note-icon"
+                aria-hidden="true"
+              >
                 i
               </span>
 
               <p>
                 Public registration creates a devotee
-                account. Administrator accounts are
-                managed separately.
+                account. Administrator accounts are handled
+                separately.
               </p>
-
             </div>
 
-
             {/* Footer */}
-
             <div className="register-footer">
-
-              <span>
-                Temple Base Management
-              </span>
+              <span>Giri Govardhan BACE</span>
 
               <span className="register-footer-dot">
                 •
               </span>
 
-              <span>
-                Hare Krishna
-              </span>
-
+              <span>Hare Krishna</span>
             </div>
-
           </div>
-
         </div>
-
       </section>
-
     </main>
   );
 }

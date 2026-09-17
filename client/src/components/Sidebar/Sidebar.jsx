@@ -5,7 +5,6 @@ import { useApp } from "../../context/AppContext";
 
 import "./Sidebar.css";
 
-
 /* ==========================================================================
    ADMINISTRATOR MENU
 ========================================================================== */
@@ -52,7 +51,6 @@ const adminMenu = [
     icon: "▤",
   },
 ];
-
 
 /* ==========================================================================
    DEVOTEE MENU
@@ -101,7 +99,6 @@ const devoteeMenu = [
   },
 ];
 
-
 /* ==========================================================================
    SIDEBAR
 ========================================================================== */
@@ -109,26 +106,15 @@ const devoteeMenu = [
 function Sidebar() {
   const navigate = useNavigate();
 
-  const {
-    user,
-    isAdministrator,
-    isDevotee,
-  } = useAuth();
+  const { user, isAdministrator, isDevotee } = useAuth();
 
-  const {
-    sidebarOpen,
-    closeSidebar,
-  } = useApp();
-
+  const { sidebarOpen, closeSidebar } = useApp();
 
   /* ==========================================================================
      MENU BASED ON USER ROLE
   ========================================================================== */
 
-  const menuItems = isAdministrator
-    ? adminMenu
-    : devoteeMenu;
-
+  const menuItems = isAdministrator ? adminMenu : devoteeMenu;
 
   /* ==========================================================================
      INITIALS
@@ -138,7 +124,7 @@ function Sidebar() {
     const cleanName = name.trim();
 
     if (!cleanName) {
-      return "U";
+      return "BA";
     }
 
     return cleanName
@@ -149,7 +135,6 @@ function Sidebar() {
       .join("")
       .toUpperCase();
   };
-
 
   /* ==========================================================================
      ROLE LABEL
@@ -167,9 +152,20 @@ function Sidebar() {
     return "User";
   };
 
+  /* ==========================================================================
+     DISPLAY NAME
+  ========================================================================== */
+
+  const getDisplayName = () => {
+    if (isAdministrator) {
+      return "BACE Administrator";
+    }
+
+    return user?.name || "Devotee";
+  };
 
   /* ==========================================================================
-     MOBILE DETECTION
+     MOBILE SIDEBAR
   ========================================================================== */
 
   const closeSidebarOnMobile = () => {
@@ -178,7 +174,6 @@ function Sidebar() {
     }
   };
 
-
   /* ==========================================================================
      NAVIGATION
   ========================================================================== */
@@ -186,7 +181,6 @@ function Sidebar() {
   const handleNavigation = () => {
     closeSidebarOnMobile();
   };
-
 
   /* ==========================================================================
      BRAND CLICK
@@ -197,14 +191,13 @@ function Sidebar() {
     closeSidebarOnMobile();
   };
 
-
   /* ==========================================================================
      CURRENT USER
   ========================================================================== */
 
-  const initials = getInitials(user?.name);
+  const displayName = getDisplayName();
+  const initials = isAdministrator ? "BA" : getInitials(user?.name);
   const roleLabel = getRoleLabel();
-
 
   return (
     <>
@@ -213,18 +206,14 @@ function Sidebar() {
       ====================================================================== */}
 
       <aside
-        className={`sidebar ${
-          sidebarOpen ? "open" : "closed"
-        }`}
+        className={`sidebar ${sidebarOpen ? "open" : "closed"}`}
         aria-label="Main navigation"
       >
-
         {/* ====================================================================
             BRAND
         ==================================================================== */}
 
         <div className="sidebar-brand">
-
           <button
             type="button"
             className="sidebar-brand-mark"
@@ -239,17 +228,13 @@ function Sidebar() {
             type="button"
             className="sidebar-brand-text"
             onClick={handleBrandClick}
-            aria-label="Go to dashboard"
+            aria-label="Giri Govardhan BACE dashboard"
           >
-            <strong>Temple Base</strong>
+            <strong>Giri Govardhan BACE</strong>
 
-            <span>
-              Management System
-            </span>
+            <span>Spiritual Community</span>
           </button>
-
         </div>
-
 
         {/* ====================================================================
             CURRENT USER
@@ -257,7 +242,7 @@ function Sidebar() {
 
         <div
           className="sidebar-user"
-          title={user?.name || "User"}
+          title={displayName}
         >
           <div
             className="sidebar-user-avatar"
@@ -267,16 +252,11 @@ function Sidebar() {
           </div>
 
           <div className="sidebar-user-info">
-            <strong>
-              {user?.name || "User"}
-            </strong>
+            <strong>{displayName}</strong>
 
-            <span>
-              {roleLabel}
-            </span>
+            <span>{roleLabel}</span>
           </div>
         </div>
-
 
         {/* ====================================================================
             NAVIGATION
@@ -286,27 +266,19 @@ function Sidebar() {
           className="sidebar-navigation"
           aria-label="Primary navigation"
         >
-
           <p className="sidebar-section-title">
             MAIN MENU
           </p>
 
           <div className="sidebar-menu">
-
             {menuItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={handleNavigation}
-                title={
-                  !sidebarOpen
-                    ? item.label
-                    : undefined
-                }
+                title={!sidebarOpen ? item.label : undefined}
                 className={({ isActive }) =>
-                  `sidebar-link ${
-                    isActive ? "active" : ""
-                  }`
+                  `sidebar-link ${isActive ? "active" : ""}`
                 }
               >
                 <span
@@ -321,9 +293,7 @@ function Sidebar() {
                 </span>
               </NavLink>
             ))}
-
           </div>
-
 
           {/* ==================================================================
               ADMINISTRATOR SYSTEM MENU
@@ -338,15 +308,9 @@ function Sidebar() {
               <NavLink
                 to="/settings"
                 onClick={handleNavigation}
-                title={
-                  !sidebarOpen
-                    ? "Settings"
-                    : undefined
-                }
+                title={!sidebarOpen ? "Settings" : undefined}
                 className={({ isActive }) =>
-                  `sidebar-link ${
-                    isActive ? "active" : ""
-                  }`
+                  `sidebar-link ${isActive ? "active" : ""}`
                 }
               >
                 <span
@@ -362,16 +326,13 @@ function Sidebar() {
               </NavLink>
             </>
           )}
-
         </nav>
-
 
         {/* ====================================================================
             SIDEBAR FOOTER
         ==================================================================== */}
 
         <div className="sidebar-footer">
-
           <div
             className="sidebar-footer-symbol"
             aria-hidden="true"
@@ -380,21 +341,12 @@ function Sidebar() {
           </div>
 
           <div className="sidebar-footer-content">
+            <strong>Hare Krishna</strong>
 
-            <strong>
-              Hare Krishna
-            </strong>
-
-            <span>
-              Serve • Learn • Grow
-            </span>
-
+            <span>Serve • Learn • Grow</span>
           </div>
-
         </div>
-
       </aside>
-
 
       {/* ======================================================================
           MOBILE OVERLAY

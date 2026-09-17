@@ -4,14 +4,12 @@
 
 .register-page {
   min-height: 100vh;
-
+  width: 100%;
   background: var(--background);
-
   color: var(--text);
-
   box-sizing: border-box;
+  overflow-x: hidden;
 }
-
 
 /* ============================================================
    TOP NAVIGATION
@@ -19,13 +17,10 @@
 
 .auth-top-navigation {
   position: fixed;
-
   top: 0;
   left: 0;
   right: 0;
-
   z-index: 100;
-
   height: 68px;
 
   display: flex;
@@ -33,40 +28,34 @@
   justify-content: space-between;
 
   padding: 0 34px;
-
   box-sizing: border-box;
 
-  background: rgba(255, 253, 249, 0.94);
-
+  background: rgba(255, 253, 249, 0.96);
   border-bottom: 1px solid rgba(120, 92, 55, 0.12);
 
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 
-  box-shadow:
-    0 4px 20px rgba(45, 34, 20, 0.04);
+  box-shadow: 0 4px 20px rgba(45, 34, 20, 0.04);
 }
 
-
-/* Brand */
+/* ============================================================
+   BRAND
+============================================================ */
 
 .auth-nav-brand {
   display: inline-flex;
   align-items: center;
-
   gap: 10px;
+  min-width: 0;
 
   color: var(--text);
-
   text-decoration: none;
-
-  min-width: 0;
 }
 
 .auth-nav-brand-icon {
   width: 36px;
   height: 36px;
-
   flex-shrink: 0;
 
   display: flex;
@@ -75,40 +64,34 @@
 
   border-radius: 50%;
 
-  background:
-    linear-gradient(
-      135deg,
-      #f0d08e,
-      #b8771b
-    );
+  background: linear-gradient(
+    135deg,
+    #f0d08e,
+    #b8771b
+  );
 
   color: #ffffff;
 
   font-family: "Playfair Display", serif;
-
   font-size: 19px;
 
-  box-shadow:
-    0 5px 15px rgba(181, 119, 27, 0.18);
+  box-shadow: 0 5px 15px rgba(181, 119, 27, 0.18);
 }
 
 .auth-nav-brand-text {
   font-family: "Playfair Display", serif;
-
   font-size: 17px;
-
   font-weight: 600;
-
   white-space: nowrap;
 }
 
-
-/* Navigation */
+/* ============================================================
+   NAVIGATION LINKS
+============================================================ */
 
 .auth-nav-links {
   display: flex;
   align-items: center;
-
   gap: 5px;
 }
 
@@ -124,7 +107,6 @@
   border-radius: 9px;
 
   color: #6d7075;
-
   font-size: 12px;
   font-weight: 600;
 
@@ -138,18 +120,14 @@
 
 .auth-nav-link:hover {
   color: var(--primary);
-
   background: #fff5e5;
-
   transform: translateY(-1px);
 }
 
 .auth-nav-link.active {
   color: var(--primary);
-
   background: #fff1d8;
 }
-
 
 /* ============================================================
    REGISTER SHELL
@@ -157,7 +135,6 @@
 
 .register-shell {
   min-height: 100vh;
-
   padding-top: 68px;
 
   display: grid;
@@ -169,9 +146,8 @@
   box-sizing: border-box;
 }
 
-
 /* ============================================================
-   LEFT VISUAL
+   LEFT VISUAL PANEL
 ============================================================ */
 
 .register-visual {
@@ -186,9 +162,7 @@
 
 .register-visual-image {
   position: absolute;
-
   inset: 0;
-
   overflow: hidden;
 }
 
@@ -199,7 +173,6 @@
   display: block;
 
   object-fit: cover;
-
   object-position: center;
 
   transform: scale(1.01);
@@ -207,7 +180,6 @@
 
 .register-image-overlay {
   position: absolute;
-
   inset: 0;
 
   background:
@@ -218,6 +190,10 @@
       rgba(28, 21, 13, 0.62) 100%
     );
 }
+
+/* ============================================================
+   VISUAL CONTENT
+============================================================ */
 
 .register-visual-content {
   position: absolute;
@@ -244,13 +220,11 @@
   justify-content: center;
 
   border: 1px solid rgba(255, 255, 255, 0.65);
-
   border-radius: 50%;
 
   color: #ffffff;
 
   font-family: "Playfair Display", serif;
-
   font-size: 29px;
 }
 
@@ -259,14 +233,19 @@
 
   font-size: 11px;
   font-weight: 700;
-
   letter-spacing: 4px;
 
   color: rgba(255, 255, 255, 0.9);
 }
 
-.register-visual-content h1 {
+/* ============================================================
+   BEGIN YOUR JOURNEY
+============================================================ */
+
+.register-visual-title {
   margin: 0 0 18px;
+
+  color: #ffffff;
 
   font-family: "Playfair Display", serif;
 
@@ -274,31 +253,42 @@
 
   font-weight: 600;
 
-  line-height: 1.05;
+  line-height: 1.08;
 
   letter-spacing: -1px;
 }
 
-.register-visual-content h1 span {
+.register-title-main {
+  display: block;
+
+  color: #ffffff !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.register-title-accent {
   display: block;
 
   margin-top: 7px;
 
-  color: #f4ce83;
+  color: #f4ce83 !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-.register-visual-content > p:last-child {
+.register-visual-description {
   max-width: 500px;
 
   margin: 0;
 
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.88);
 
   font-size: 15px;
 
   line-height: 1.75;
 }
-
 
 /* ============================================================
    RIGHT REGISTER PANEL
@@ -326,19 +316,16 @@
     var(--surface);
 }
 
-
 /* ============================================================
    REGISTER CARD
 ============================================================ */
 
 .register-card {
   width: 100%;
-
   max-width: 480px;
 
   margin: 0 auto;
 }
-
 
 /* ============================================================
    HEADER
@@ -351,7 +338,6 @@
 .register-back-link {
   display: inline-flex;
   align-items: center;
-
   gap: 7px;
 
   margin-bottom: 24px;
@@ -370,7 +356,6 @@
 
 .register-back-link:hover {
   color: var(--primary);
-
   transform: translateX(-2px);
 }
 
@@ -389,20 +374,17 @@
   justify-content: center;
 
   border: 1px solid #dfc28b;
-
   border-radius: 50%;
 
-  background:
-    linear-gradient(
-      145deg,
-      #fffaf0,
-      #f8ead1
-    );
+  background: linear-gradient(
+    145deg,
+    #fffaf0,
+    #f8ead1
+  );
 
   color: var(--primary);
 
   font-family: "Playfair Display", serif;
-
   font-size: 27px;
 
   box-shadow:
@@ -446,7 +428,6 @@
   line-height: 1.65;
 }
 
-
 /* ============================================================
    ACCOUNT TYPE
 ============================================================ */
@@ -460,21 +441,18 @@
   gap: 11px;
 
   margin: 24px 0 21px;
-
   padding: 9px 12px;
 
   box-sizing: border-box;
 
   border: 1px solid #e3d1af;
-
   border-radius: 11px;
 
-  background:
-    linear-gradient(
-      135deg,
-      #fffaf0,
-      #fff5e6
-    );
+  background: linear-gradient(
+    135deg,
+    #fffaf0,
+    #fff5e6
+  );
 }
 
 .register-account-icon {
@@ -542,14 +520,12 @@
   font-weight: 700;
 }
 
-
 /* ============================================================
    FORM
 ============================================================ */
 
 .register-form {
   display: flex;
-
   flex-direction: column;
 
   gap: 15px;
@@ -557,7 +533,6 @@
 
 .register-form-group {
   display: flex;
-
   flex-direction: column;
 
   gap: 7px;
@@ -567,10 +542,8 @@
   color: var(--text);
 
   font-size: 10px;
-
   font-weight: 700;
 }
-
 
 /* ============================================================
    INPUT
@@ -584,7 +557,6 @@
 
 .register-input-wrapper input {
   width: 100%;
-
   height: 47px;
 
   box-sizing: border-box;
@@ -592,17 +564,14 @@
   padding: 0 47px 0 43px;
 
   border: 1px solid var(--border);
-
   border-radius: 9px;
 
   outline: none;
 
   background: #ffffff;
-
   color: var(--text);
 
   font-family: inherit;
-
   font-size: 12px;
 
   transition:
@@ -630,9 +599,12 @@
 
 .register-input-wrapper input:disabled {
   background: #f7f7f5;
-
   cursor: not-allowed;
 }
+
+/* ============================================================
+   INPUT ICON
+============================================================ */
 
 .register-input-icon {
   position: absolute;
@@ -654,9 +626,12 @@
 
 .password-symbol {
   font-size: 8px;
-
   letter-spacing: -2px;
 }
+
+/* ============================================================
+   PASSWORD TOGGLE
+============================================================ */
 
 .register-password-toggle {
   position: absolute;
@@ -686,10 +661,8 @@
 
 .register-password-toggle:disabled {
   opacity: 0.5;
-
   cursor: not-allowed;
 }
-
 
 /* ============================================================
    ERROR
@@ -704,7 +677,6 @@
   padding: 11px 12px;
 
   border: 1px solid #efc9c9;
-
   border-radius: 9px;
 
   background: #fff5f5;
@@ -736,14 +708,12 @@
   font-weight: 700;
 }
 
-
 /* ============================================================
-   SUBMIT
+   SUBMIT BUTTON
 ============================================================ */
 
 .register-submit {
   width: 100%;
-
   min-height: 49px;
 
   margin-top: 3px;
@@ -755,15 +725,13 @@
   gap: 11px;
 
   border: 0;
-
   border-radius: 9px;
 
-  background:
-    linear-gradient(
-      135deg,
-      var(--primary),
-      var(--primary-dark)
-    );
+  background: linear-gradient(
+    135deg,
+    var(--primary),
+    var(--primary-dark)
+  );
 
   color: #ffffff;
 
@@ -796,19 +764,18 @@
 
 .register-submit:disabled {
   opacity: 0.7;
-
   cursor: not-allowed;
 }
 
-
-/* Spinner */
+/* ============================================================
+   SPINNER
+============================================================ */
 
 .register-spinner {
   width: 14px;
   height: 14px;
 
   border: 2px solid rgba(255, 255, 255, 0.4);
-
   border-top-color: #ffffff;
 
   border-radius: 50%;
@@ -821,7 +788,6 @@
     transform: rotate(360deg);
   }
 }
-
 
 /* ============================================================
    LOGIN PROMPT
@@ -855,7 +821,6 @@
   text-decoration: underline;
 }
 
-
 /* ============================================================
    INFORMATION NOTE
 ============================================================ */
@@ -867,11 +832,9 @@
   gap: 9px;
 
   margin-top: 19px;
-
   padding: 10px 12px;
 
   border: 1px solid var(--border);
-
   border-radius: 8px;
 
   background: #faf8f3;
@@ -909,7 +872,6 @@
   line-height: 1.55;
 }
 
-
 /* ============================================================
    FOOTER
 ============================================================ */
@@ -935,19 +897,37 @@
   color: #c99b54;
 }
 
+/* ============================================================
+   LARGE TABLET
+============================================================ */
+
+@media (max-width: 1100px) {
+  .register-shell {
+    grid-template-columns:
+      minmax(0, 0.95fr)
+      minmax(430px, 1.05fr);
+  }
+
+  .register-visual-content {
+    padding: 50px 45px 55px;
+  }
+
+  .register-panel {
+    padding: 40px 35px;
+  }
+}
 
 /* ============================================================
    TABLET
 ============================================================ */
 
 @media (max-width: 1000px) {
-
   .register-shell {
     grid-template-columns: 1fr;
   }
 
   .register-visual {
-    min-height: 480px;
+    min-height: 500px;
   }
 
   .register-panel {
@@ -960,15 +940,20 @@
     padding: 45px 50px 50px;
   }
 
-}
+  .register-visual-title {
+    font-size: 56px;
+  }
 
+  .register-visual-description {
+    max-width: 580px;
+  }
+}
 
 /* ============================================================
    MOBILE
 ============================================================ */
 
 @media (max-width: 600px) {
-
   .auth-top-navigation {
     height: 60px;
 
@@ -996,18 +981,22 @@
     font-size: 10px;
   }
 
-
   .register-shell {
     padding-top: 60px;
   }
 
-
+  /*
+    Krishna remains on the LEFT/VISUAL section.
+    On small screens the visual section appears above
+    the registration form because the layout becomes
+    one column.
+  */
   .register-visual {
-    min-height: 370px;
+    min-height: 470px;
   }
 
   .register-visual-content {
-    padding: 30px 25px 35px;
+    padding: 30px 25px 40px;
   }
 
   .register-om {
@@ -1027,18 +1016,38 @@
     letter-spacing: 3px;
   }
 
-  .register-visual-content h1 {
-    margin-bottom: 13px;
+  /*
+    Keep BOTH lines visible.
+  */
+  .register-visual-title {
+    margin-bottom: 14px;
 
-    font-size: 37px;
+    font-size: 42px;
+
+    line-height: 1.08;
   }
 
-  .register-visual-content > p:last-child {
+  .register-title-main {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .register-title-accent {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .register-visual-description {
+    display: block !important;
+
+    max-width: 100%;
+
     font-size: 12px;
 
     line-height: 1.6;
   }
-
 
   .register-panel {
     padding: 42px 20px 35px;
@@ -1075,17 +1084,14 @@
     font-size: 11px;
   }
 
-
   .register-account-type {
     margin-top: 23px;
     margin-bottom: 19px;
   }
 
-
   .register-form {
     gap: 14px;
   }
-
 
   .register-footer {
     flex-direction: column;
@@ -1096,11 +1102,16 @@
   .register-footer-dot {
     display: none;
   }
-
 }
 
+/* ============================================================
+   SMALL MOBILE
+============================================================ */
 
 @media (max-width: 390px) {
+  .auth-top-navigation {
+    padding: 0 10px;
+  }
 
   .auth-nav-link {
     padding: 0 8px;
@@ -1109,26 +1120,73 @@
   }
 
   .register-visual {
-    min-height: 330px;
+    min-height: 440px;
   }
 
-  .register-visual-content h1 {
+  .register-visual-content {
+    padding: 25px 18px 32px;
+  }
+
+  /*
+    Do NOT hide the description.
+    Keep all important words visible.
+  */
+  .register-visual-title {
+    font-size: 35px;
+
+    line-height: 1.08;
+  }
+
+  .register-visual-description {
+    display: block !important;
+
+    font-size: 11px;
+
+    line-height: 1.55;
+  }
+
+  .register-panel {
+    padding: 35px 15px 30px;
+  }
+}
+
+/* ============================================================
+   VERY SMALL MOBILE
+============================================================ */
+
+@media (max-width: 340px) {
+  .auth-nav-links {
+    gap: 0;
+  }
+
+  .auth-nav-link {
+    padding: 0 6px;
+
+    font-size: 8px;
+  }
+
+  .register-visual {
+    min-height: 420px;
+  }
+
+  .register-visual-title {
     font-size: 32px;
   }
 
-  .register-visual-content > p:last-child {
-    display: none;
+  .register-visual-description {
+    font-size: 10px;
   }
 
+  .register-card {
+    width: 100%;
+  }
 }
-
 
 /* ============================================================
    REDUCED MOTION
 ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
-
   .auth-nav-link,
   .register-back-link,
   .register-submit {
@@ -1138,5 +1196,4 @@
   .register-spinner {
     animation: none;
   }
-
 }

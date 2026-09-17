@@ -493,7 +493,7 @@ function Seva() {
 
           <p>
             {isAdministrator
-              ? "Create, assign and monitor temple service responsibilities."
+              ? "Create, assign and monitor community service responsibilities."
               : "View and manage the service responsibilities assigned to you."}
           </p>
         </div>
@@ -808,7 +808,7 @@ function Seva() {
           <div>
             <span className="card-eyebrow">
               {isAdministrator
-                ? "TEMPLE SERVICE DIRECTORY"
+                ? "COMMUNITY SERVICE DIRECTORY"
                 : "MY ASSIGNMENTS"}
             </span>
 

@@ -456,13 +456,13 @@ function Leave() {
         <header className="leave-header">
           <div>
             <span className="leave-eyebrow">
-              COMMUNITY MANAGEMENT
+              COMMUNITY SERVICES
             </span>
 
             <h1>Leave Requests</h1>
 
             <p>
-              Review and manage leave applications from temple
+              Review and manage leave applications from community
               residents.
             </p>
           </div>
@@ -604,7 +604,7 @@ function Leave() {
         <header className="leave-header">
           <div>
             <span className="leave-eyebrow">
-              MY TEMPLE LIFE
+              MY COMMUNITY LIFE
             </span>
 
             <h1>My Leave</h1>

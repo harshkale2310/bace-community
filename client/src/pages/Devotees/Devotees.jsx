@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -27,15 +28,12 @@ function Devotees() {
   const [devotees, setDevotees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
-
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState("");
-
   const [updatingId, setUpdatingId] = useState(null);
 
   const [form, setForm] = useState({
@@ -395,13 +393,13 @@ function Devotees() {
       <header className="page-header">
         <div className="page-header-content">
           <span className="page-eyebrow">
-            Community Management
+            Community Services
           </span>
 
           <h1>Devotees</h1>
 
           <p>
-            Manage temple residents and their information.
+            Manage devotees and their community information.
           </p>
         </div>
 
@@ -545,7 +543,7 @@ function Devotees() {
         <div className="table-header">
           <div>
             <span className="section-eyebrow">
-              TEMPLE DIRECTORY
+              DEVOTEE DIRECTORY
             </span>
 
             <h2>Resident Directory</h2>
@@ -579,6 +577,7 @@ function Devotees() {
               <tbody>
                 {filteredDevotees.map((devotee) => {
                   const status = getStatus(devotee);
+
                   const isUpdating =
                     updatingId === devotee.uid;
 
@@ -719,7 +718,7 @@ function Devotees() {
         </div>
 
         <div>
-          <strong>Devotee account management</strong>
+          <strong>Devotee account services</strong>
 
           <p>
             Administrators can register devotee accounts
@@ -756,7 +755,7 @@ function Devotees() {
                 </h2>
 
                 <p>
-                  Create a temple devotee account and
+                  Create a devotee account and
                   resident profile.
                 </p>
               </div>
@@ -882,7 +881,7 @@ function Devotees() {
 
               <div className="form-section">
                 <div className="form-section-title">
-                  Temple Assignment
+                  Community Assignment
                 </div>
 
                 <div className="modal-form-grid">

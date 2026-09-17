@@ -20,8 +20,7 @@ function Landing() {
           </div>
 
           <div className="landing-brand-text">
-            <strong>Temple Base</strong>
-            <span>Management System</span>
+            <strong>Giri Govardhan BASE</strong>
           </div>
 
         </div>
@@ -77,9 +76,9 @@ function Landing() {
 
 
             <h1>
-              Temple Base
+              Giri Govardhan
               <span>
-                Management System
+                BACE
               </span>
             </h1>
 
@@ -182,9 +181,9 @@ function Landing() {
         </div>
 
 
-        {/* ----------------------------------------------------------
+        {/* ==========================================================
             IMAGE
-        ----------------------------------------------------------- */}
+        =========================================================== */}
         <div className="landing-image-section">
 
           <div className="landing-image-glow"></div>
@@ -225,7 +224,7 @@ function Landing() {
         <div className="landing-section-heading">
 
           <span>
-            TEMPLE MANAGEMENT
+            GIRI GOVARDHAN BASE
           </span>
 
           <h2>
@@ -429,12 +428,8 @@ function Landing() {
 
           <div>
             <strong>
-              Temple Base
+              Giri Govardhan BACE
             </strong>
-
-            <span>
-              Management System
-            </span>
           </div>
 
         </div>

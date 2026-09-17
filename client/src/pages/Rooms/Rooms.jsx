@@ -735,13 +735,13 @@ function Rooms() {
         <header className="rooms-header">
           <div>
             <span className="rooms-eyebrow">
-              RESIDENTIAL MANAGEMENT
+              RESIDENTIAL SERVICES
             </span>
 
             <h1>Rooms</h1>
 
             <p>
-              Manage room allocation and temple
+              Manage room allocation and community
               residence occupancy.
             </p>
           </div>
@@ -1000,7 +1000,7 @@ function Rooms() {
                 ROOM DIRECTORY
               </span>
 
-              <h2>Temple Rooms</h2>
+              <h2>Community Rooms</h2>
             </div>
 
             <span className="rooms-count">
@@ -1075,7 +1075,7 @@ function Rooms() {
             <h1>My Room</h1>
 
             <p>
-              View your current temple residence
+              View your current community residence
               assignment.
             </p>
           </div>
@@ -1098,7 +1098,7 @@ function Rooms() {
             <p>
               You currently do not have a
               room assignment. Please contact
-              the temple administrator.
+              the BACE administrator.
             </p>
           </section>
         ) : (
@@ -1158,7 +1158,7 @@ function Rooms() {
 
                 <div className="my-room-notice">
                   Room allocation is managed by
-                  the temple administrator.
+                  the BACE administrator.
                 </div>
               </article>
             ))}

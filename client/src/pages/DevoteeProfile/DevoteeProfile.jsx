@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -9,13 +10,16 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../services/firebase";
+
 import { useAuth } from "../../context/AuthContext";
+
 import Loader from "../../components/Common/Loader";
 
 import "./DevoteeProfile.css";
 
 function DevoteeProfile() {
   const { id } = useParams();
+
   const navigate = useNavigate();
 
   const { user, isAdministrator, isDevotee } = useAuth();
@@ -29,12 +33,12 @@ function DevoteeProfile() {
    *
    * A devotee's Firebase UID is the source of truth.
    */
+
   const requestedUid = isAdministrator ? id : user?.uid;
 
   const [devotee, setDevotee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -45,7 +49,7 @@ function DevoteeProfile() {
     phone: "",
     gender: "",
     age: "",
-    department: "Temple",
+    department: "Giri Govardhan BACE",
     room: "",
     bed: "",
   });
@@ -53,6 +57,7 @@ function DevoteeProfile() {
   /*
    * Load the requested profile directly from Firestore.
    */
+
   useEffect(() => {
     if (!requestedUid) {
       setLoading(false);
@@ -83,6 +88,7 @@ function DevoteeProfile() {
          * This page is specifically for devotee profiles.
          * Never render an administrator account here.
          */
+
         if (profile.role !== "devotee") {
           setDevotee(null);
           setLoading(false);
@@ -115,6 +121,7 @@ function DevoteeProfile() {
    * A devotee is never allowed to inspect another UID through
    * /devotees/:id.
    */
+
   useEffect(() => {
     if (
       !loading &&
@@ -136,6 +143,7 @@ function DevoteeProfile() {
    * Keep the form synchronized with the current Firestore
    * document when editing is not active.
    */
+
   useEffect(() => {
     if (!devotee || editing) {
       return;
@@ -151,7 +159,8 @@ function DevoteeProfile() {
         devotee.age !== null
           ? String(devotee.age)
           : "",
-      department: devotee.department || "Temple",
+      department:
+        devotee.department || "Giri Govardhan BACE",
       room: devotee.room || "",
       bed: devotee.bed || "",
     });
@@ -218,7 +227,8 @@ function DevoteeProfile() {
         devotee.age !== null
           ? String(devotee.age)
           : "",
-      department: devotee.department || "Temple",
+      department:
+        devotee.department || "Giri Govardhan BACE",
       room: devotee.room || "",
       bed: devotee.bed || "",
     });
@@ -246,8 +256,10 @@ function DevoteeProfile() {
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.trim();
     const gender = form.gender.trim();
+
     const department =
-      form.department.trim() || "Temple";
+      form.department.trim() || "Giri Govardhan BACE";
+
     const room = form.room.trim();
     const bed = form.bed.trim();
 
@@ -277,6 +289,7 @@ function DevoteeProfile() {
         setSaveError(
           "Age must be a valid number between 1 and 120."
         );
+
         return;
       }
 
@@ -294,6 +307,7 @@ function DevoteeProfile() {
      * The profile page must never allow a user to promote
      * themselves or change their account identity.
      */
+
     const updates = {
       name,
       phone,
@@ -311,6 +325,7 @@ function DevoteeProfile() {
      * This does NOT change Firebase Authentication email.
      * Authentication email changes should be handled separately.
      */
+
     if (email) {
       updates.email = email;
     }
@@ -339,7 +354,11 @@ function DevoteeProfile() {
     }
   };
 
-  if (isDevotee && id && id !== user?.uid) {
+  if (
+    isDevotee &&
+    id &&
+    id !== user?.uid
+  ) {
     return (
       <div className="profile-access">
         <div className="profile-access-icon">!</div>
@@ -462,7 +481,7 @@ function DevoteeProfile() {
           </h1>
 
           <p>
-            {devotee.department || "Temple"}
+            {devotee.department || "Giri Govardhan BACE"}
           </p>
         </div>
 
@@ -498,7 +517,7 @@ function DevoteeProfile() {
               <h2>Edit Profile</h2>
 
               <p>
-                Update the devotee's profile information.
+                Update the devotee&apos;s profile information.
               </p>
             </div>
           </div>
@@ -509,6 +528,7 @@ function DevoteeProfile() {
               role="alert"
             >
               <span>!</span>
+
               <p>{saveError}</p>
             </div>
           )}
@@ -569,9 +589,18 @@ function DevoteeProfile() {
                 <option value="">
                   Not specified
                 </option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+
+                <option value="Male">
+                  Male
+                </option>
+
+                <option value="Female">
+                  Female
+                </option>
+
+                <option value="Other">
+                  Other
+                </option>
               </select>
             </label>
 
@@ -702,7 +731,7 @@ function DevoteeProfile() {
           <div className="profile-card-header">
             <div>
               <span className="profile-section-eyebrow">
-                TEMPLE ASSIGNMENT
+                BACE ASSIGNMENT
               </span>
 
               <h2>Residence</h2>
@@ -826,7 +855,11 @@ function ActivityStat({
 }) {
   return (
     <div className="activity-stat">
-      <strong className={textValue ? "activity-text-value" : ""}>
+      <strong
+        className={
+          textValue ? "activity-text-value" : ""
+        }
+      >
         {value}
       </strong>
 

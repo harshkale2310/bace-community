@@ -445,7 +445,7 @@ function Sadhana() {
 
             <p>
               Monitor daily spiritual practice across the
-              temple community.
+              community.
             </p>
           </div>
         </div>
@@ -511,7 +511,7 @@ function Sadhana() {
           <div className="sadhana-directory-header">
             <div>
               <span className="card-eyebrow">
-                TEMPLE RECORDS
+                COMMUNITY RECORDS
               </span>
 
               <h2>Community Sadhana</h2>

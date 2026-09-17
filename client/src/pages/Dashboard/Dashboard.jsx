@@ -37,11 +37,10 @@ function Dashboard() {
             where("date", "==", today)
           );
 
-          const [devoteesSnapshot, attendanceSnapshot] =
-            await Promise.all([
-              getDocs(devoteesQuery),
-              getDocs(attendanceQuery),
-            ]);
+          const [devoteesSnapshot, attendanceSnapshot] = await Promise.all([
+            getDocs(devoteesQuery),
+            getDocs(attendanceQuery),
+          ]);
 
           const devoteeData = devoteesSnapshot.docs.map((doc) => ({
             id: doc.id,
@@ -173,9 +172,7 @@ function Dashboard() {
   }, [devotees, todayAttendance]);
 
   const devoteeTodayAttendance = useMemo(() => {
-    const record = attendance.find(
-      (item) => item.date === today
-    );
+    const record = attendance.find((item) => item.date === today);
 
     return {
       status: getAttendanceStatus(record),
@@ -195,17 +192,19 @@ function Dashboard() {
       <div className="dashboard-header">
         <div>
           <span className="dashboard-eyebrow">
-            {isAdministrator ? "ADMINISTRATOR PANEL" : "DEVOTEE PANEL"}
+            {isAdministrator ? "BACE ADMINISTRATOR PANEL" : "DEVOTEE PANEL"}
           </span>
 
           <h1>
-            Hare Krishna, {user?.name?.split(" ")[0] || "Devotee"} 🙏
+            {isAdministrator
+              ? "Hare Krishna, Admin 🙏"
+              : `Hare Krishna, ${user?.name?.split(" ")[0] || "Devotee"} 🙏`}
           </h1>
 
           <p>
             {isAdministrator
-              ? "Manage and monitor temple activities from one place."
-              : "Here is your personal temple activity overview."}
+              ? "Manage and monitor Giri Govardhan BACE activities from one place."
+              : "Here is your personal BACE activity overview."}
           </p>
         </div>
 
@@ -227,7 +226,7 @@ function Dashboard() {
         </div>
       )}
 
-      {/* ADMIN DASHBOARD */}
+      {/* ADMINISTRATOR DASHBOARD */}
       {isAdministrator && (
         <>
           {/* STAT CARDS */}
@@ -448,52 +447,72 @@ function Dashboard() {
               <div className="dashboard-card-header">
                 <div>
                   <span className="dashboard-section-label">
-                    MANAGEMENT
+                    BACE ACTIVITIES
                   </span>
 
-                  <h2>Temple Management</h2>
+                  <h2>Giri Govardhan BACE</h2>
 
                   <p>
-                    Access the main management sections.
+                    Access the main BACE activity sections.
                   </p>
                 </div>
               </div>
 
               <div className="dashboard-management-grid">
 
-                <Link to="/devotees" className="dashboard-management-item">
+                <Link
+                  to="/devotees"
+                  className="dashboard-management-item"
+                >
                   <span className="management-icon">♙</span>
+
                   <div>
                     <strong>Devotees</strong>
                     <small>Manage devotees</small>
                   </div>
+
                   <span className="management-arrow">→</span>
                 </Link>
 
-                <Link to="/sadhana" className="dashboard-management-item">
+                <Link
+                  to="/sadhana"
+                  className="dashboard-management-item"
+                >
                   <span className="management-icon">ॐ</span>
+
                   <div>
                     <strong>Sadhana</strong>
                     <small>Track daily practice</small>
                   </div>
+
                   <span className="management-arrow">→</span>
                 </Link>
 
-                <Link to="/seva" className="dashboard-management-item">
+                <Link
+                  to="/seva"
+                  className="dashboard-management-item"
+                >
                   <span className="management-icon">✦</span>
+
                   <div>
                     <strong>Seva</strong>
-                    <small>Manage temple seva</small>
+                    <small>Manage seva activities</small>
                   </div>
+
                   <span className="management-arrow">→</span>
                 </Link>
 
-                <Link to="/leave" className="dashboard-management-item">
+                <Link
+                  to="/leave"
+                  className="dashboard-management-item"
+                >
                   <span className="management-icon">◷</span>
+
                   <div>
                     <strong>Leave</strong>
                     <small>Review leave requests</small>
                   </div>
+
                   <span className="management-arrow">→</span>
                 </Link>
 
@@ -510,7 +529,7 @@ function Dashboard() {
 
                 <div>
                   <span>Signed in as</span>
-                  <h3>{user?.name || "Administrator"}</h3>
+                  <h3>{user?.name || "BACE Administrator"}</h3>
                   <p>{user?.email}</p>
                 </div>
               </div>
@@ -554,6 +573,7 @@ function Dashboard() {
                 <strong className="stat-text">
                   {devoteeTodayAttendance.status}
                 </strong>
+
                 <small>
                   {devoteeTodayAttendance.morning} /{" "}
                   {devoteeTodayAttendance.evening}
@@ -571,6 +591,7 @@ function Dashboard() {
                 <strong className="stat-text">
                   {devoteeTodayAttendance.morning}
                 </strong>
+
                 <small>Morning attendance</small>
               </div>
             </div>
@@ -585,6 +606,7 @@ function Dashboard() {
                 <strong className="stat-text">
                   {devoteeTodayAttendance.evening}
                 </strong>
+
                 <small>Evening attendance</small>
               </div>
             </div>
@@ -599,6 +621,7 @@ function Dashboard() {
                 <strong className="stat-text">
                   Active
                 </strong>
+
                 <small>Account status</small>
               </div>
             </div>
@@ -612,13 +635,13 @@ function Dashboard() {
               <div className="dashboard-card-header">
                 <div>
                   <span className="dashboard-section-label">
-                    MY TEMPLE ACTIVITY
+                    MY BACE ACTIVITY
                   </span>
 
                   <h2>Personal Dashboard</h2>
 
                   <p>
-                    Manage your personal temple activities.
+                    Manage your personal BACE activities.
                   </p>
                 </div>
               </div>

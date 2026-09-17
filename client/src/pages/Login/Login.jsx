@@ -31,12 +31,9 @@ function Login() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-
   const [error, setError] = useState("");
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [resetMessage, setResetMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -46,7 +43,6 @@ function Login() {
 
   const handleRoleChange = (selectedRole) => {
     setRole(selectedRole);
-
     setError("");
     setResetMessage("");
 
@@ -108,6 +104,9 @@ function Login() {
       case "auth/network-request-failed":
         return "Network error. Please check your internet connection.";
 
+      case "auth/operation-not-allowed":
+        return "Email and password sign-in is not enabled.";
+
       default:
         return "Unable to sign in. Please try again.";
     }
@@ -128,9 +127,6 @@ function Login() {
     setResetMessage("");
 
     try {
-      /*
-       * Firebase Authentication
-       */
       const credential = await signInWithEmailAndPassword(
         auth,
         formData.email.trim(),
@@ -139,12 +135,11 @@ function Login() {
 
       const firebaseUser = credential.user;
 
-      /*
-       * Load the user's Firestore profile.
-       *
-       * Firestore role is the actual authority.
-       */
-      const userRef = doc(db, "users", firebaseUser.uid);
+      const userRef = doc(
+        db,
+        "users",
+        firebaseUser.uid
+      );
 
       const userSnapshot = await getDoc(userRef);
 
@@ -160,30 +155,38 @@ function Login() {
 
       const profile = userSnapshot.data();
 
-      /*
-       * Validate role.
-       *
-       * The selected role cannot override the
-       * role stored in Firestore.
-       */
-      if (profile.role !== role) {
+      if (
+        profile.role !== "administrator" &&
+        profile.role !== "devotee"
+      ) {
         await auth.signOut();
 
         setError(
-          `This account is registered as a ${
-            profile.role === "administrator"
-              ? "Administrator"
-              : "Devotee"
-          }. Please select the correct account type.`
+          "Your account has an invalid account type. Please contact the administrator."
         );
 
         return;
       }
 
-      /*
-       * Check account status.
-       */
-      if (profile.status && profile.status !== "active") {
+      if (profile.role !== role) {
+        await auth.signOut();
+
+        const accountType =
+          profile.role === "administrator"
+            ? "Administrator"
+            : "Devotee";
+
+        setError(
+          `This account is registered as a ${accountType}. Please select the correct account type.`
+        );
+
+        return;
+      }
+
+      if (
+        profile.status &&
+        profile.status !== "active"
+      ) {
         await auth.signOut();
 
         setError(
@@ -193,19 +196,18 @@ function Login() {
         return;
       }
 
-      /*
-       * AuthContext listens to Firebase authentication
-       * and loads the Firestore profile automatically.
-       */
-
       const requestedPath =
         location.state?.from?.pathname || "/dashboard";
 
-      navigate(requestedPath, { replace: true });
+      navigate(requestedPath, {
+        replace: true,
+      });
     } catch (submitError) {
       console.error("Login error:", submitError);
 
-      setError(getFirebaseErrorMessage(submitError));
+      setError(
+        getFirebaseErrorMessage(submitError)
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -218,30 +220,65 @@ function Login() {
     const email = formData.email.trim();
 
     if (!email) {
-      setError("Enter your email address first to reset your password.");
+      setError(
+        "Enter your email address first to reset your password."
+      );
+
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email address.");
+      setError(
+        "Please enter a valid email address."
+      );
+
       return;
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(
+        auth,
+        email
+      );
 
       setResetMessage(
         "Password reset instructions have been sent to your email."
       );
     } catch (resetError) {
-      console.error("Password reset error:", resetError);
+      console.error(
+        "Password reset error:",
+        resetError
+      );
 
-      if (resetError.code === "auth/user-not-found") {
-        setError("No account was found with this email address.");
-      } else if (resetError.code === "auth/invalid-email") {
-        setError("Please enter a valid email address.");
-      } else {
-        setError("Unable to send the password reset email. Please try again.");
+      switch (resetError.code) {
+        case "auth/user-not-found":
+          setError(
+            "No account was found with this email address."
+          );
+          break;
+
+        case "auth/invalid-email":
+          setError(
+            "Please enter a valid email address."
+          );
+          break;
+
+        case "auth/too-many-requests":
+          setError(
+            "Too many requests. Please wait a moment and try again."
+          );
+          break;
+
+        case "auth/network-request-failed":
+          setError(
+            "Network error. Please check your internet connection."
+          );
+          break;
+
+        default:
+          setError(
+            "Unable to send the password reset email. Please try again."
+          );
       }
     }
   };
@@ -249,23 +286,21 @@ function Login() {
   return (
     <main className="login-page">
 
-      {/* ============================================================
-          TOP NAVIGATION
-      ============================================================ */}
+      {/* TOP NAVIGATION */}
 
       <nav className="auth-top-navigation">
 
         <Link
           to="/"
           className="auth-nav-brand"
-          aria-label="Temple Base Home"
+          aria-label="Giri Govardhan BACE Home"
         >
           <span className="auth-nav-brand-icon">
             ॐ
           </span>
 
           <span className="auth-nav-brand-text">
-            Temple Base
+            Giri Govardhan BACE
           </span>
         </Link>
 
@@ -293,18 +328,15 @@ function Login() {
           </Link>
 
         </div>
+
       </nav>
 
 
-      {/* ============================================================
-          LOGIN SHELL
-      ============================================================ */}
+      {/* LOGIN SHELL */}
 
       <section className="login-shell">
 
-        {/* ==========================================================
-            LEFT VISUAL PANEL
-        =========================================================== */}
+        {/* LEFT VISUAL */}
 
         <div className="login-visual">
 
@@ -319,6 +351,7 @@ function Login() {
 
           </div>
 
+
           <div className="login-visual-content">
 
             <div className="login-om">
@@ -330,14 +363,27 @@ function Login() {
             </p>
 
             <h1>
-              Temple
-              <span>Base Management</span>
+              <span className="brand-main">
+                Giri Govardhan
+              </span>
+
+              <span className="brand-accent">
+                BACE
+              </span>
             </h1>
 
-            <p>
-              A centralized platform for organized
-              temple administration and devotee
-              management.
+            <div className="login-hero-divider">
+              <span></span>
+              <span className="divider-symbol">
+                ❈
+              </span>
+              <span></span>
+            </div>
+
+            <p className="login-visual-description">
+              A simple and organized platform for
+              devotee activities, attendance, sadhana,
+              seva, rooms, leave and daily routines.
             </p>
 
           </div>
@@ -345,15 +391,13 @@ function Login() {
         </div>
 
 
-        {/* ==========================================================
-            RIGHT LOGIN PANEL
-        =========================================================== */}
+        {/* RIGHT LOGIN PANEL */}
 
         <div className="login-panel">
 
           <div className="login-card">
 
-            {/* Header */}
+            {/* HEADER */}
 
             <div className="login-header">
 
@@ -368,17 +412,21 @@ function Login() {
                 Back to Home
               </Link>
 
+
               <div className="login-brand-mark">
                 ॐ
               </div>
+
 
               <p className="login-eyebrow">
                 WELCOME BACK
               </p>
 
+
               <h2>
                 Sign in to your account
               </h2>
+
 
               <p className="login-description">
                 Choose your account type and enter
@@ -388,9 +436,7 @@ function Login() {
             </div>
 
 
-            {/* ======================================================
-                ROLE SELECTOR
-            ======================================================= */}
+            {/* ROLE SELECTOR */}
 
             <div className="role-selector">
 
@@ -418,7 +464,7 @@ function Login() {
                   </strong>
 
                   <small>
-                    Manage temple operations
+                    Manage devotees and operations
                   </small>
 
                 </span>
@@ -460,9 +506,7 @@ function Login() {
             </div>
 
 
-            {/* ======================================================
-                LOGIN FORM
-            ======================================================= */}
+            {/* LOGIN FORM */}
 
             <form
               className="login-form"
@@ -470,7 +514,7 @@ function Login() {
               noValidate
             >
 
-              {/* Email */}
+              {/* EMAIL */}
 
               <div className="form-group">
 
@@ -503,7 +547,7 @@ function Login() {
               </div>
 
 
-              {/* Password */}
+              {/* PASSWORD */}
 
               <div className="form-group">
 
@@ -523,6 +567,7 @@ function Login() {
                   </button>
 
                 </div>
+
 
                 <div className="input-wrapper">
 
@@ -563,7 +608,9 @@ function Login() {
                         : "Show password"
                     }
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword
+                      ? "Hide"
+                      : "Show"}
                   </button>
 
                 </div>
@@ -571,14 +618,13 @@ function Login() {
               </div>
 
 
-              {/* Error */}
+              {/* ERROR */}
 
               {error && (
                 <div
                   className="login-error"
                   role="alert"
                 >
-
                   <span
                     className="error-icon"
                     aria-hidden="true"
@@ -589,19 +635,17 @@ function Login() {
                   <span>
                     {error}
                   </span>
-
                 </div>
               )}
 
 
-              {/* Success */}
+              {/* SUCCESS */}
 
               {resetMessage && (
                 <div
                   className="login-success"
                   role="status"
                 >
-
                   <span
                     className="success-icon"
                     aria-hidden="true"
@@ -612,12 +656,11 @@ function Login() {
                   <span>
                     {resetMessage}
                   </span>
-
                 </div>
               )}
 
 
-              {/* Submit */}
+              {/* SUBMIT */}
 
               <button
                 type="submit"
@@ -645,9 +688,7 @@ function Login() {
             </form>
 
 
-            {/* ======================================================
-                REGISTER LINK
-            ======================================================= */}
+            {/* REGISTER PROMPT */}
 
             <div className="login-register-prompt">
 
@@ -662,14 +703,12 @@ function Login() {
             </div>
 
 
-            {/* ======================================================
-                FOOTER
-            ======================================================= */}
+            {/* FOOTER */}
 
             <div className="login-footer">
 
               <span>
-                Temple Base Management
+                Giri Govardhan BACE
               </span>
 
               <span className="footer-dot">
