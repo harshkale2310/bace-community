@@ -216,12 +216,16 @@ function Devotees() {
     const bed = form.bed.trim();
 
     if (!name) {
-      setRegisterError("Please enter the devotee's full name.");
+      setRegisterError(
+        "Please enter the devotee's full name."
+      );
       return;
     }
 
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      setRegisterError("Please enter a valid email address.");
+      setRegisterError(
+        "Please enter a valid email address."
+      );
       return;
     }
 
@@ -263,23 +267,26 @@ function Devotees() {
        * The primary Firestore instance remains authenticated
        * as the administrator.
        */
-      await setDoc(doc(db, "users", firebaseUser.uid), {
-        uid: firebaseUser.uid,
-        name,
-        email,
-        phone,
-        department: form.department || "Temple",
-        room: room || "",
-        bed: bed || "",
-        seva: "",
-        rounds: 0,
-        reading: 0,
-        role: "devotee",
-        status: "active",
-        photoURL: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await setDoc(
+        doc(db, "users", firebaseUser.uid),
+        {
+          uid: firebaseUser.uid,
+          name,
+          email,
+          phone,
+          department: form.department || "Temple",
+          room: room || "",
+          bed: bed || "",
+          seva: "",
+          rounds: 0,
+          reading: 0,
+          role: "devotee",
+          status: "active",
+          photoURL: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+      );
 
       /*
        * Sign out the temporary secondary account.
@@ -331,10 +338,13 @@ function Devotees() {
       setUpdatingId(devotee.uid);
       setError("");
 
-      await updateDoc(doc(db, "users", devotee.uid), {
-        status: nextStatus.toLowerCase(),
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(
+        doc(db, "users", devotee.uid),
+        {
+          status: nextStatus.toLowerCase(),
+          updatedAt: serverTimestamp(),
+        }
+      );
     } catch (updateError) {
       console.error(
         "Failed to update devotee status:",
@@ -599,10 +609,6 @@ function Devotees() {
                               {devotee.email ||
                                 "No email"}
                             </span>
-
-                            <small>
-                              UID: {devotee.uid}
-                            </small>
                           </div>
                         </div>
                       </td>

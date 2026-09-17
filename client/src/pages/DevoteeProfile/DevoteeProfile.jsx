@@ -10,16 +10,13 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../services/firebase";
-
 import { useAuth } from "../../context/AuthContext";
-
 import Loader from "../../components/Common/Loader";
 
 import "./DevoteeProfile.css";
 
 function DevoteeProfile() {
   const { id } = useParams();
-
   const navigate = useNavigate();
 
   const { user, isAdministrator, isDevotee } = useAuth();
@@ -31,7 +28,9 @@ function DevoteeProfile() {
    * Devotee:
    *   /devotee-profile
    *
-   * A devotee's Firebase UID is the source of truth.
+   * The Firebase UID is used internally to locate
+   * the correct Firestore profile, but it is never
+   * displayed in the interface.
    */
 
   const requestedUid = isAdministrator ? id : user?.uid;
@@ -39,6 +38,7 @@ function DevoteeProfile() {
   const [devotee, setDevotee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -129,7 +129,9 @@ function DevoteeProfile() {
       id &&
       id !== user?.uid
     ) {
-      navigate("/devotee-profile", { replace: true });
+      navigate("/devotee-profile", {
+        replace: true,
+      });
     }
   }, [
     loading,
@@ -176,18 +178,6 @@ function DevoteeProfile() {
   const joinDate = formatDate(
     devotee?.joinDate || devotee?.createdAt
   );
-
-  const rounds =
-    devotee?.rounds !== undefined &&
-    devotee?.rounds !== null
-      ? devotee.rounds
-      : 0;
-
-  const reading =
-    devotee?.reading !== undefined &&
-    devotee?.reading !== null
-      ? devotee.reading
-      : 0;
 
   const handleBack = () => {
     if (isAdministrator) {
@@ -258,7 +248,8 @@ function DevoteeProfile() {
     const gender = form.gender.trim();
 
     const department =
-      form.department.trim() || "Giri Govardhan BACE";
+      form.department.trim() ||
+      "Giri Govardhan BACE";
 
     const room = form.room.trim();
     const bed = form.bed.trim();
@@ -272,7 +263,9 @@ function DevoteeProfile() {
       email &&
       !/\S+@\S+\.\S+/.test(email)
     ) {
-      setSaveError("Please enter a valid email address.");
+      setSaveError(
+        "Please enter a valid email address."
+      );
       return;
     }
 
@@ -289,7 +282,6 @@ function DevoteeProfile() {
         setSaveError(
           "Age must be a valid number between 1 and 120."
         );
-
         return;
       }
 
@@ -361,7 +353,9 @@ function DevoteeProfile() {
   ) {
     return (
       <div className="profile-access">
-        <div className="profile-access-icon">!</div>
+        <div className="profile-access-icon">
+          !
+        </div>
 
         <span className="profile-access-eyebrow">
           ACCESS RESTRICTED
@@ -388,13 +382,17 @@ function DevoteeProfile() {
   }
 
   if (loading) {
-    return <Loader text="Loading devotee profile..." />;
+    return (
+      <Loader text="Loading devotee profile..." />
+    );
   }
 
   if (error) {
     return (
       <div className="profile-access">
-        <div className="profile-access-icon">!</div>
+        <div className="profile-access-icon">
+          !
+        </div>
 
         <span className="profile-access-eyebrow">
           PROFILE ERROR
@@ -472,7 +470,7 @@ function DevoteeProfile() {
         <div className="profile-main-info">
           <span className="profile-id">
             {isAdministrator
-              ? `DEVOTEE · ${shortenUid(devotee.uid)}`
+              ? "DEVOTEE PROFILE"
               : "MY DEVOTEE PROFILE"}
           </span>
 
@@ -481,7 +479,8 @@ function DevoteeProfile() {
           </h1>
 
           <p>
-            {devotee.department || "Giri Govardhan BACE"}
+            {devotee.department ||
+              "Giri Govardhan BACE"}
           </p>
         </div>
 
@@ -511,7 +510,7 @@ function DevoteeProfile() {
           <div className="edit-card-header">
             <div>
               <span className="profile-section-eyebrow">
-                PROFILE MANAGEMENT
+                PROFILE SERVICES
               </span>
 
               <h2>Edit Profile</h2>
@@ -528,7 +527,6 @@ function DevoteeProfile() {
               role="alert"
             >
               <span>!</span>
-
               <p>{saveError}</p>
             </div>
           )}
@@ -760,66 +758,6 @@ function DevoteeProfile() {
             />
           </div>
         </section>
-
-        <section className="profile-card profile-wide">
-          <div className="profile-card-header">
-            <div>
-              <span className="profile-section-eyebrow">
-                SPIRITUAL PRACTICE
-              </span>
-
-              <h2>Spiritual Activity</h2>
-            </div>
-          </div>
-
-          <div className="activity-stats">
-            <ActivityStat
-              value={rounds}
-              label="Japa Rounds"
-            />
-
-            <ActivityStat
-              value={reading}
-              label="Reading Minutes"
-            />
-
-            <ActivityStat
-              value={devotee.seva || "Not assigned"}
-              label="Assigned Seva"
-              textValue
-            />
-          </div>
-        </section>
-
-        <section className="profile-card profile-wide account-card">
-          <div className="profile-card-header">
-            <div>
-              <span className="profile-section-eyebrow">
-                ACCOUNT INFORMATION
-              </span>
-
-              <h2>Account Details</h2>
-            </div>
-          </div>
-
-          <div className="account-information">
-            <ProfileInfo
-              label="Account Role"
-              value="Devotee"
-            />
-
-            <ProfileInfo
-              label="Account Status"
-              value={status}
-            />
-
-            <ProfileInfo
-              label="Firebase UID"
-              value={devotee.uid}
-              mono
-            />
-          </div>
-        </section>
       </div>
     </div>
   );
@@ -841,29 +779,11 @@ function ProfileInfo({
     <div className="profile-info-item">
       <span>{label}</span>
 
-      <strong className={mono ? "mono-value" : ""}>
+      <strong
+        className={mono ? "mono-value" : ""}
+      >
         {displayValue}
       </strong>
-    </div>
-  );
-}
-
-function ActivityStat({
-  value,
-  label,
-  textValue = false,
-}) {
-  return (
-    <div className="activity-stat">
-      <strong
-        className={
-          textValue ? "activity-text-value" : ""
-        }
-      >
-        {value}
-      </strong>
-
-      <span>{label}</span>
     </div>
   );
 }
@@ -936,18 +856,6 @@ function formatDate(value) {
   }
 
   return "Not specified";
-}
-
-function shortenUid(uid) {
-  if (!uid) {
-    return "UNKNOWN";
-  }
-
-  if (uid.length <= 16) {
-    return uid;
-  }
-
-  return `${uid.slice(0, 8)}...${uid.slice(-6)}`;
 }
 
 function getSaveErrorMessage(error) {
