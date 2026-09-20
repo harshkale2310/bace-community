@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
@@ -13,6 +15,7 @@ import {
 import { db } from "../../services/firebase";
 import { useAuth } from "../../context/AuthContext";
 import Loader from "../../components/Common/Loader";
+
 import "./Sadhana.css";
 
 const EMPTY_FORM = {
@@ -23,91 +26,258 @@ const EMPTY_FORM = {
 };
 
 function getToday() {
-  return new Date().toISOString().split("T")[0];
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const [year, month, day] = dateString.split("-");
+
+  if (!year || !month || !day) {
+    return dateString;
+  }
+
+  return `${day}-${month}-${year}`;
 }
 
 function Sadhana() {
-  const { user, isAdministrator, isDevotee } = useAuth();
+  const {
+    user,
+    isAdministrator,
+    isDevotee,
+    authLoading,
+  } = useAuth();
 
-  const [records, setRecords] = useState([]);
   const [devotees, setDevotees] = useState([]);
+  const [records, setRecords] = useState([]);
 
-  const [selectedDate, setSelectedDate] = useState(getToday());
-  const [search, setSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    getToday()
+  );
+
+  const [ownRecord, setOwnRecord] = useState(null);
 
   const [form, setForm] = useState(EMPTY_FORM);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const todayDate = getToday();
+
+  const isToday = selectedDate === todayDate;
+
+  const isPastDate =
+    selectedDate < todayDate;
+
+  const isFutureDate =
+    selectedDate > todayDate;
+
+  const canEditToday =
+    isDevotee &&
+    !!user?.uid &&
+    isToday;
 
   /*
-   * ------------------------------------------------------------------
-   * LOAD DEVOTEE DIRECTORY
-   * Administrator needs names for all sadhana records.
-   * Devotee only needs their own profile.
-   * ------------------------------------------------------------------
+   * ======================================================
+   * LOAD DEVOTEES
+   * ======================================================
    */
+
   useEffect(() => {
+    if (!isAdministrator) {
+      setDevotees([]);
+      return undefined;
+    }
+
+    const devoteesQuery = query(
+      collection(db, "users"),
+      where("role", "==", "devotee")
+    );
+
+    const unsubscribe = onSnapshot(
+      devoteesQuery,
+      (snapshot) => {
+        const devoteeData = snapshot.docs.map(
+          (item) => ({
+            uid: item.id,
+            ...item.data(),
+          })
+        );
+
+        devoteeData.sort((a, b) =>
+          String(a.name || "").localeCompare(
+            String(b.name || ""),
+            undefined,
+            {
+              sensitivity: "base",
+            }
+          )
+        );
+
+        setDevotees(devoteeData);
+      },
+      (firebaseError) => {
+        console.error(
+          "Failed to load devotees:",
+          firebaseError
+        );
+
+        setDevotees([]);
+
+        if (
+          firebaseError.code ===
+          "permission-denied"
+        ) {
+          setError(
+            "Firebase permission denied while loading devotees."
+          );
+        } else {
+          setError(
+            "Unable to load devotees. Please try again."
+          );
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isAdministrator]);
+
+  /*
+   * ======================================================
+   * DEVOTEE MAP
+   * ======================================================
+   */
+
+  const devoteeMap = useMemo(() => {
+    const map = {};
+
+    devotees.forEach((devotee) => {
+      map[devotee.uid] = devotee;
+    });
+
+    return map;
+  }, [devotees]);
+
+  /*
+   * ======================================================
+   * CLEAN ORPHAN SADHANA RECORDS
+   * ======================================================
+   *
+   * This removes old records belonging to accounts that
+   * no longer exist.
+   *
+   * Example:
+   *
+   * users/{oldUid}      -> deleted
+   * sadhana/{recordId}  -> still exists
+   *
+   * The orphan Sadhana record is deleted here.
+   */
+
+  useEffect(() => {
+    if (!isAdministrator) {
+      return undefined;
+    }
+
     let cancelled = false;
 
-    async function loadDevotees() {
+    async function cleanupOrphanRecords() {
       try {
-        if (isAdministrator) {
-          const devoteesQuery = query(
-            collection(db, "users"),
-            where("role", "==", "devotee")
+        const [
+          usersSnapshot,
+          sadhanaSnapshot,
+        ] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, "users"),
+              where(
+                "role",
+                "==",
+                "devotee"
+              )
+            )
+          ),
+          getDocs(
+            collection(db, "sadhana")
+          ),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const existingDevoteeIds =
+          new Set(
+            usersSnapshot.docs.map(
+              (item) => item.id
+            )
           );
 
-          const snapshot = await getDocs(devoteesQuery);
+        const orphanRecords =
+          sadhanaSnapshot.docs.filter(
+            (item) => {
+              const data = item.data();
 
-          if (!cancelled) {
-            const list = snapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }));
+              if (!data.devoteeId) {
+                return true;
+              }
 
-            setDevotees(list);
-          }
-        } else if (isDevotee && user?.uid) {
-          setDevotees([
-            {
-              id: user.uid,
-              uid: user.uid,
-              name: user.name || "My Profile",
-              email: user.email || "",
-            },
-          ]);
+              return !existingDevoteeIds.has(
+                data.devoteeId
+              );
+            }
+          );
+
+        if (
+          orphanRecords.length === 0
+        ) {
+          return;
         }
-      } catch (loadError) {
-        console.error("Failed to load devotees:", loadError);
 
-        if (!cancelled) {
-          setError("Unable to load devotee information.");
-        }
+        await Promise.all(
+          orphanRecords.map((item) =>
+            deleteDoc(item.ref)
+          )
+        );
+
+        console.info(
+          `Removed ${orphanRecords.length} orphan Sadhana record(s).`
+        );
+      } catch (cleanupError) {
+        console.error(
+          "Failed to clean orphan Sadhana records:",
+          cleanupError
+        );
       }
     }
 
-    loadDevotees();
+    cleanupOrphanRecords();
 
     return () => {
       cancelled = true;
     };
-  }, [isAdministrator, isDevotee, user?.uid, user?.name, user?.email]);
+  }, [isAdministrator]);
 
   /*
-   * ------------------------------------------------------------------
-   * LOAD SADHANA
-   *
-   * Administrator:
-   *   Reads the complete sadhana collection.
-   *
-   * Devotee:
-   *   Reads only their own records.
-   * ------------------------------------------------------------------
+   * ======================================================
+   * LOAD SADHANA RECORDS
+   * ======================================================
    */
+
   useEffect(() => {
     if (!user?.uid) {
+      setRecords([]);
       setLoading(false);
       return undefined;
     }
@@ -117,154 +287,189 @@ function Sadhana() {
 
     let unsubscribe;
 
-    try {
-      if (isAdministrator) {
-        unsubscribe = onSnapshot(
-          collection(db, "sadhana"),
-          (snapshot) => {
-            const list = snapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }));
+    if (isAdministrator) {
+      unsubscribe = onSnapshot(
+        collection(db, "sadhana"),
+        (snapshot) => {
+          const recordData =
+            snapshot.docs.map(
+              (item) => ({
+                id: item.id,
+                ...item.data(),
+              })
+            );
 
-            setRecords(list);
-            setLoading(false);
-          },
-          (snapshotError) => {
-            console.error("Failed to load sadhana:", snapshotError);
-            setError("Unable to load sadhana records.");
-            setLoading(false);
+          setRecords(recordData);
+          setLoading(false);
+        },
+        (firebaseError) => {
+          console.error(
+            "Failed to load Sadhana records:",
+            firebaseError
+          );
+
+          setRecords([]);
+          setLoading(false);
+
+          if (
+            firebaseError.code ===
+            "permission-denied"
+          ) {
+            setError(
+              "Firebase permission denied while loading Sadhana records."
+            );
+          } else {
+            setError(
+              "Unable to load Sadhana records. Please try again."
+            );
           }
-        );
-      } else if (isDevotee) {
-        const ownQuery = query(
-          collection(db, "sadhana"),
-          where("devoteeId", "==", user.uid)
-        );
+        }
+      );
+    } else {
+      const ownQuery = query(
+        collection(db, "sadhana"),
+        where(
+          "devoteeId",
+          "==",
+          user.uid
+        )
+      );
 
-        unsubscribe = onSnapshot(
-          ownQuery,
-          (snapshot) => {
-            const list = snapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }));
+      unsubscribe = onSnapshot(
+        ownQuery,
+        (snapshot) => {
+          const recordData =
+            snapshot.docs.map(
+              (item) => ({
+                id: item.id,
+                ...item.data(),
+              })
+            );
 
-            setRecords(list);
-            setLoading(false);
-          },
-          (snapshotError) => {
-            console.error("Failed to load personal sadhana:", snapshotError);
-            setError("Unable to load your sadhana records.");
-            setLoading(false);
+          setRecords(recordData);
+          setLoading(false);
+        },
+        (firebaseError) => {
+          console.error(
+            "Failed to load your Sadhana records:",
+            firebaseError
+          );
+
+          setRecords([]);
+          setLoading(false);
+
+          if (
+            firebaseError.code ===
+            "permission-denied"
+          ) {
+            setError(
+              "Firebase permission denied while loading your Sadhana records."
+            );
+          } else {
+            setError(
+              "Unable to load your Sadhana records. Please try again."
+            );
           }
-        );
-      } else {
-        setLoading(false);
-      }
-    } catch (snapshotError) {
-      console.error("Failed to initialize sadhana listener:", snapshotError);
-      setError("Unable to load sadhana records.");
-      setLoading(false);
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [user?.uid, isAdministrator, isDevotee]);
-
-  /*
-   * ------------------------------------------------------------------
-   * FIND DEVOTEE
-   * ------------------------------------------------------------------
-   */
-  const getDevotee = (devoteeId) => {
-    return devotees.find(
-      (devotee) =>
-        devotee.id === devoteeId ||
-        devotee.uid === devoteeId
-    );
-  };
-
-  /*
-   * ------------------------------------------------------------------
-   * ADMINISTRATOR VIEW
-   *
-   * Admin sees selected date + optional search.
-   * Devotee sees only their selected date.
-   * ------------------------------------------------------------------
-   */
-  const visibleRecords = useMemo(() => {
-    let result = records.filter(
-      (record) => record.date === selectedDate
-    );
-
-    if (isDevotee) {
-      result = result.filter(
-        (record) => record.devoteeId === user?.uid
+        }
       );
     }
 
-    if (isAdministrator && search.trim()) {
-      const searchValue = search.trim().toLowerCase();
-
-      result = result.filter((record) => {
-        const devotee = getDevotee(record.devoteeId);
-
-        const name = devotee?.name?.toLowerCase() || "";
-        const email = devotee?.email?.toLowerCase() || "";
-        const uid = record.devoteeId?.toLowerCase() || "";
-
-        return (
-          name.includes(searchValue) ||
-          email.includes(searchValue) ||
-          uid.includes(searchValue)
-        );
-      });
-    }
-
-    return [...result].sort((a, b) => {
-      const devoteeA = getDevotee(a.devoteeId)?.name || "";
-      const devoteeB = getDevotee(b.devoteeId)?.name || "";
-
-      return devoteeA.localeCompare(devoteeB);
-    });
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
   }, [
-    records,
-    selectedDate,
-    search,
-    isAdministrator,
-    isDevotee,
     user?.uid,
-    devotees,
+    isAdministrator,
   ]);
 
   /*
-   * ------------------------------------------------------------------
-   * PERSONAL RECORD FOR DEVOTEE
-   * ------------------------------------------------------------------
+   * ======================================================
+   * ONLY VALID ADMIN RECORDS
+   * ======================================================
+   *
+   * This is an additional safety layer.
+   *
+   * Even if an orphan record exists temporarily while
+   * cleanup is running, it will never render as
+   * "Unknown Devotee".
    */
-  const ownRecord = useMemo(() => {
-    if (!isDevotee || !user?.uid) {
-      return null;
+
+  const validRecords = useMemo(() => {
+    if (!isAdministrator) {
+      return records.filter(
+        (record) =>
+          record.devoteeId === user?.uid
+      );
     }
 
-    return (
-      records.find(
-        (record) =>
-          record.devoteeId === user.uid &&
-          record.date === selectedDate
-      ) || null
+    return records.filter(
+      (record) =>
+        !!record.devoteeId &&
+        !!devoteeMap[
+          record.devoteeId
+        ]
     );
-  }, [records, selectedDate, isDevotee, user?.uid]);
+  }, [
+    records,
+    devoteeMap,
+    isAdministrator,
+    user?.uid,
+  ]);
 
   /*
-   * ------------------------------------------------------------------
-   * KEEP DEVOTEE FORM IN SYNC WITH SELECTED RECORD
-   * ------------------------------------------------------------------
+   * ======================================================
+   * RECORD FOR SELECTED DATE
+   * ======================================================
    */
+
+  const selectedDateRecords =
+    useMemo(() => {
+      return validRecords.filter(
+        (record) =>
+          record.date === selectedDate
+      );
+    }, [
+      validRecords,
+      selectedDate,
+    ]);
+
+  /*
+   * ======================================================
+   * SELECTED DATE RECORD FOR DEVOTEE
+   * ======================================================
+   */
+
+  useEffect(() => {
+    if (!isDevotee || !user?.uid) {
+      setOwnRecord(null);
+      return;
+    }
+
+    const record =
+      validRecords.find(
+        (item) =>
+          item.devoteeId ===
+            user.uid &&
+          item.date ===
+            selectedDate
+      ) || null;
+
+    setOwnRecord(record);
+  }, [
+    isDevotee,
+    user?.uid,
+    selectedDate,
+    validRecords,
+  ]);
+
+  /*
+   * ======================================================
+   * SYNC FORM
+   * ======================================================
+   */
+
   useEffect(() => {
     if (!isDevotee) {
       return;
@@ -272,628 +477,885 @@ function Sadhana() {
 
     if (ownRecord) {
       setForm({
-        rounds: Number(ownRecord.rounds || 0),
-        reading: Number(ownRecord.reading || 0),
-        meditation: Number(ownRecord.meditation || 0),
-        notes: ownRecord.notes || "",
+        rounds:
+          Number(
+            ownRecord.rounds
+          ) || 0,
+
+        reading:
+          Number(
+            ownRecord.reading
+          ) || 0,
+
+        meditation:
+          Number(
+            ownRecord.meditation
+          ) || 0,
+
+        notes:
+          ownRecord.notes || "",
       });
     } else {
-      setForm(EMPTY_FORM);
+      setForm(
+        EMPTY_FORM
+      );
     }
-  }, [ownRecord, selectedDate, isDevotee]);
+
+    setError("");
+    setSuccess("");
+  }, [
+    ownRecord,
+    isDevotee,
+    selectedDate,
+  ]);
 
   /*
-   * ------------------------------------------------------------------
-   * FORM INPUT
-   * ------------------------------------------------------------------
+   * ======================================================
+   * FORM CHANGE
+   * ======================================================
    */
-  const handleInput = (event) => {
-    const { name, value } = event.target;
 
-    setForm((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-  };
-
-  /*
-   * ------------------------------------------------------------------
-   * SAVE PERSONAL SADHANA
-   *
-   * Deterministic document ID prevents duplicate records for the same
-   * devotee and date.
-   * ------------------------------------------------------------------
-   */
-  const savePersonalSadhana = async (event) => {
-    event.preventDefault();
-
-    if (!isDevotee || !user?.uid) {
+  const handleChange = (event) => {
+    if (!canEditToday) {
       return;
     }
 
-    setSaving(true);
+    const {
+      name,
+      value,
+    } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      [name]:
+        name === "notes"
+          ? value
+          : value === ""
+            ? 0
+            : Number(value),
+    }));
+
     setError("");
+    setSuccess("");
+  };
+
+  /*
+   * ======================================================
+   * SAVE TODAY'S SADHANA
+   * ======================================================
+   */
+
+  const saveSadhana = async (
+    event
+  ) => {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (!isDevotee) {
+      return;
+    }
+
+    if (!user?.uid) {
+      setError(
+        "Your account could not be verified."
+      );
+      return;
+    }
+
+    if (!isToday) {
+      setError(
+        "Only today's Sadhana record can be edited."
+      );
+      return;
+    }
+
+    const rounds =
+      Math.max(
+        0,
+        Number(form.rounds) || 0
+      );
+
+    const reading =
+      Math.max(
+        0,
+        Number(form.reading) || 0
+      );
+
+    const meditation =
+      Math.max(
+        0,
+        Number(form.meditation) || 0
+      );
 
     try {
-      const rounds = Math.min(
-        64,
-        Math.max(0, Number(form.rounds) || 0)
+      setSaving(true);
+
+      const recordId =
+        `${user.uid}_${selectedDate}`;
+
+      const recordRef = doc(
+        db,
+        "sadhana",
+        recordId
       );
-
-      const reading = Math.min(
-        1440,
-        Math.max(0, Number(form.reading) || 0)
-      );
-
-      const meditation = Math.min(
-        1440,
-        Math.max(0, Number(form.meditation) || 0)
-      );
-
-      const documentId = `${user.uid}_${selectedDate}`;
-
-      const sadhanaRef = doc(db, "sadhana", documentId);
 
       await setDoc(
-        sadhanaRef,
+        recordRef,
         {
           devoteeId: user.uid,
           date: selectedDate,
+
           rounds,
           reading,
           meditation,
-          notes: form.notes.trim(),
-          updatedAt: serverTimestamp(),
-          ...(ownRecord
-            ? {}
-            : {
-                createdAt: serverTimestamp(),
-              }),
+
+          notes:
+            String(
+              form.notes || ""
+            ).trim(),
+
+          updatedAt:
+            serverTimestamp(),
+
+          createdAt:
+            ownRecord?.createdAt ||
+            serverTimestamp(),
         },
         {
           merge: true,
         }
       );
 
-      setForm({
-        rounds,
-        reading,
-        meditation,
-        notes: form.notes.trim(),
-      });
-    } catch (saveError) {
-      console.error("Failed to save sadhana:", saveError);
-      setError("Unable to save your sadhana record. Please try again.");
+      setSuccess(
+        "Today's Sadhana record has been saved."
+      );
+    } catch (firebaseError) {
+      console.error(
+        "Failed to save Sadhana:",
+        firebaseError
+      );
+
+      if (
+        firebaseError.code ===
+        "permission-denied"
+      ) {
+        setError(
+          "Firebase permission denied. Please check the Sadhana Firestore rules."
+        );
+      } else {
+        setError(
+          "Unable to save today's Sadhana. Please try again."
+        );
+      }
     } finally {
       setSaving(false);
     }
   };
 
   /*
-   * ------------------------------------------------------------------
-   * ADMIN SUMMARY
-   * ------------------------------------------------------------------
+   * ======================================================
+   * STATS
+   * ======================================================
    */
-  const adminSummary = useMemo(() => {
-    if (!isAdministrator) {
-      return null;
-    }
 
-    const total = visibleRecords.length;
+  const recordsForDate =
+    selectedDateRecords;
 
-    const completed = visibleRecords.filter(
-      (record) => Number(record.rounds || 0) > 0
-    ).length;
-
-    const totalRounds = visibleRecords.reduce(
-      (sum, record) => sum + Number(record.rounds || 0),
+  const totalRounds =
+    recordsForDate.reduce(
+      (total, record) =>
+        total +
+        (Number(
+          record.rounds
+        ) || 0),
       0
     );
 
-    const averageRounds =
-      total > 0
-        ? Math.round((totalRounds / total) * 10) / 10
-        : 0;
+  const practiceRecorded =
+    recordsForDate.filter(
+      (record) =>
+        Number(
+          record.rounds
+        ) > 0
+    ).length;
 
-    return {
-      total,
-      completed,
-      totalRounds,
-      averageRounds,
-    };
-  }, [visibleRecords, isAdministrator]);
-
-  if (loading) {
-    return <Loader text="Loading sadhana..." />;
-  }
+  const averageRounds =
+    practiceRecorded > 0
+      ? Math.round(
+          (totalRounds /
+            practiceRecorded) *
+            10
+        ) / 10
+      : 0;
 
   /*
-   * ------------------------------------------------------------------
-   * INVALID ROLE
-   * ------------------------------------------------------------------
+   * ======================================================
+   * LOADING
+   * ======================================================
    */
-  if (!isAdministrator && !isDevotee) {
+
+  if (
+    authLoading ||
+    loading
+  ) {
     return (
-      <div className="sadhana-page">
-        <section className="sadhana-access">
-          <div className="sadhana-access-icon">!</div>
-          <h2>Access Unavailable</h2>
-          <p>
-            Your account role could not be verified.
-            Please sign in again.
-          </p>
-        </section>
-      </div>
+      <Loader text="Loading Sadhana..." />
     );
   }
 
   /*
-   * ==================================================================
-   * ADMINISTRATOR PAGE
-   * ==================================================================
+   * ======================================================
+   * DEVOTEE VIEW
+   * ======================================================
    */
-  if (isAdministrator) {
+
+  if (isDevotee) {
+    const history = [...validRecords]
+      .sort((a, b) =>
+        String(
+          b.date || ""
+        ).localeCompare(
+          String(
+            a.date || ""
+          )
+        )
+      );
+
     return (
       <div className="sadhana-page">
-        <div className="page-header">
+        <header className="sadhana-header">
           <div>
-            <span className="page-eyebrow">
-              Community Monitoring
+            <span className="sadhana-eyebrow">
+              MY DAILY PRACTICE
             </span>
 
             <h1>Sadhana</h1>
 
             <p>
-              Monitor daily spiritual practice across the
-              community.
+              Record your daily spiritual
+              practice and review your
+              previous records.
             </p>
           </div>
-        </div>
+        </header>
 
         {error && (
-          <div className="sadhana-alert error">
+          <div className="sadhana-error">
             {error}
           </div>
         )}
 
-        <section className="sadhana-admin-summary">
-          <div className="sadhana-summary-card">
-            <span>Records</span>
-            <strong>{adminSummary.total}</strong>
-            <small>For selected date</small>
+        {success && (
+          <div className="sadhana-success">
+            {success}
           </div>
+        )}
 
-          <div className="sadhana-summary-card">
-            <span>Practice Recorded</span>
-            <strong>{adminSummary.completed}</strong>
-            <small>Devotees with rounds</small>
-          </div>
-
-          <div className="sadhana-summary-card">
-            <span>Total Rounds</span>
-            <strong>{adminSummary.totalRounds}</strong>
-            <small>Community total</small>
-          </div>
-
-          <div className="sadhana-summary-card">
-            <span>Average Rounds</span>
-            <strong>{adminSummary.averageRounds}</strong>
-            <small>Per recorded devotee</small>
-          </div>
-        </section>
-
-        <section className="sadhana-admin-toolbar">
-          <label>
-            <span>Date</span>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(event) =>
-                setSelectedDate(event.target.value)
-              }
-            />
-          </label>
-
-          <label className="sadhana-search-field">
-            <span>Search Devotee</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search name, email or UID..."
-            />
-          </label>
-        </section>
-
-        <section className="sadhana-directory-card">
-          <div className="sadhana-directory-header">
+        <section className="sadhana-card">
+          <div className="sadhana-card-header">
             <div>
-              <span className="card-eyebrow">
-                COMMUNITY RECORDS
+              <span className="sadhana-card-eyebrow">
+                DAILY RECORD
               </span>
 
-              <h2>Community Sadhana</h2>
-
-              <p>
-                Read-only overview of devotee spiritual
-                practice.
-              </p>
+              <h2>
+                {isToday
+                  ? "Today's Sadhana"
+                  : "Sadhana Record"}
+              </h2>
             </div>
 
             <span className="sadhana-date-badge">
-              {selectedDate}
+              {formatDate(
+                selectedDate
+              )}
             </span>
           </div>
 
-          <div className="sadhana-table-wrapper">
-            <table className="sadhana-admin-table">
-              <thead>
-                <tr>
-                  <th>Devotee</th>
-                  <th>Japa Rounds</th>
-                  <th>Reading</th>
-                  <th>Meditation</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
+          <div className="sadhana-date-selector">
+            <label>
+              <span>Date</span>
 
-              <tbody>
-                {visibleRecords.map((record) => {
-                  const devotee = getDevotee(record.devoteeId);
-
-                  return (
-                    <tr key={record.id}>
-                      <td>
-                        <div className="sadhana-table-person">
-                          <div className="mini-avatar">
-                            {(
-                              devotee?.name ||
-                              "D"
-                            )
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-
-                          <div>
-                            <strong>
-                              {devotee?.name ||
-                                "Unknown Devotee"}
-                            </strong>
-
-                            <span>
-                              {devotee?.email ||
-                                record.devoteeId}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td>
-                        <strong className="round-value">
-                          {Number(record.rounds || 0)}
-                        </strong>
-                      </td>
-
-                      <td>
-                        {Number(record.reading || 0)} min
-                      </td>
-
-                      <td>
-                        {Number(record.meditation || 0)} min
-                      </td>
-
-                      <td>
-                        {record.notes ? (
-                          <span className="table-note">
-                            {record.notes}
-                          </span>
-                        ) : (
-                          <span className="no-note">
-                            No notes
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              <input
+                type="date"
+                value={selectedDate}
+                max={todayDate}
+                onChange={(event) =>
+                  setSelectedDate(
+                    event.target.value
+                  )
+                }
+              />
+            </label>
           </div>
 
-          {visibleRecords.length === 0 && (
+          {isPastDate && (
+            <div className="sadhana-readonly-notice">
+              This is a past record. Past
+              Sadhana records are
+              read-only.
+            </div>
+          )}
+
+          {isFutureDate && (
+            <div className="sadhana-readonly-notice">
+              Future Sadhana records
+              cannot be created yet.
+            </div>
+          )}
+
+          <form
+            className="sadhana-form"
+            onSubmit={saveSadhana}
+          >
+            <div className="sadhana-form-grid">
+              <label>
+                <span>Japa Rounds</span>
+
+                <input
+                  type="number"
+                  name="rounds"
+                  min="0"
+                  value={
+                    form.rounds
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    !canEditToday
+                  }
+                />
+              </label>
+
+              <label>
+                <span>
+                  Reading (minutes)
+                </span>
+
+                <input
+                  type="number"
+                  name="reading"
+                  min="0"
+                  value={
+                    form.reading
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    !canEditToday
+                  }
+                />
+              </label>
+
+              <label>
+                <span>
+                  Meditation (minutes)
+                </span>
+
+                <input
+                  type="number"
+                  name="meditation"
+                  min="0"
+                  value={
+                    form.meditation
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    !canEditToday
+                  }
+                />
+              </label>
+            </div>
+
+            <label className="sadhana-notes-field">
+              <span>Notes</span>
+
+              <textarea
+                name="notes"
+                rows="4"
+                value={
+                  form.notes
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
+                placeholder="Add a note about today's practice..."
+              />
+            </label>
+
+            {canEditToday && (
+              <div className="sadhana-form-actions">
+                <button
+                  type="submit"
+                  className="sadhana-primary-button"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : ownRecord
+                      ? "Update Today's Record"
+                      : "Save Today's Record"}
+                </button>
+              </div>
+            )}
+          </form>
+        </section>
+
+        <section className="sadhana-card">
+          <div className="sadhana-card-header">
+            <div>
+              <span className="sadhana-card-eyebrow">
+                HISTORY
+              </span>
+
+              <h2>
+                My Sadhana History
+              </h2>
+            </div>
+          </div>
+
+          {history.length === 0 ? (
             <div className="sadhana-empty">
-              <div className="sadhana-empty-icon">ॐ</div>
-              <h3>No sadhana records</h3>
+              <h3>
+                No Sadhana records yet
+              </h3>
+
               <p>
-                No devotee has a sadhana record for the
-                selected date or search.
+                Your completed daily
+                records will appear here.
               </p>
+            </div>
+          ) : (
+            <div className="sadhana-history-list">
+              {history.map(
+                (record) => (
+                  <button
+                    type="button"
+                    className={
+                      record.date ===
+                      selectedDate
+                        ? "sadhana-history-item selected"
+                        : "sadhana-history-item"
+                    }
+                    key={
+                      record.id
+                    }
+                    onClick={() =>
+                      setSelectedDate(
+                        record.date
+                      )
+                    }
+                  >
+                    <div>
+                      <strong>
+                        {formatDate(
+                          record.date
+                        )}
+                      </strong>
+
+                      <span>
+                        {Number(
+                          record.rounds
+                        ) || 0}{" "}
+                        rounds
+                      </span>
+                    </div>
+
+                    <div>
+                      <span>
+                        Reading
+                      </span>
+
+                      <strong>
+                        {Number(
+                          record.reading
+                        ) || 0}{" "}
+                        min
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Meditation
+                      </span>
+
+                      <strong>
+                        {Number(
+                          record.meditation
+                        ) || 0}{" "}
+                        min
+                      </strong>
+                    </div>
+                  </button>
+                )
+              )}
             </div>
           )}
         </section>
-
-        <div className="sadhana-admin-note">
-          <span className="info-icon">i</span>
-
-          <div>
-            <strong>Administrator view is read-only</strong>
-            <p>
-              Devotees maintain their own daily sadhana.
-              Administrators can monitor the records without
-              changing personal spiritual entries.
-            </p>
-          </div>
-        </div>
       </div>
     );
   }
 
   /*
-   * ==================================================================
-   * DEVOTEE PAGE
-   * ==================================================================
+   * ======================================================
+   * ADMIN VIEW
+   * ======================================================
    */
-  return (
-    <div className="sadhana-page">
-      <div className="page-header">
-        <div>
-          <span className="page-eyebrow">
-            Personal Practice
-          </span>
 
-          <h1>My Sadhana</h1>
+  if (isAdministrator) {
+    return (
+      <div className="sadhana-page">
+        <header className="sadhana-header">
+          <div>
+            <span className="sadhana-eyebrow">
+              BACE COMMUNITY MONITORING
+            </span>
+
+            <h1>Sadhana</h1>
+
+            <p>
+              Monitor daily spiritual
+              practice across the BACE
+              community.
+            </p>
+          </div>
+        </header>
+
+        {error && (
+          <div className="sadhana-error">
+            {error}
+          </div>
+        )}
+
+        <section className="sadhana-stats">
+          <article className="sadhana-stat">
+            <span>Records</span>
+
+            <strong>
+              {recordsForDate.length}
+            </strong>
+
+            <small>
+              For selected date
+            </small>
+          </article>
+
+          <article className="sadhana-stat">
+            <span>
+              Practice Recorded
+            </span>
+
+            <strong>
+              {practiceRecorded}
+            </strong>
+
+            <small>
+              Devotees with rounds
+            </small>
+          </article>
+
+          <article className="sadhana-stat">
+            <span>Total Rounds</span>
+
+            <strong>
+              {totalRounds}
+            </strong>
+
+            <small>
+              Community total
+            </small>
+          </article>
+
+          <article className="sadhana-stat">
+            <span>
+              Average Rounds
+            </span>
+
+            <strong>
+              {averageRounds}
+            </strong>
+
+            <small>
+              Per recorded devotee
+            </small>
+          </article>
+        </section>
+
+        <section className="sadhana-toolbar">
+          <label>
+            <span>Date</span>
+
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) =>
+                setSelectedDate(
+                  event.target.value
+                )
+              }
+            />
+          </label>
+
+          <label className="sadhana-search">
+            <span>
+              Search Devotee
+            </span>
+
+            <input
+              type="search"
+              placeholder="Search name or email..."
+              onChange={(event) => {
+                const value =
+                  event.target.value
+                    .trim()
+                    .toLowerCase();
+
+                setSearchTerm(
+                  value
+                );
+              }}
+            />
+          </label>
+        </section>
+
+        <AdminSadhanaTable
+          records={recordsForDate}
+          devoteeMap={devoteeMap}
+        />
+
+        <section className="sadhana-info-card">
+          <div className="sadhana-info-icon">
+            i
+          </div>
+
+          <div>
+            <strong>
+              Administrator view is
+              read-only
+            </strong>
+
+            <p>
+              Devotees maintain their own
+              daily Sadhana. Administrators
+              can monitor the records
+              without changing personal
+              spiritual entries.
+            </p>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/*
+ * ======================================================
+ * ADMIN TABLE
+ * ======================================================
+ */
+
+function AdminSadhanaTable({
+  records,
+  devoteeMap,
+}) {
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const filteredRecords =
+    useMemo(() => {
+      if (!searchTerm) {
+        return records;
+      }
+
+      return records.filter(
+        (record) => {
+          const devotee =
+            devoteeMap[
+              record.devoteeId
+            ];
+
+          if (!devotee) {
+            return false;
+          }
+
+          const searchable = [
+            devotee.name,
+            devotee.email,
+            devotee.phone,
+            devotee.department,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return searchable.includes(
+            searchTerm
+          );
+        }
+      );
+    }, [
+      records,
+      devoteeMap,
+      searchTerm,
+    ]);
+
+  if (
+    filteredRecords.length === 0
+  ) {
+    return (
+      <section className="sadhana-card">
+        <div className="sadhana-empty">
+          <h3>
+            No Sadhana records
+          </h3>
 
           <p>
-            Record and review your daily spiritual practice.
+            No valid devotee Sadhana
+            records exist for the
+            selected date.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="sadhana-card">
+      <div className="sadhana-card-header">
+        <div>
+          <span className="sadhana-card-eyebrow">
+            BACE RECORDS
+          </span>
+
+          <h2>
+            Community Sadhana
+          </h2>
+
+          <p>
+            Read-only overview of devotee
+            spiritual practice.
           </p>
         </div>
       </div>
 
-      {error && (
-        <div className="sadhana-alert error">
-          {error}
-        </div>
-      )}
+      <div className="sadhana-table-wrapper">
+        <table className="sadhana-table">
+          <thead>
+            <tr>
+              <th>Devotee</th>
+              <th>Japa Rounds</th>
+              <th>Reading</th>
+              <th>Meditation</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
 
-      <section className="my-sadhana-date-card">
-        <div>
-          <span className="card-eyebrow">
-            DAILY PRACTICE
-          </span>
+          <tbody>
+            {filteredRecords.map(
+              (record) => {
+                const devotee =
+                  devoteeMap[
+                    record.devoteeId
+                  ];
 
-          <h2>Your Sadhana</h2>
-
-          <p>
-            Select a date to record or review your practice.
-          </p>
-        </div>
-
-        <label>
-          <span>Practice Date</span>
-
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(event) =>
-              setSelectedDate(event.target.value)
-            }
-          />
-        </label>
-      </section>
-
-      <form
-        className="my-sadhana-form"
-        onSubmit={savePersonalSadhana}
-      >
-        <div className="my-sadhana-form-header">
-          <div>
-            <span className="card-eyebrow">
-              {ownRecord ? "UPDATE RECORD" : "NEW RECORD"}
-            </span>
-
-            <h2>
-              {ownRecord
-                ? "Update Today's Practice"
-                : "Record Your Practice"}
-            </h2>
-
-            <p>
-              {ownRecord
-                ? `Your record for ${selectedDate} can be updated below.`
-                : `No record exists for ${selectedDate}. Add your practice below.`}
-            </p>
-          </div>
-
-          <span
-            className={
-              ownRecord
-                ? "record-status saved"
-                : "record-status new"
-            }
-          >
-            <span></span>
-            {ownRecord ? "Saved" : "Not recorded"}
-          </span>
-        </div>
-
-        <div className="personal-sadhana-fields">
-          <label className="practice-field">
-            <span>Japa Rounds</span>
-
-            <div className="practice-input">
-              <input
-                type="number"
-                name="rounds"
-                min="0"
-                max="64"
-                step="1"
-                value={form.rounds}
-                onChange={handleInput}
-              />
-
-              <small>rounds</small>
-            </div>
-
-            <em>Maximum 64 rounds</em>
-          </label>
-
-          <label className="practice-field">
-            <span>Reading</span>
-
-            <div className="practice-input">
-              <input
-                type="number"
-                name="reading"
-                min="0"
-                max="1440"
-                step="1"
-                value={form.reading}
-                onChange={handleInput}
-              />
-
-              <small>minutes</small>
-            </div>
-
-            <em>Time spent reading</em>
-          </label>
-
-          <label className="practice-field">
-            <span>Meditation</span>
-
-            <div className="practice-input">
-              <input
-                type="number"
-                name="meditation"
-                min="0"
-                max="1440"
-                step="1"
-                value={form.meditation}
-                onChange={handleInput}
-              />
-
-              <small>minutes</small>
-            </div>
-
-            <em>Time spent meditating</em>
-          </label>
-        </div>
-
-        <label className="notes-field">
-          <span>Notes</span>
-
-          <textarea
-            name="notes"
-            value={form.notes}
-            onChange={handleInput}
-            placeholder="Add any reflection or note about today's practice..."
-            rows="5"
-            maxLength="1000"
-          />
-
-          <small>
-            {form.notes.length}/1000 characters
-          </small>
-        </label>
-
-        <div className="personal-form-footer">
-          <div className="privacy-message">
-            <span>🔒</span>
-
-            <p>
-              This is your personal sadhana record. You can
-              update it whenever you need.
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            className="save-sadhana-button"
-            disabled={saving}
-          >
-            {saving
-              ? "Saving..."
-              : ownRecord
-                ? "Save Changes"
-                : "Save Sadhana"}
-          </button>
-        </div>
-      </form>
-
-      <section className="personal-history-card">
-        <div className="personal-history-header">
-          <div>
-            <span className="card-eyebrow">
-              PERSONAL HISTORY
-            </span>
-
-            <h2>My Recent Sadhana</h2>
-
-            <p>
-              Your recorded spiritual practice history.
-            </p>
-          </div>
-        </div>
-
-        <div className="personal-history-list">
-          {[...records]
-            .sort((a, b) =>
-              String(b.date).localeCompare(String(a.date))
-            )
-            .slice(0, 7)
-            .map((record) => (
-              <button
-                type="button"
-                className={
-                  record.date === selectedDate
-                    ? "history-row selected"
-                    : "history-row"
+                /*
+                 * This should never be reached
+                 * for an orphan record because
+                 * validRecords already removes it.
+                 */
+                if (!devotee) {
+                  return null;
                 }
-                key={record.id}
-                onClick={() => setSelectedDate(record.date)}
-              >
-                <span className="history-date">
-                  {record.date}
-                </span>
 
-                <span className="history-stat">
-                  <strong>{Number(record.rounds || 0)}</strong>
-                  <small>Rounds</small>
-                </span>
+                const name =
+                  devotee.name ||
+                  devotee.email ||
+                  "Devotee";
 
-                <span className="history-stat">
-                  <strong>
-                    {Number(record.reading || 0)}
-                  </strong>
-                  <small>Reading min</small>
-                </span>
+                const initials =
+                  name
+                    .split(" ")
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(
+                      (part) =>
+                        part.charAt(0)
+                    )
+                    .join("")
+                    .toUpperCase() ||
+                  "D";
 
-                <span className="history-stat">
-                  <strong>
-                    {Number(record.meditation || 0)}
-                  </strong>
-                  <small>Meditation min</small>
-                </span>
+                return (
+                  <tr
+                    key={
+                      record.id
+                    }
+                  >
+                    <td>
+                      <div className="sadhana-devotee">
+                        <div className="sadhana-avatar">
+                          {initials}
+                        </div>
 
-                <span className="history-arrow">
-                  →
-                </span>
-              </button>
-            ))}
+                        <div>
+                          <strong>
+                            {name}
+                          </strong>
 
-          {records.length === 0 && (
-            <div className="history-empty">
-              <div>ॐ</div>
-              <h3>No history yet</h3>
-              <p>
-                Your saved sadhana records will appear here.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
+                          <small>
+                            {devotee.email ||
+                              "No email available"}
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-rounds">
+                        {Number(
+                          record.rounds
+                        ) || 0}
+                      </span>
+                    </td>
+
+                    <td>
+                      {Number(
+                        record.reading
+                      ) || 0}{" "}
+                      min
+                    </td>
+
+                    <td>
+                      {Number(
+                        record.meditation
+                      ) || 0}{" "}
+                      min
+                    </td>
+
+                    <td>
+                      {record.notes
+                        ? record.notes
+                        : "No notes"}
+                    </td>
+                  </tr>
+                );
+              }
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

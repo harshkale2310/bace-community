@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  signOut,
 } from "firebase/auth";
 
 import {
@@ -12,7 +18,9 @@ import {
 } from "firebase/firestore";
 
 import { useAuth } from "../../context/AuthContext";
+
 import { auth, db } from "../../services/firebase";
+
 import krishnaImage from "../../assets/krishna.png";
 
 import "./Login.css";
@@ -23,37 +31,94 @@ function Login() {
 
   const { isAuthenticated } = useAuth();
 
-  const [role, setRole] = useState("administrator");
+  /*
+   * Public registration always creates a devotee account.
+   *
+   * Therefore, when the user has just registered,
+   * automatically select Devotee.
+   *
+   * Normal login defaults to Administrator.
+   */
+  const [role, setRole] = useState(
+    location.state?.registered
+      ? "devotee"
+      : "administrator"
+  );
 
   const [formData, setFormData] = useState({
-    email: "",
+    email: location.state?.email || "",
     password: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
 
+  const [error, setError] = useState("");
+
+  const [resetMessage, setResetMessage] =
+    useState("");
+
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
+  /*
+   * If the user is already authenticated,
+   * do not keep them on Login.
+   */
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard", {
+        replace: true,
+      });
     }
-  }, [isAuthenticated, navigate]);
+  }, [
+    isAuthenticated,
+    navigate,
+  ]);
 
-  const handleRoleChange = (selectedRole) => {
+  /*
+   * Show registration success message.
+   */
+  useEffect(() => {
+    if (location.state?.registered) {
+      setResetMessage(
+        "Registration successful. Please sign in with your new devotee account."
+      );
+    }
+  }, [location.state]);
+
+  /*
+   * ---------------------------------------------------------
+   * ROLE CHANGE
+   * ---------------------------------------------------------
+   */
+
+  const handleRoleChange = (
+    selectedRole
+  ) => {
     setRole(selectedRole);
+
     setError("");
+
     setResetMessage("");
 
-    setFormData({
-      email: "",
+    setFormData((previous) => ({
+      ...previous,
       password: "",
-    });
+    }));
   };
 
+  /*
+   * ---------------------------------------------------------
+   * INPUT CHANGE
+   * ---------------------------------------------------------
+   */
+
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -69,12 +134,26 @@ function Login() {
     }
   };
 
+  /*
+   * ---------------------------------------------------------
+   * FORM VALIDATION
+   * ---------------------------------------------------------
+   */
+
   const validateForm = () => {
-    if (!formData.email.trim()) {
+    const email =
+      formData.email.trim();
+
+    if (!email) {
       return "Please enter your email address.";
     }
 
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    /*
+     * Correct email validation.
+     */
+    if (
+      !/^\S+@\S+\.\S+$/.test(email)
+    ) {
       return "Please enter a valid email address.";
     }
 
@@ -85,9 +164,18 @@ function Login() {
     return "";
   };
 
-  const getFirebaseErrorMessage = (firebaseError) => {
+  /*
+   * ---------------------------------------------------------
+   * FIREBASE ERROR MESSAGE
+   * ---------------------------------------------------------
+   */
+
+  const getFirebaseErrorMessage = (
+    firebaseError
+  ) => {
     switch (firebaseError.code) {
       case "auth/invalid-credential":
+      case "auth/invalid-login-credentials":
       case "auth/wrong-password":
       case "auth/user-not-found":
         return "Incorrect email or password.";
@@ -112,10 +200,17 @@ function Login() {
     }
   };
 
+  /*
+   * ---------------------------------------------------------
+   * LOGIN
+   * ---------------------------------------------------------
+   */
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const validationError = validateForm();
+    const validationError =
+      validateForm();
 
     if (validationError) {
       setError(validationError);
@@ -127,13 +222,32 @@ function Login() {
     setResetMessage("");
 
     try {
-      const credential = await signInWithEmailAndPassword(
-        auth,
-        formData.email.trim(),
-        formData.password
-      );
+      const email =
+        formData.email
+          .trim()
+          .toLowerCase();
 
-      const firebaseUser = credential.user;
+      /*
+       * -----------------------------------------------------
+       * 1. FIREBASE AUTHENTICATION
+       * -----------------------------------------------------
+       */
+
+      const credential =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          formData.password
+        );
+
+      const firebaseUser =
+        credential.user;
+
+      /*
+       * -----------------------------------------------------
+       * 2. LOAD FIRESTORE PROFILE
+       * -----------------------------------------------------
+       */
 
       const userRef = doc(
         db,
@@ -141,10 +255,17 @@ function Login() {
         firebaseUser.uid
       );
 
-      const userSnapshot = await getDoc(userRef);
+      const userSnapshot =
+        await getDoc(userRef);
+
+      /*
+       * -----------------------------------------------------
+       * 3. PROFILE MUST EXIST
+       * -----------------------------------------------------
+       */
 
       if (!userSnapshot.exists()) {
-        await auth.signOut();
+        await signOut(auth);
 
         setError(
           "Your account profile was not found. Please contact the administrator."
@@ -153,13 +274,34 @@ function Login() {
         return;
       }
 
-      const profile = userSnapshot.data();
+      const profile =
+        userSnapshot.data();
+
+      /*
+       * -----------------------------------------------------
+       * 4. NORMALIZE ROLE
+       * -----------------------------------------------------
+       */
+
+      const profileRole =
+        String(
+          profile.role || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      /*
+       * -----------------------------------------------------
+       * 5. VALIDATE ROLE
+       * -----------------------------------------------------
+       */
 
       if (
-        profile.role !== "administrator" &&
-        profile.role !== "devotee"
+        profileRole !==
+          "administrator" &&
+        profileRole !== "devotee"
       ) {
-        await auth.signOut();
+        await signOut(auth);
 
         setError(
           "Your account has an invalid account type. Please contact the administrator."
@@ -168,11 +310,20 @@ function Login() {
         return;
       }
 
-      if (profile.role !== role) {
-        await auth.signOut();
+      /*
+       * -----------------------------------------------------
+       * 6. CHECK SELECTED LOGIN TYPE
+       * -----------------------------------------------------
+       */
+
+      if (
+        profileRole !== role
+      ) {
+        await signOut(auth);
 
         const accountType =
-          profile.role === "administrator"
+          profileRole ===
+          "administrator"
             ? "Administrator"
             : "Devotee";
 
@@ -183,105 +334,177 @@ function Login() {
         return;
       }
 
-      if (
-        profile.status &&
-        profile.status !== "active"
-      ) {
-        await auth.signOut();
+      /*
+       * -----------------------------------------------------
+       * 7. CHECK ACCOUNT STATUS
+       * -----------------------------------------------------
+       *
+       * Only active users can enter.
+       */
 
-        setError(
-          "Your account is currently inactive. Please contact the administrator."
-        );
+      const accountStatus =
+        String(
+          profile.status ||
+            "active"
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        accountStatus !== "active"
+      ) {
+        await signOut(auth);
+
+        if (
+          accountStatus ===
+          "deleted"
+        ) {
+          setError(
+            "This account has been deleted. Please contact the administrator."
+          );
+        } else {
+          setError(
+            "Your account is currently inactive. Please contact the administrator."
+          );
+        }
 
         return;
       }
 
-      const requestedPath =
-        location.state?.from?.pathname || "/dashboard";
+      /*
+       * -----------------------------------------------------
+       * 8. SUCCESS
+       * -----------------------------------------------------
+       *
+       * AuthContext will receive the Firebase auth state,
+       * load the Firestore profile and populate user state.
+       */
 
-      navigate(requestedPath, {
-        replace: true,
-      });
+      const requestedPath =
+        location.state?.from
+          ?.pathname ||
+        "/dashboard";
+
+      navigate(
+        requestedPath,
+        {
+          replace: true,
+        }
+      );
     } catch (submitError) {
-      console.error("Login error:", submitError);
+      console.error(
+        "Login error:",
+        submitError
+      );
+
+      /*
+       * Make sure a failed profile validation
+       * cannot leave the Firebase account signed in.
+       */
+      if (auth.currentUser) {
+        try {
+          await signOut(auth);
+        } catch (signOutError) {
+          console.error(
+            "Login cleanup sign-out error:",
+            signOutError
+          );
+        }
+      }
 
       setError(
-        getFirebaseErrorMessage(submitError)
+        getFirebaseErrorMessage(
+          submitError
+        )
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    setError("");
-    setResetMessage("");
+  /*
+   * ---------------------------------------------------------
+   * FORGOT PASSWORD
+   * ---------------------------------------------------------
+   */
 
-    const email = formData.email.trim();
+  const handleForgotPassword =
+    async () => {
+      setError("");
+      setResetMessage("");
 
-    if (!email) {
-      setError(
-        "Enter your email address first to reset your password."
-      );
+      const email =
+        formData.email
+          .trim()
+          .toLowerCase();
 
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError(
-        "Please enter a valid email address."
-      );
-
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(
-        auth,
-        email
-      );
-
-      setResetMessage(
-        "Password reset instructions have been sent to your email."
-      );
-    } catch (resetError) {
-      console.error(
-        "Password reset error:",
-        resetError
-      );
-
-      switch (resetError.code) {
-        case "auth/user-not-found":
-          setError(
-            "No account was found with this email address."
-          );
-          break;
-
-        case "auth/invalid-email":
-          setError(
-            "Please enter a valid email address."
-          );
-          break;
-
-        case "auth/too-many-requests":
-          setError(
-            "Too many requests. Please wait a moment and try again."
-          );
-          break;
-
-        case "auth/network-request-failed":
-          setError(
-            "Network error. Please check your internet connection."
-          );
-          break;
-
-        default:
-          setError(
-            "Unable to send the password reset email. Please try again."
-          );
+      if (!email) {
+        setError(
+          "Enter your email address first to reset your password."
+        );
+        return;
       }
-    }
-  };
+
+      if (
+        !/^\S+@\S+\.\S+$/.test(
+          email
+        )
+      ) {
+        setError(
+          "Please enter a valid email address."
+        );
+        return;
+      }
+
+      try {
+        await sendPasswordResetEmail(
+          auth,
+          email
+        );
+
+        setResetMessage(
+          "Password reset instructions have been sent to your email."
+        );
+      } catch (resetError) {
+        console.error(
+          "Password reset error:",
+          resetError
+        );
+
+        switch (
+          resetError.code
+        ) {
+          case "auth/user-not-found":
+            setError(
+              "No account was found with this email address."
+            );
+            break;
+
+          case "auth/invalid-email":
+            setError(
+              "Please enter a valid email address."
+            );
+            break;
+
+          case "auth/too-many-requests":
+            setError(
+              "Too many requests. Please wait a moment and try again."
+            );
+            break;
+
+          case "auth/network-request-failed":
+            setError(
+              "Network error. Please check your internet connection."
+            );
+            break;
+
+          default:
+            setError(
+              "Unable to send the password reset email. Please try again."
+            );
+        }
+      }
+    };
 
   return (
     <main className="login-page">
@@ -328,9 +551,7 @@ function Login() {
           </Link>
 
         </div>
-
       </nav>
-
 
       {/* LOGIN SHELL */}
 
@@ -347,10 +568,9 @@ function Login() {
               alt="Lord Krishna"
             />
 
-            <div className="login-image-overlay"></div>
+            <div className="login-image-overlay" />
 
           </div>
-
 
           <div className="login-visual-content">
 
@@ -363,6 +583,7 @@ function Login() {
             </p>
 
             <h1>
+
               <span className="brand-main">
                 Giri Govardhan
               </span>
@@ -370,14 +591,19 @@ function Login() {
               <span className="brand-accent">
                 BACE
               </span>
+
             </h1>
 
             <div className="login-hero-divider">
-              <span></span>
+
+              <span />
+
               <span className="divider-symbol">
                 ❈
               </span>
-              <span></span>
+
+              <span />
+
             </div>
 
             <p className="login-visual-description">
@@ -387,9 +613,7 @@ function Login() {
             </p>
 
           </div>
-
         </div>
-
 
         {/* RIGHT LOGIN PANEL */}
 
@@ -412,21 +636,17 @@ function Login() {
                 Back to Home
               </Link>
 
-
               <div className="login-brand-mark">
                 ॐ
               </div>
-
 
               <p className="login-eyebrow">
                 WELCOME BACK
               </p>
 
-
               <h2>
                 Sign in to your account
               </h2>
-
 
               <p className="login-description">
                 Choose your account type and enter
@@ -435,7 +655,6 @@ function Login() {
 
             </div>
 
-
             {/* ROLE SELECTOR */}
 
             <div className="role-selector">
@@ -443,14 +662,19 @@ function Login() {
               <button
                 type="button"
                 className={
-                  role === "administrator"
+                  role ===
+                  "administrator"
                     ? "role-option active"
                     : "role-option"
                 }
                 onClick={() =>
-                  handleRoleChange("administrator")
+                  handleRoleChange(
+                    "administrator"
+                  )
                 }
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
               >
 
                 <span className="role-icon">
@@ -471,7 +695,6 @@ function Login() {
 
               </button>
 
-
               <button
                 type="button"
                 className={
@@ -480,9 +703,13 @@ function Login() {
                     : "role-option"
                 }
                 onClick={() =>
-                  handleRoleChange("devotee")
+                  handleRoleChange(
+                    "devotee"
+                  )
                 }
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
               >
 
                 <span className="role-icon">
@@ -504,7 +731,6 @@ function Login() {
               </button>
 
             </div>
-
 
             {/* LOGIN FORM */}
 
@@ -535,17 +761,22 @@ function Login() {
                     id="email"
                     name="email"
                     type="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={
+                      formData.email
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="Enter your email"
                     autoComplete="email"
-                    disabled={isSubmitting}
+                    disabled={
+                      isSubmitting
+                    }
                   />
 
                 </div>
 
               </div>
-
 
               {/* PASSWORD */}
 
@@ -560,14 +791,17 @@ function Login() {
                   <button
                     type="button"
                     className="forgot-password"
-                    onClick={handleForgotPassword}
-                    disabled={isSubmitting}
+                    onClick={
+                      handleForgotPassword
+                    }
+                    disabled={
+                      isSubmitting
+                    }
                   >
                     Forgot password?
                   </button>
 
                 </div>
-
 
                 <div className="input-wrapper">
 
@@ -586,11 +820,17 @@ function Login() {
                         ? "text"
                         : "password"
                     }
-                    value={formData.password}
-                    onChange={handleChange}
+                    value={
+                      formData.password
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="Enter your password"
                     autoComplete="current-password"
-                    disabled={isSubmitting}
+                    disabled={
+                      isSubmitting
+                    }
                   />
 
                   <button
@@ -598,10 +838,13 @@ function Login() {
                     className="password-toggle"
                     onClick={() =>
                       setShowPassword(
-                        (previous) => !previous
+                        (previous) =>
+                          !previous
                       )
                     }
-                    disabled={isSubmitting}
+                    disabled={
+                      isSubmitting
+                    }
                     aria-label={
                       showPassword
                         ? "Hide password"
@@ -617,7 +860,6 @@ function Login() {
 
               </div>
 
-
               {/* ERROR */}
 
               {error && (
@@ -625,6 +867,7 @@ function Login() {
                   className="login-error"
                   role="alert"
                 >
+
                   <span
                     className="error-icon"
                     aria-hidden="true"
@@ -635,9 +878,9 @@ function Login() {
                   <span>
                     {error}
                   </span>
+
                 </div>
               )}
-
 
               {/* SUCCESS */}
 
@@ -646,6 +889,7 @@ function Login() {
                   className="login-success"
                   role="status"
                 >
+
                   <span
                     className="success-icon"
                     aria-hidden="true"
@@ -656,21 +900,24 @@ function Login() {
                   <span>
                     {resetMessage}
                   </span>
+
                 </div>
               )}
-
 
               {/* SUBMIT */}
 
               <button
                 type="submit"
                 className="login-submit"
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
               >
 
                 {isSubmitting ? (
                   <>
-                    <span className="login-spinner"></span>
+                    <span className="login-spinner" />
+
                     Signing in...
                   </>
                 ) : (
@@ -687,7 +934,6 @@ function Login() {
 
             </form>
 
-
             {/* REGISTER PROMPT */}
 
             <div className="login-register-prompt">
@@ -701,7 +947,6 @@ function Login() {
               </Link>
 
             </div>
-
 
             {/* FOOTER */}
 
@@ -722,11 +967,8 @@ function Login() {
             </div>
 
           </div>
-
         </div>
-
       </section>
-
     </main>
   );
 }

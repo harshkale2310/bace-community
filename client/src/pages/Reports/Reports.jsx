@@ -30,6 +30,36 @@ function getToday() {
 
 /*
 |--------------------------------------------------------------------------
+| Room Identity
+|--------------------------------------------------------------------------
+| Rooms collection is the source of truth for residence information.
+*/
+function getRoomIdentity(room) {
+  if (!room) {
+    return "Not assigned";
+  }
+
+  const floor = room.floor
+    ? `Floor ${room.floor}`
+    : "";
+
+  const number = room.roomNumber
+    ? `Room ${room.roomNumber}`
+    : "";
+
+  const name = room.roomName
+    ? room.roomName
+    : "";
+
+  return (
+    [floor, number, name]
+      .filter(Boolean)
+      .join(" · ") || "Not assigned"
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
 | Reports
 |--------------------------------------------------------------------------
 */
@@ -48,15 +78,15 @@ function Reports() {
   const [attendance, setAttendance] = useState([]);
   const [sadhana, setSadhana] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   /*
   |--------------------------------------------------------------------------
-  | Load Devotees
+  | Load Active Devotees
   |--------------------------------------------------------------------------
-  | Administrator needs the community count.
   */
   useEffect(() => {
     if (!isAdministrator) {
@@ -66,26 +96,35 @@ function Reports() {
 
     const devoteesQuery = query(
       collection(db, "users"),
-      where("role", "==", "devotee")
+      where("role", "==", "devotee"),
+      where("status", "==", "active")
     );
 
     const unsubscribe = onSnapshot(
       devoteesQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          uid: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs
+          .map((item) => ({
+            uid: item.id,
+            ...item.data(),
+          }))
+          .filter(
+            (devotee) =>
+              devotee.role === "devotee" &&
+              devotee.status === "active"
+          );
 
         setDevotees(data);
       },
       (firebaseError) => {
         console.error(
-          "Failed to load devotees:",
+          "Failed to load active devotees:",
           firebaseError
         );
 
-        setError("Unable to load devotee information.");
+        setError(
+          "Unable to load devotee information."
+        );
       }
     );
 
@@ -94,18 +133,160 @@ function Reports() {
 
   /*
   |--------------------------------------------------------------------------
-  | Load Attendance
+  | Active Devotee Lookup
   |--------------------------------------------------------------------------
-  |
-  | Administrator:
-  |   Gets all attendance records for selected date.
-  |
-  | Devotee:
-  |   Gets only their own records.
-  |
+  */
+  const activeDevoteeMap = useMemo(() => {
+    const map = {};
+
+    devotees.forEach((devotee) => {
+      if (
+        devotee.uid &&
+        devotee.role === "devotee" &&
+        devotee.status === "active"
+      ) {
+        map[devotee.uid] = devotee;
+      }
+    });
+
+    return map;
+  }, [devotees]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load Rooms
+  |--------------------------------------------------------------------------
   */
   useEffect(() => {
-    if (!user?.uid) return undefined;
+    if (!user?.uid) {
+      setRooms([]);
+      return undefined;
+    }
+
+    let roomsQuery;
+
+    if (isAdministrator) {
+      roomsQuery = query(
+        collection(db, "rooms")
+      );
+    } else {
+      roomsQuery = query(
+        collection(db, "rooms"),
+        where(
+          "occupants",
+          "array-contains",
+          user.uid
+        )
+      );
+    }
+
+    const unsubscribe = onSnapshot(
+      roomsQuery,
+      (snapshot) => {
+        const records = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
+
+        setRooms(records);
+      },
+      (firebaseError) => {
+        console.error(
+          "Failed to load room reports:",
+          firebaseError
+        );
+
+        setError(
+          "Unable to load residence information."
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, [
+    user?.uid,
+    isAdministrator,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Room By Occupant
+  |--------------------------------------------------------------------------
+  */
+  const roomByOccupant = useMemo(() => {
+    const map = {};
+
+    rooms.forEach((room) => {
+      const occupants = Array.isArray(
+        room.occupants
+      )
+        ? room.occupants
+        : [];
+
+      occupants.forEach((occupantUid) => {
+        if (
+          !isAdministrator ||
+          activeDevoteeMap[occupantUid]
+        ) {
+          if (!map[occupantUid]) {
+            map[occupantUid] = room;
+          }
+        }
+      });
+    });
+
+    return map;
+  }, [
+    rooms,
+    isAdministrator,
+    activeDevoteeMap,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Filter Current Active Room Occupants
+  |--------------------------------------------------------------------------
+  */
+  const activeRooms = useMemo(() => {
+    if (!isAdministrator) {
+      return rooms;
+    }
+
+    return rooms.map((room) => {
+      const occupants = Array.isArray(
+        room.occupants
+      )
+        ? room.occupants
+        : [];
+
+      const activeOccupants =
+        occupants.filter(
+          (occupantUid) =>
+            activeDevoteeMap[occupantUid]
+        );
+
+      return {
+        ...room,
+        occupants: activeOccupants,
+      };
+    });
+  }, [
+    rooms,
+    isAdministrator,
+    activeDevoteeMap,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load Attendance
+  |--------------------------------------------------------------------------
+  */
+  useEffect(() => {
+    if (!user?.uid) {
+      return undefined;
+    }
 
     setLoading(true);
     setError("");
@@ -120,27 +301,37 @@ function Reports() {
     } else {
       attendanceQuery = query(
         collection(db, "attendance"),
-        where("devoteeId", "==", user.uid)
+        where(
+          "devoteeId",
+          "==",
+          user.uid
+        )
       );
     }
 
     const unsubscribe = onSnapshot(
       attendanceQuery,
       (snapshot) => {
-        const records = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const records = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
-        /*
-        | Devotee query is intentionally filtered here by date.
-        | This avoids requiring a composite Firestore index.
-        */
-        const filteredRecords = isAdministrator
-          ? records
-          : records.filter(
-              (item) => item.date === selectedDate
-            );
+        const filteredRecords =
+          isAdministrator
+            ? records.filter(
+                (item) =>
+                  item.devoteeId &&
+                  activeDevoteeMap[
+                    item.devoteeId
+                  ]
+              )
+            : records.filter(
+                (item) =>
+                  item.date === selectedDate
+              );
 
         setAttendance(filteredRecords);
         setLoading(false);
@@ -164,6 +355,7 @@ function Reports() {
     user?.uid,
     isAdministrator,
     selectedDate,
+    activeDevoteeMap,
   ]);
 
   /*
@@ -172,7 +364,9 @@ function Reports() {
   |--------------------------------------------------------------------------
   */
   useEffect(() => {
-    if (!user?.uid) return undefined;
+    if (!user?.uid) {
+      return undefined;
+    }
 
     let sadhanaQuery;
 
@@ -184,23 +378,37 @@ function Reports() {
     } else {
       sadhanaQuery = query(
         collection(db, "sadhana"),
-        where("devoteeId", "==", user.uid)
+        where(
+          "devoteeId",
+          "==",
+          user.uid
+        )
       );
     }
 
     const unsubscribe = onSnapshot(
       sadhanaQuery,
       (snapshot) => {
-        const records = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const records = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
-        const filteredRecords = isAdministrator
-          ? records
-          : records.filter(
-              (item) => item.date === selectedDate
-            );
+        const filteredRecords =
+          isAdministrator
+            ? records.filter(
+                (item) =>
+                  item.devoteeId &&
+                  activeDevoteeMap[
+                    item.devoteeId
+                  ]
+              )
+            : records.filter(
+                (item) =>
+                  item.date === selectedDate
+              );
 
         setSadhana(filteredRecords);
       },
@@ -221,41 +429,70 @@ function Reports() {
     user?.uid,
     isAdministrator,
     selectedDate,
+    activeDevoteeMap,
   ]);
 
   /*
   |--------------------------------------------------------------------------
   | Load Leave Requests
   |--------------------------------------------------------------------------
+  | IMPORTANT:
+  | The Firestore collection is "leave".
   |
-  | Administrator -> all leave requests
-  | Devotee -> own leave requests
+  | The previous code used "leaveRequests", which does not match
+  | the Firestore rules and causes:
+  |
+  |   "Unable to load leave reports."
+  |
+  | Do not change the CSS or UI for this fix.
+  |--------------------------------------------------------------------------
   */
   useEffect(() => {
-    if (!user?.uid) return undefined;
+    if (!user?.uid) {
+      return undefined;
+    }
 
     let leaveQuery;
 
     if (isAdministrator) {
       leaveQuery = query(
-        collection(db, "leaveRequests")
+        collection(db, "leave")
       );
     } else {
       leaveQuery = query(
-        collection(db, "leaveRequests"),
-        where("devoteeId", "==", user.uid)
+        collection(db, "leave"),
+        where(
+          "devoteeId",
+          "==",
+          user.uid
+        )
       );
     }
 
     const unsubscribe = onSnapshot(
       leaveQuery,
       (snapshot) => {
-        const records = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const records = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
-        setLeaveRequests(records);
+        const filteredRecords =
+          isAdministrator
+            ? records.filter(
+                (item) =>
+                  item.devoteeId &&
+                  activeDevoteeMap[
+                    item.devoteeId
+                  ]
+              )
+            : records;
+
+        setLeaveRequests(
+          filteredRecords
+        );
       },
       (firebaseError) => {
         console.error(
@@ -273,6 +510,7 @@ function Reports() {
   }, [
     user?.uid,
     isAdministrator,
+    activeDevoteeMap,
   ]);
 
   /*
@@ -280,60 +518,95 @@ function Reports() {
   | Administrator Calculations
   |--------------------------------------------------------------------------
   */
-
   const communityReport = useMemo(() => {
-    const totalDevotees = devotees.length;
+    const totalDevotees =
+      devotees.length;
 
-    const presentCount = attendance.filter(
-      (item) =>
-        item.morning === "Present" &&
-        item.evening === "Present"
-    ).length;
+    const presentCount =
+      attendance.filter(
+        (item) =>
+          item.morning === "Present" &&
+          item.evening === "Present"
+      ).length;
 
-    const morningPresent = attendance.filter(
-      (item) => item.morning === "Present"
-    ).length;
+    const morningPresent =
+      attendance.filter(
+        (item) =>
+          item.morning === "Present"
+      ).length;
 
-    const eveningPresent = attendance.filter(
-      (item) => item.evening === "Present"
-    ).length;
+    const eveningPresent =
+      attendance.filter(
+        (item) =>
+          item.evening === "Present"
+      ).length;
 
-    const leaveCount = attendance.filter(
-      (item) =>
-        item.morning === "Leave" ||
-        item.evening === "Leave"
-    ).length;
+    const leaveCount =
+      attendance.filter(
+        (item) =>
+          item.morning === "Leave" ||
+          item.evening === "Leave"
+      ).length;
 
-    const absentCount = attendance.filter(
-      (item) =>
-        item.morning === "Absent" ||
-        item.evening === "Absent"
-    ).length;
+    const absentCount =
+      attendance.filter(
+        (item) =>
+          item.morning === "Absent" ||
+          item.evening === "Absent"
+      ).length;
 
-    const totalRounds = sadhana.reduce(
-      (total, item) =>
-        total + Number(item.rounds || 0),
-      0
-    );
+    const totalRounds =
+      sadhana.reduce(
+        (total, item) =>
+          total +
+          Number(item.rounds || 0),
+        0
+      );
 
     const averageRounds =
       sadhana.length > 0
         ? Math.round(
-            totalRounds / sadhana.length
+            totalRounds /
+              sadhana.length
           )
         : 0;
 
-    const pendingLeaves = leaveRequests.filter(
-      (item) => item.status === "pending"
-    ).length;
+    const pendingLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "pending"
+      ).length;
 
-    const approvedLeaves = leaveRequests.filter(
-      (item) => item.status === "approved"
-    ).length;
+    const approvedLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "approved"
+      ).length;
 
-    const rejectedLeaves = leaveRequests.filter(
-      (item) => item.status === "rejected"
-    ).length;
+    const rejectedLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "rejected"
+      ).length;
+
+    const occupiedRooms =
+      activeRooms.filter((room) => {
+        const occupants = Array.isArray(
+          room.occupants
+        )
+          ? room.occupants
+          : [];
+
+        return occupants.length > 0;
+      }).length;
+
+    const assignedDevotees =
+      Object.keys(roomByOccupant).filter(
+        (devoteeUid) =>
+          activeDevoteeMap[
+            devoteeUid
+          ]
+      ).length;
 
     return {
       totalDevotees,
@@ -347,12 +620,17 @@ function Reports() {
       pendingLeaves,
       approvedLeaves,
       rejectedLeaves,
+      occupiedRooms,
+      assignedDevotees,
     };
   }, [
     devotees,
     attendance,
     sadhana,
     leaveRequests,
+    activeRooms,
+    roomByOccupant,
+    activeDevoteeMap,
   ]);
 
   /*
@@ -361,74 +639,94 @@ function Reports() {
   |--------------------------------------------------------------------------
   */
   const personalReport = useMemo(() => {
-    const todayAttendance = attendance[0];
+    const todayAttendance =
+      attendance[0];
 
     const morningPresent =
-      todayAttendance?.morning === "Present";
+      todayAttendance?.morning ===
+      "Present";
 
     const eveningPresent =
-      todayAttendance?.evening === "Present";
+      todayAttendance?.evening ===
+      "Present";
 
     const morningLeave =
-      todayAttendance?.morning === "Leave";
+      todayAttendance?.morning ===
+      "Leave";
 
     const eveningLeave =
-      todayAttendance?.evening === "Leave";
+      todayAttendance?.evening ===
+      "Leave";
 
     const attendanceStatus =
-      morningLeave || eveningLeave
+      morningLeave ||
+      eveningLeave
         ? "On Leave"
-        : morningPresent && eveningPresent
+        : morningPresent &&
+            eveningPresent
           ? "Present"
           : todayAttendance
             ? "Partial"
             : "Not Recorded";
 
-    const totalRounds = sadhana.reduce(
-      (total, item) =>
-        total + Number(item.rounds || 0),
-      0
-    );
+    const totalRounds =
+      sadhana.reduce(
+        (total, item) =>
+          total +
+          Number(item.rounds || 0),
+        0
+      );
 
-    const totalSadhanaDays = sadhana.length;
+    const totalSadhanaDays =
+      sadhana.length;
 
     const averageRounds =
       totalSadhanaDays > 0
         ? Math.round(
-            totalRounds / totalSadhanaDays
+            totalRounds /
+              totalSadhanaDays
           )
         : 0;
 
-    const approvedLeaves = leaveRequests.filter(
-      (item) => item.status === "approved"
-    );
+    const approvedLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "approved"
+      );
 
-    const pendingLeaves = leaveRequests.filter(
-      (item) => item.status === "pending"
-    );
+    const pendingLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "pending"
+      );
 
-    const rejectedLeaves = leaveRequests.filter(
-      (item) => item.status === "rejected"
-    );
+    const rejectedLeaves =
+      leaveRequests.filter(
+        (item) =>
+          item.status === "rejected"
+      );
 
-    const leaveDays = approvedLeaves.reduce(
-      (total, item) => {
-        return (
+    const leaveDays =
+      approvedLeaves.reduce(
+        (total, item) =>
           total +
           calculateDays(
             item.from,
             item.to
-          )
-        );
-      },
-      0
-    );
+          ),
+        0
+      );
+
+    const currentRoom =
+      rooms[0] || null;
 
     return {
       attendanceStatus,
+
       morningStatus:
         todayAttendance?.morning ||
         "Not Recorded",
+
       eveningStatus:
         todayAttendance?.evening ||
         "Not Recorded",
@@ -447,11 +745,14 @@ function Reports() {
         rejectedLeaves.length,
 
       leaveDays,
+
+      currentRoom,
     };
   }, [
     attendance,
     sadhana,
     leaveRequests,
+    rooms,
   ]);
 
   /*
@@ -470,13 +771,20 @@ function Reports() {
   | Invalid Role
   |--------------------------------------------------------------------------
   */
-  if (!isAdministrator && !isDevotee) {
+  if (
+    !isAdministrator &&
+    !isDevotee
+  ) {
     return (
       <div className="reports-page">
         <section className="report-panel">
-          <h2>Reports unavailable</h2>
+          <h2>
+            Reports unavailable
+          </h2>
+
           <p>
-            Your account role could not be verified.
+            Your account role could not
+            be verified.
           </p>
         </section>
       </div>
@@ -491,7 +799,7 @@ function Reports() {
   return (
     <div className="reports-page">
       <div className="page-header">
-        <div>
+        <div className="page-header-content">
           <span className="page-eyebrow">
             {isAdministrator
               ? "COMMUNITY ANALYTICS"
@@ -551,7 +859,7 @@ function Reports() {
               value={
                 communityReport.totalDevotees
               }
-              description="Registered devotees"
+              description="Active registered devotees"
             />
 
             <ReportCard
@@ -637,7 +945,44 @@ function Reports() {
 
               <DistributionItem
                 label="Recorded"
-                value={attendance.length}
+                value={
+                  attendance.length
+                }
+              />
+            </div>
+          </section>
+
+          <section className="report-panel">
+            <div className="report-panel-header">
+              <div>
+                <span className="page-eyebrow">
+                  RESIDENCE
+                </span>
+
+                <h2>
+                  Residence Overview
+                </h2>
+              </div>
+            </div>
+
+            <div className="distribution">
+              <DistributionItem
+                label="Assigned Devotees"
+                value={
+                  communityReport.assignedDevotees
+                }
+              />
+
+              <DistributionItem
+                label="Occupied Rooms"
+                value={
+                  communityReport.occupiedRooms
+                }
+              />
+
+              <DistributionItem
+                label="Rooms Loaded"
+                value={rooms.length}
               />
             </div>
           </section>
@@ -743,9 +1088,7 @@ function Reports() {
 
             <ReportCard
               label="Today's Japa"
-              value={
-                getCurrentRounds(sadhana)
-              }
+              value={getCurrentRounds(sadhana)}
               description="Rounds recorded"
               type="primary"
             />
@@ -781,7 +1124,9 @@ function Reports() {
               </div>
 
               <span className="report-status-badge">
-                {personalReport.attendanceStatus}
+                {
+                  personalReport.attendanceStatus
+                }
               </span>
             </div>
 
@@ -805,6 +1150,38 @@ function Reports() {
                 value={formatDate(
                   selectedDate
                 )}
+              />
+            </div>
+          </section>
+
+          <section className="report-panel">
+            <div className="report-panel-header">
+              <div>
+                <span className="page-eyebrow">
+                  MY RESIDENCE
+                </span>
+
+                <h2>
+                  Current Residence
+                </h2>
+              </div>
+            </div>
+
+            <div className="personal-details">
+              <DetailItem
+                label="Room"
+                value={getRoomIdentity(
+                  personalReport.currentRoom
+                )}
+              />
+
+              <DetailItem
+                label="Residence Status"
+                value={
+                  personalReport.currentRoom
+                    ? "Currently assigned"
+                    : "Not assigned"
+                }
               />
             </div>
           </section>
@@ -970,7 +1347,8 @@ function DetailItem({
 function getCurrentRounds(records) {
   return records.reduce(
     (total, item) =>
-      total + Number(item.rounds || 0),
+      total +
+      Number(item.rounds || 0),
     0
   );
 }
@@ -1001,7 +1379,8 @@ function calculateDays(from, to) {
   }
 
   const difference =
-    end.getTime() - start.getTime();
+    end.getTime() -
+    start.getTime();
 
   const days =
     Math.floor(

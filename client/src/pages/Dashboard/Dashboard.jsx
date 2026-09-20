@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { Link } from "react-router-dom";
 
 import { db } from "../../services/firebase";
@@ -14,22 +19,53 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [devotees, setDevotees] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [error, setError] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
+  /*
+   * Use local date instead of toISOString().
+   * toISOString() uses UTC and can produce the previous/next date
+   * depending on the user's timezone.
+   */
+  const today = useMemo(() => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }, []);
 
   useEffect(() => {
     const loadDashboard = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         setError("");
 
+        const roomsQuery = isAdministrator
+          ? query(collection(db, "rooms"))
+          : query(
+              collection(db, "rooms"),
+              where("occupants", "array-contains", user.uid)
+            );
+
         if (isAdministrator) {
+          /*
+           * Only active devotees should appear on the administrator
+           * dashboard.
+           *
+           * Deleted and inactive devotees are intentionally excluded.
+           */
           const devoteesQuery = query(
             collection(db, "users"),
-            where("role", "==", "devotee")
+            where("role", "==", "devotee"),
+            where("status", "==", "active")
           );
 
           const attendanceQuery = query(
@@ -37,23 +73,44 @@ function Dashboard() {
             where("date", "==", today)
           );
 
-          const [devoteesSnapshot, attendanceSnapshot] = await Promise.all([
+          const [
+            devoteesSnapshot,
+            attendanceSnapshot,
+            roomsSnapshot,
+          ] = await Promise.all([
             getDocs(devoteesQuery),
             getDocs(attendanceQuery),
+            getDocs(roomsQuery),
           ]);
 
-          const devoteeData = devoteesSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+          /*
+           * Keep a second client-side status check as protection against
+           * stale/malformed records.
+           */
+          const devoteeData = devoteesSnapshot.docs
+            .map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }))
+            .filter(
+              (devotee) =>
+                devotee.role === "devotee" &&
+                devotee.status === "active"
+            );
 
           const attendanceData = attendanceSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
 
+          const roomData = roomsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
           setDevotees(devoteeData);
           setAttendance(attendanceData);
+          setRooms(roomData);
         }
 
         if (isDevotee) {
@@ -62,14 +119,23 @@ function Dashboard() {
             where("devoteeId", "==", user.uid)
           );
 
-          const attendanceSnapshot = await getDocs(attendanceQuery);
+          const [attendanceSnapshot, roomsSnapshot] = await Promise.all([
+            getDocs(attendanceQuery),
+            getDocs(roomsQuery),
+          ]);
 
           const attendanceData = attendanceSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
 
+          const roomData = roomsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
           setAttendance(attendanceData);
+          setRooms(roomData);
         }
       } catch (err) {
         console.error("Dashboard loading error:", err);
@@ -83,7 +149,61 @@ function Dashboard() {
   }, [user, isAdministrator, isDevotee, today]);
 
   /*
-   * Attendance logic matches the Attendance page.
+   * --------------------------------------------------------------------------
+   * ROOM IDENTITY
+   * --------------------------------------------------------------------------
+   *
+   * Room identity always comes from the rooms collection.
+   * We do not copy room number/name into attendance or user records.
+   */
+
+  const getDevoteeRooms = (devoteeId) => {
+    if (!devoteeId) return [];
+
+    return rooms.filter((room) =>
+      Array.isArray(room.occupants)
+        ? room.occupants.includes(devoteeId)
+        : false
+    );
+  };
+
+  const getRoomIdentity = (room) => {
+    if (!room) return "";
+
+    const floor =
+      room.floor !== undefined && room.floor !== null
+        ? `Floor ${room.floor}`
+        : "Floor not assigned";
+
+    const roomNumber = room.roomNumber
+      ? `Room ${room.roomNumber}`
+      : "Room number not assigned";
+
+    const roomName = room.roomName || "Unnamed Room";
+
+    return `${floor} · ${roomNumber} · ${roomName}`;
+  };
+
+  const getDevoteeRoomLabel = (devoteeId) => {
+    const devoteeRooms = getDevoteeRooms(devoteeId);
+
+    if (devoteeRooms.length === 0) {
+      return "Residence not assigned";
+    }
+
+    return devoteeRooms.map(getRoomIdentity).join(" • ");
+  };
+
+  const currentDevoteeRooms = useMemo(() => {
+    if (!isDevotee || !user?.uid) return [];
+
+    return getDevoteeRooms(user.uid);
+  }, [rooms, isDevotee, user]);
+
+  /*
+   * --------------------------------------------------------------------------
+   * ATTENDANCE STATUS
+   * --------------------------------------------------------------------------
    *
    * Present:
    * morning = Present AND evening = Present
@@ -97,6 +217,7 @@ function Dashboard() {
    * Leave:
    * morning = Leave AND evening = Leave
    */
+
   const getAttendanceStatus = (record) => {
     const morning = record?.morning || "Not Marked";
     const evening = record?.evening || "Not Marked";
@@ -128,15 +249,22 @@ function Dashboard() {
         (item) => item.devoteeId === devotee.id
       );
 
+      const devoteeRooms = getDevoteeRooms(devotee.id);
+
       return {
         ...devotee,
         attendanceRecord: record || null,
         attendanceStatus: getAttendanceStatus(record),
         morning: record?.morning || "Not Marked",
         evening: record?.evening || "Not Marked",
+        rooms: devoteeRooms,
+        roomLabel:
+          devoteeRooms.length > 0
+            ? devoteeRooms.map(getRoomIdentity).join(" • ")
+            : "Residence not assigned",
       };
     });
-  }, [devotees, attendance, isAdministrator]);
+  }, [devotees, attendance, rooms, isAdministrator]);
 
   const adminStats = useMemo(() => {
     const total = devotees.length;
@@ -172,7 +300,9 @@ function Dashboard() {
   }, [devotees, todayAttendance]);
 
   const devoteeTodayAttendance = useMemo(() => {
-    const record = attendance.find((item) => item.date === today);
+    const record = attendance.find(
+      (item) => item.date === today
+    );
 
     return {
       status: getAttendanceStatus(record),
@@ -192,13 +322,17 @@ function Dashboard() {
       <div className="dashboard-header">
         <div>
           <span className="dashboard-eyebrow">
-            {isAdministrator ? "BACE ADMINISTRATOR PANEL" : "DEVOTEE PANEL"}
+            {isAdministrator
+              ? "BACE ADMINISTRATOR PANEL"
+              : "DEVOTEE PANEL"}
           </span>
 
           <h1>
             {isAdministrator
               ? "Hare Krishna, Admin 🙏"
-              : `Hare Krishna, ${user?.name?.split(" ")[0] || "Devotee"} 🙏`}
+              : `Hare Krishna, ${
+                  user?.name?.split(" ")[0] || "Devotee"
+                } 🙏`}
           </h1>
 
           <p>
@@ -210,6 +344,7 @@ function Dashboard() {
 
         <div className="dashboard-date">
           <span>Today</span>
+
           <strong>
             {new Date().toLocaleDateString("en-IN", {
               day: "2-digit",
@@ -226,7 +361,10 @@ function Dashboard() {
         </div>
       )}
 
+      {/* ================================================================== */}
       {/* ADMINISTRATOR DASHBOARD */}
+      {/* ================================================================== */}
+
       {isAdministrator && (
         <>
           {/* STAT CARDS */}
@@ -240,7 +378,7 @@ function Dashboard() {
               <div>
                 <span>Total Devotees</span>
                 <strong>{adminStats.total}</strong>
-                <small>Registered devotees</small>
+                <small>Active devotees</small>
               </div>
             </div>
 
@@ -294,7 +432,7 @@ function Dashboard() {
                 <h2>Today&apos;s Attendance</h2>
 
                 <p>
-                  Attendance marking overview for all devotees.
+                  Attendance marking overview for all active devotees.
                 </p>
               </div>
 
@@ -306,10 +444,12 @@ function Dashboard() {
               </Link>
             </div>
 
+            {/* ATTENDANCE SUMMARY */}
             <div className="attendance-summary">
 
               <div className="attendance-summary-item present">
                 <span className="summary-dot"></span>
+
                 <div>
                   <strong>{adminStats.present}</strong>
                   <small>Present</small>
@@ -318,6 +458,7 @@ function Dashboard() {
 
               <div className="attendance-summary-item partial">
                 <span className="summary-dot"></span>
+
                 <div>
                   <strong>{adminStats.partial}</strong>
                   <small>Partial</small>
@@ -326,6 +467,7 @@ function Dashboard() {
 
               <div className="attendance-summary-item absent">
                 <span className="summary-dot"></span>
+
                 <div>
                   <strong>{adminStats.absent}</strong>
                   <small>Absent</small>
@@ -334,6 +476,7 @@ function Dashboard() {
 
               <div className="attendance-summary-item leave">
                 <span className="summary-dot"></span>
+
                 <div>
                   <strong>{adminStats.leave}</strong>
                   <small>Leave</small>
@@ -342,6 +485,7 @@ function Dashboard() {
 
               <div className="attendance-summary-item not-marked">
                 <span className="summary-dot"></span>
+
                 <div>
                   <strong>{adminStats.notMarked}</strong>
                   <small>Not Marked</small>
@@ -358,6 +502,7 @@ function Dashboard() {
                 <thead>
                   <tr>
                     <th>Devotee</th>
+                    <th>Residence</th>
                     <th>Morning</th>
                     <th>Evening</th>
                     <th>Overall</th>
@@ -368,18 +513,20 @@ function Dashboard() {
                   {todayAttendance.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="4"
+                        colSpan="5"
                         className="dashboard-table-empty"
                       >
-                        No devotees registered yet.
+                        No active devotees registered yet.
                       </td>
                     </tr>
                   ) : (
                     todayAttendance.map((devotee) => (
                       <tr key={devotee.id}>
 
+                        {/* DEVOTEE */}
                         <td>
                           <div className="dashboard-devotee-cell">
+
                             <div className="dashboard-devotee-avatar">
                               {devotee.name
                                 ?.charAt(0)
@@ -395,9 +542,32 @@ function Dashboard() {
                                 {devotee.email || ""}
                               </span>
                             </div>
+
                           </div>
                         </td>
 
+                        {/* RESIDENCE */}
+                        <td>
+                          <div className="dashboard-residence-cell">
+
+                            <span className="dashboard-residence-icon">
+                              🏠
+                            </span>
+
+                            <div>
+                              <span className="dashboard-residence-label">
+                                Residence
+                              </span>
+
+                              <strong>
+                                {devotee.roomLabel}
+                              </strong>
+                            </div>
+
+                          </div>
+                        </td>
+
+                        {/* MORNING */}
                         <td>
                           <span
                             className={`attendance-pill ${devotee.morning
@@ -408,6 +578,7 @@ function Dashboard() {
                           </span>
                         </td>
 
+                        {/* EVENING */}
                         <td>
                           <span
                             className={`attendance-pill ${devotee.evening
@@ -418,6 +589,7 @@ function Dashboard() {
                           </span>
                         </td>
 
+                        {/* OVERALL */}
                         <td>
                           <span
                             className={`attendance-pill overall ${devotee.attendanceStatus
@@ -516,6 +688,20 @@ function Dashboard() {
                   <span className="management-arrow">→</span>
                 </Link>
 
+                <Link
+                  to="/rooms"
+                  className="dashboard-management-item"
+                >
+                  <span className="management-icon">▦</span>
+
+                  <div>
+                    <strong>Community Rooms</strong>
+                    <small>Manage residence allocation</small>
+                  </div>
+
+                  <span className="management-arrow">→</span>
+                </Link>
+
               </div>
 
             </section>
@@ -523,15 +709,21 @@ function Dashboard() {
             <section className="dashboard-card dashboard-profile-card">
 
               <div className="dashboard-profile-top">
+
                 <div className="dashboard-large-avatar">
                   {user?.name?.charAt(0)?.toUpperCase() || "A"}
                 </div>
 
                 <div>
                   <span>Signed in as</span>
-                  <h3>{user?.name || "BACE Administrator"}</h3>
+
+                  <h3>
+                    {user?.name || "BACE Administrator"}
+                  </h3>
+
                   <p>{user?.email}</p>
                 </div>
+
               </div>
 
               <div className="dashboard-profile-divider"></div>
@@ -558,7 +750,10 @@ function Dashboard() {
         </>
       )}
 
+      {/* ================================================================== */}
       {/* DEVOTEE DASHBOARD */}
+      {/* ================================================================== */}
+
       {isDevotee && (
         <>
           <div className="dashboard-stats devotee-stats">
@@ -570,6 +765,7 @@ function Dashboard() {
 
               <div>
                 <span>Today&apos;s Attendance</span>
+
                 <strong className="stat-text">
                   {devoteeTodayAttendance.status}
                 </strong>
@@ -588,6 +784,7 @@ function Dashboard() {
 
               <div>
                 <span>Morning</span>
+
                 <strong className="stat-text">
                   {devoteeTodayAttendance.morning}
                 </strong>
@@ -603,6 +800,7 @@ function Dashboard() {
 
               <div>
                 <span>Evening</span>
+
                 <strong className="stat-text">
                   {devoteeTodayAttendance.evening}
                 </strong>
@@ -611,22 +809,90 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="dashboard-stat-card">
+            <div className="dashboard-stat-card dashboard-residence-stat">
               <div className="dashboard-stat-icon absent">
-                ◷
+                🏠
               </div>
 
               <div>
-                <span>My Profile</span>
+                <span>My Residence</span>
+
                 <strong className="stat-text">
-                  Active
+                  {currentDevoteeRooms.length > 0
+                    ? currentDevoteeRooms.length === 1
+                      ? `Room ${
+                          currentDevoteeRooms[0].roomNumber || "—"
+                        }`
+                      : `${currentDevoteeRooms.length} Rooms`
+                    : "Not Assigned"}
                 </strong>
 
-                <small>Account status</small>
+                <small>
+                  {currentDevoteeRooms.length > 0
+                    ? currentDevoteeRooms
+                        .map(getRoomIdentity)
+                        .join(" • ")
+                    : "Residence not assigned"}
+                </small>
               </div>
             </div>
 
           </div>
+
+          {/* DEVOTEE RESIDENCE */}
+          {currentDevoteeRooms.length > 0 && (
+            <section className="dashboard-card dashboard-residence-card">
+
+              <div className="dashboard-card-header">
+                <div>
+                  <span className="dashboard-section-label">
+                    MY RESIDENCE
+                  </span>
+
+                  <h2>Community Residence</h2>
+
+                  <p>
+                    Your current room assignment from the BACE residence records.
+                  </p>
+                </div>
+
+                <Link
+                  to="/my-room"
+                  className="dashboard-view-all"
+                >
+                  View My Room →
+                </Link>
+              </div>
+
+              <div className="dashboard-residence-list">
+
+                {currentDevoteeRooms.map((room) => (
+                  <div
+                    key={room.id}
+                    className="dashboard-residence-item"
+                  >
+                    <div className="dashboard-residence-item-icon">
+                      🏠
+                    </div>
+
+                    <div>
+                      <span>RESIDENCE</span>
+
+                      <strong>
+                        {room.roomName || "Unnamed Room"}
+                      </strong>
+
+                      <p>
+                        {getRoomIdentity(room)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+            </section>
+          )}
 
           <div className="dashboard-grid devotee-dashboard-grid">
 
@@ -739,15 +1005,21 @@ function Dashboard() {
             <section className="dashboard-card dashboard-profile-card">
 
               <div className="dashboard-profile-top">
+
                 <div className="dashboard-large-avatar">
                   {user?.name?.charAt(0)?.toUpperCase() || "D"}
                 </div>
 
                 <div>
                   <span>Signed in as</span>
-                  <h3>{user?.name || "Devotee"}</h3>
+
+                  <h3>
+                    {user?.name || "Devotee"}
+                  </h3>
+
                   <p>{user?.email}</p>
                 </div>
+
               </div>
 
               <div className="dashboard-profile-divider"></div>

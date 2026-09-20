@@ -21,10 +21,13 @@ function Leave() {
 
   const [requests, setRequests] = useState([]);
   const [devotees, setDevotees] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -38,13 +41,29 @@ function Leave() {
   });
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * LOAD LEAVE REQUESTS
-   * ----------------------------------------------------
+   * ============================================================
+   *
+   * Firestore collection used by this page:
+   *
+   *      leaveRequests
+   *
+   * IMPORTANT:
+   * Your Firestore security rules must also contain:
+   *
+   *      match /leaveRequests/{leaveId}
+   *
+   * and not only:
+   *
+   *      match /leave/{leaveId}
    */
-
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setRequests([]);
+      setLoading(false);
+      return undefined;
+    }
 
     setLoading(true);
     setError("");
@@ -69,17 +88,25 @@ function Leave() {
         }));
 
         data.sort((a, b) => {
-          const aDate = a.createdAt?.seconds || 0;
-          const bDate = b.createdAt?.seconds || 0;
-          return bDate - aDate;
+          const aSeconds = a.createdAt?.seconds || 0;
+          const bSeconds = b.createdAt?.seconds || 0;
+
+          return bSeconds - aSeconds;
         });
 
         setRequests(data);
         setLoading(false);
       },
       (firebaseError) => {
-        console.error("Failed to load leave requests:", firebaseError);
-        setError("Unable to load leave requests.");
+        console.error(
+          "Failed to load leave requests:",
+          firebaseError
+        );
+
+        setRequests([]);
+        setError(
+          "Unable to load leave requests. Please check your Firestore permissions."
+        );
         setLoading(false);
       }
     );
@@ -88,16 +115,15 @@ function Leave() {
   }, [user?.uid, isAdministrator]);
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * LOAD DEVOTEES
    * ADMIN ONLY
-   * ----------------------------------------------------
+   * ============================================================
    */
-
   useEffect(() => {
     if (!isAdministrator) {
       setDevotees([]);
-      return;
+      return undefined;
     }
 
     const usersQuery = query(
@@ -116,7 +142,12 @@ function Leave() {
         setDevotees(data);
       },
       (firebaseError) => {
-        console.error("Failed to load devotees:", firebaseError);
+        console.error(
+          "Failed to load devotees:",
+          firebaseError
+        );
+
+        setDevotees([]);
       }
     );
 
@@ -124,11 +155,46 @@ function Leave() {
   }, [isAdministrator]);
 
   /*
-   * ----------------------------------------------------
-   * DEVOTEE NAME LOOKUP
-   * ----------------------------------------------------
+   * ============================================================
+   * LOAD ROOMS
+   * ============================================================
    */
+  useEffect(() => {
+    if (!user?.uid) {
+      setRooms([]);
+      return undefined;
+    }
 
+    const roomsQuery = query(collection(db, "rooms"));
+
+    const unsubscribe = onSnapshot(
+      roomsQuery,
+      (snapshot) => {
+        const data = snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }));
+
+        setRooms(data);
+      },
+      (firebaseError) => {
+        console.error(
+          "Failed to load rooms:",
+          firebaseError
+        );
+
+        setRooms([]);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  /*
+   * ============================================================
+   * DEVOTEE LOOKUP
+   * ============================================================
+   */
   const devoteeMap = useMemo(() => {
     const map = {};
 
@@ -140,12 +206,100 @@ function Leave() {
   }, [devotees]);
 
   /*
-   * ----------------------------------------------------
-   * ADMIN FILTERING
-   * DEVOTEE ONLY GETS OWN DATA
-   * ----------------------------------------------------
+   * ============================================================
+   * ROOM LOOKUP
+   * ============================================================
    */
+  const roomMap = useMemo(() => {
+    const map = {};
 
+    rooms.forEach((room) => {
+      const occupants = Array.isArray(room.occupants)
+        ? room.occupants
+        : [];
+
+      occupants.forEach((occupantId) => {
+        if (!occupantId) return;
+
+        if (!map[occupantId]) {
+          map[occupantId] = [];
+        }
+
+        map[occupantId].push(room);
+      });
+    });
+
+    return map;
+  }, [rooms]);
+
+  /*
+   * ============================================================
+   * GET ROOMS FOR DEVOTEE
+   * ============================================================
+   */
+  const getDevoteeRooms = (devoteeId) => {
+    if (!devoteeId) return [];
+
+    return roomMap[devoteeId] || [];
+  };
+
+  /*
+   * ============================================================
+   * ROOM IDENTITY
+   * ============================================================
+   */
+  const getRoomIdentity = (room) => {
+    if (!room) return "";
+
+    const floor =
+      room.floor !== undefined &&
+      room.floor !== null &&
+      room.floor !== ""
+        ? `Floor ${room.floor}`
+        : "";
+
+    const roomNumber =
+      room.roomNumber !== undefined &&
+      room.roomNumber !== null &&
+      room.roomNumber !== ""
+        ? `Room ${room.roomNumber}`
+        : "";
+
+    const roomName = room.roomName || "";
+
+    return [floor, roomNumber, roomName]
+      .filter(Boolean)
+      .join(" · ");
+  };
+
+  /*
+   * ============================================================
+   * ROOM LABEL
+   * ============================================================
+   */
+  const getDevoteeRoomLabel = (devoteeId) => {
+    const devoteeRooms = getDevoteeRooms(devoteeId);
+
+    if (!devoteeRooms.length) {
+      return "Residence not assigned";
+    }
+
+    const labels = devoteeRooms
+      .map((room) => getRoomIdentity(room))
+      .filter(Boolean);
+
+    if (!labels.length) {
+      return "Residence assigned";
+    }
+
+    return labels.join(" • ");
+  };
+
+  /*
+   * ============================================================
+   * FILTER REQUESTS
+   * ============================================================
+   */
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
@@ -165,17 +319,27 @@ function Leave() {
           request.devoteeEmail ||
           "";
 
+        const roomIdentity = getDevoteeRoomLabel(
+          request.devoteeId
+        ).toLowerCase();
+
+        const reason = String(
+          request.reason || ""
+        ).toLowerCase();
+
         return (
           name.toLowerCase().includes(value) ||
           email.toLowerCase().includes(value) ||
-          request.id.toLowerCase().includes(value)
+          roomIdentity.includes(value) ||
+          reason.includes(value)
         );
       });
     }
 
     if (statusFilter !== "all") {
       result = result.filter(
-        (request) => request.status === statusFilter
+        (request) =>
+          normalizeStatus(request.status) === statusFilter
       );
     }
 
@@ -186,35 +350,45 @@ function Leave() {
     statusFilter,
     isAdministrator,
     devoteeMap,
+    roomMap,
   ]);
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * STATISTICS
-   * ----------------------------------------------------
+   * ============================================================
    */
-
   const statistics = useMemo(() => {
     return {
       total: requests.length,
+
       pending: requests.filter(
-        (item) => item.status === "pending"
+        (item) =>
+          normalizeStatus(item.status) === "pending"
       ).length,
+
       approved: requests.filter(
-        (item) => item.status === "approved"
+        (item) =>
+          normalizeStatus(item.status) === "approved"
       ).length,
+
       rejected: requests.filter(
-        (item) => item.status === "rejected"
+        (item) =>
+          normalizeStatus(item.status) === "rejected"
+      ).length,
+
+      cancelled: requests.filter(
+        (item) =>
+          normalizeStatus(item.status) === "cancelled"
       ).length,
     };
   }, [requests]);
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * FORM HANDLING
-   * ----------------------------------------------------
+   * ============================================================
    */
-
   const handleFormChange = (event) => {
     const { name, value } = event.target;
 
@@ -222,64 +396,93 @@ function Leave() {
       ...previous,
       [name]: value,
     }));
+
+    setError("");
+    setSuccess("");
   };
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * APPLY FOR LEAVE
-   * DEVOTEE ONLY
-   * ----------------------------------------------------
+   * ============================================================
    */
-
   const handleApplyLeave = async (event) => {
     event.preventDefault();
 
-    if (!isDevotee || !user?.uid) return;
+    if (!isDevotee || !user?.uid) {
+      return;
+    }
 
     setError("");
+    setSuccess("");
 
-    if (!form.from || !form.to) {
-      setError("Please select both start and end dates.");
+    const from = form.from.trim();
+    const to = form.to.trim();
+    const reason = form.reason.trim();
+
+    if (!from || !to) {
+      setError(
+        "Please select both start and end dates."
+      );
       return;
     }
 
-    if (form.from > form.to) {
-      setError("End date cannot be before start date.");
+    if (from > to) {
+      setError(
+        "End date cannot be before start date."
+      );
       return;
     }
 
-    if (!form.reason.trim()) {
-      setError("Please enter a reason for leave.");
+    if (!reason) {
+      setError(
+        "Please enter a reason for leave."
+      );
       return;
     }
 
-    if (form.reason.trim().length < 3) {
-      setError("Please provide a more detailed reason.");
+    if (reason.length < 3) {
+      setError(
+        "Please provide a more detailed reason."
+      );
       return;
     }
 
     try {
       setSaving(true);
 
-      await addDoc(collection(db, "leaveRequests"), {
-        devoteeId: user.uid,
-        devoteeName: user.name || "",
-        devoteeEmail: user.email || "",
+      await addDoc(
+        collection(db, "leaveRequests"),
+        {
+          devoteeId: user.uid,
 
-        from: form.from,
-        to: form.to,
-        reason: form.reason.trim(),
+          devoteeName:
+            user.name ||
+            "",
 
-        status: "pending",
+          devoteeEmail:
+            user.email ||
+            "",
 
-        adminNote: "",
+          from,
+          to,
+          reason,
 
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+          status: "pending",
 
-        reviewedBy: null,
-        reviewedAt: null,
-      });
+          adminNote: "",
+
+          createdAt:
+            serverTimestamp(),
+
+          updatedAt:
+            serverTimestamp(),
+
+          reviewedBy: null,
+
+          reviewedAt: null,
+        }
+      );
 
       setForm({
         from: "",
@@ -288,46 +491,86 @@ function Leave() {
       });
 
       setShowApplyForm(false);
-      setError("");
+
+      setSuccess(
+        "Your leave request has been submitted."
+      );
     } catch (firebaseError) {
-      console.error("Failed to apply for leave:", firebaseError);
-      setError("Unable to submit leave request.");
+      console.error(
+        "Failed to apply for leave:",
+        firebaseError
+      );
+
+      setError(
+        "Unable to submit your leave request. Please try again."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * ADMIN REVIEW
-   * ----------------------------------------------------
+   * ============================================================
    */
-
-  const updateLeaveStatus = async (requestId, status) => {
-    if (!isAdministrator || !user?.uid) return;
+  const updateLeaveStatus = async (
+    requestId,
+    status
+  ) => {
+    if (!isAdministrator || !user?.uid) {
+      return;
+    }
 
     const request = requests.find(
       (item) => item.id === requestId
     );
 
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
-    if (request.status !== "pending") {
+    if (
+      normalizeStatus(request.status) !==
+      "pending"
+    ) {
+      return;
+    }
+
+    if (
+      status !== "approved" &&
+      status !== "rejected"
+    ) {
       return;
     }
 
     try {
       setSaving(true);
       setError("");
+      setSuccess("");
 
       await updateDoc(
-        doc(db, "leaveRequests", requestId),
+        doc(
+          db,
+          "leaveRequests",
+          requestId
+        ),
         {
           status,
-          reviewedBy: user.uid,
-          reviewedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+
+          reviewedBy:
+            user.uid,
+
+          reviewedAt:
+            serverTimestamp(),
+
+          updatedAt:
+            serverTimestamp(),
         }
+      );
+
+      setSuccess(
+        `Leave request ${status}.`
       );
     } catch (firebaseError) {
       console.error(
@@ -335,41 +578,63 @@ function Leave() {
         firebaseError
       );
 
-      setError("Unable to update leave request.");
+      setError(
+        "Unable to update leave request."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   /*
-   * ----------------------------------------------------
+   * ============================================================
    * DEVOTEE CANCEL
-   * ----------------------------------------------------
+   * ============================================================
    */
-
   const cancelLeave = async (requestId) => {
-    if (!isDevotee || !user?.uid) return;
+    if (!isDevotee || !user?.uid) {
+      return;
+    }
 
     const request = requests.find(
       (item) => item.id === requestId
     );
 
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
-    if (request.devoteeId !== user.uid) return;
+    if (request.devoteeId !== user.uid) {
+      return;
+    }
 
-    if (request.status !== "pending") return;
+    if (
+      normalizeStatus(request.status) !==
+      "pending"
+    ) {
+      return;
+    }
 
     try {
       setSaving(true);
       setError("");
+      setSuccess("");
 
       await updateDoc(
-        doc(db, "leaveRequests", requestId),
+        doc(
+          db,
+          "leaveRequests",
+          requestId
+        ),
         {
           status: "cancelled",
-          updatedAt: serverTimestamp(),
+          updatedAt:
+            serverTimestamp(),
         }
+      );
+
+      setSuccess(
+        "Your leave request has been cancelled."
       );
     } catch (firebaseError) {
       console.error(
@@ -377,18 +642,19 @@ function Leave() {
         firebaseError
       );
 
-      setError("Unable to cancel leave request.");
+      setError(
+        "Unable to cancel leave request."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   /*
-   * ----------------------------------------------------
-   * HELPERS
-   * ----------------------------------------------------
+   * ============================================================
+   * NAME
+   * ============================================================
    */
-
   const getDevoteeName = (request) => {
     if (request.devoteeId === user?.uid) {
       return user?.name || "You";
@@ -397,10 +663,15 @@ function Leave() {
     return (
       devoteeMap[request.devoteeId]?.name ||
       request.devoteeName ||
-      "Unknown devotee"
+      "Community resident"
     );
   };
 
+  /*
+   * ============================================================
+   * EMAIL
+   * ============================================================
+   */
   const getDevoteeEmail = (request) => {
     if (request.devoteeId === user?.uid) {
       return user?.email || "";
@@ -413,23 +684,47 @@ function Leave() {
     );
   };
 
+  /*
+   * ============================================================
+   * DATE FORMAT
+   * ============================================================
+   */
   const formatDate = (date) => {
-    if (!date) return "—";
+    if (!date) {
+      return "—";
+    }
 
-    const parsed = new Date(`${date}T00:00:00`);
+    const parsed = new Date(
+      `${date}T00:00:00`
+    );
 
-    if (Number.isNaN(parsed.getTime())) {
+    if (
+      Number.isNaN(
+        parsed.getTime()
+      )
+    ) {
       return date;
     }
 
-    return parsed.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    return parsed.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
   };
 
+  /*
+   * ============================================================
+   * STATUS
+   * ============================================================
+   */
   const getStatusLabel = (status) => {
+    const normalized =
+      normalizeStatus(status);
+
     const labels = {
       pending: "Pending",
       approved: "Approved",
@@ -437,33 +732,45 @@ function Leave() {
       cancelled: "Cancelled",
     };
 
-    return labels[status] || "Unknown";
+    return (
+      labels[normalized] ||
+      "Pending"
+    );
   };
 
+  /*
+   * ============================================================
+   * LOADING
+   * ============================================================
+   */
   if (loading) {
-    return <Loader text="Loading leave requests..." />;
+    return (
+      <Loader text="Loading leave requests..." />
+    );
   }
 
   /*
-   * ====================================================
+   * ============================================================
    * ADMIN VIEW
-   * ====================================================
+   * ============================================================
    */
-
   if (isAdministrator) {
     return (
       <div className="leave-page">
+
         <header className="leave-header">
           <div>
             <span className="leave-eyebrow">
               COMMUNITY SERVICES
             </span>
 
-            <h1>Leave Requests</h1>
+            <h1>
+              Leave Requests
+            </h1>
 
             <p>
-              Review and manage leave applications from community
-              residents.
+              Review and manage leave applications
+              from community residents.
             </p>
           </div>
         </header>
@@ -474,7 +781,14 @@ function Leave() {
           </div>
         )}
 
+        {success && (
+          <div className="leave-success">
+            {success}
+          </div>
+        )}
+
         <section className="leave-stats">
+
           <StatCard
             label="Total Requests"
             value={statistics.total}
@@ -502,48 +816,77 @@ function Leave() {
             description="Rejected requests"
             type="rejected"
           />
+
         </section>
 
         <section className="leave-toolbar">
+
           <div className="leave-search">
             <span>⌕</span>
 
             <input
               type="search"
-              placeholder="Search devotee, email or request ID..."
+              placeholder="Search devotee, email, residence or reason..."
               value={search}
               onChange={(event) =>
-                setSearch(event.target.value)
+                setSearch(
+                  event.target.value
+                )
               }
             />
           </div>
 
           <label className="leave-filter">
-            <span>Status</span>
+
+            <span>
+              Status
+            </span>
 
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value)
+                setStatusFilter(
+                  event.target.value
+                )
               }
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">
+                All Status
+              </option>
+
+              <option value="pending">
+                Pending
+              </option>
+
+              <option value="approved">
+                Approved
+              </option>
+
+              <option value="rejected">
+                Rejected
+              </option>
+
+              <option value="cancelled">
+                Cancelled
+              </option>
             </select>
+
           </label>
+
         </section>
 
         <section className="leave-card">
+
           <div className="leave-card-header">
+
             <div>
               <span className="leave-card-eyebrow">
                 COMMUNITY REQUESTS
               </span>
 
-              <h2>Leave Applications</h2>
+              <h2>
+                Leave Applications
+              </h2>
             </div>
 
             <span className="leave-count">
@@ -552,6 +895,7 @@ function Leave() {
                 ? "request"
                 : "requests"}
             </span>
+
           </div>
 
           {filteredRequests.length === 0 ? (
@@ -561,71 +905,96 @@ function Leave() {
             />
           ) : (
             <div className="leave-list">
-              {filteredRequests.map((request) => (
-                <LeaveRequest
-                  key={request.id}
-                  request={request}
-                  name={getDevoteeName(request)}
-                  email={getDevoteeEmail(request)}
-                  formatDate={formatDate}
-                  getStatusLabel={getStatusLabel}
-                  isAdministrator
-                  saving={saving}
-                  onApprove={() =>
-                    updateLeaveStatus(
-                      request.id,
-                      "approved"
-                    )
-                  }
-                  onReject={() =>
-                    updateLeaveStatus(
-                      request.id,
-                      "rejected"
-                    )
-                  }
-                />
-              ))}
+
+              {filteredRequests.map(
+                (request) => (
+                  <LeaveRequest
+                    key={request.id}
+                    request={request}
+                    name={getDevoteeName(
+                      request
+                    )}
+                    email={getDevoteeEmail(
+                      request
+                    )}
+                    roomIdentity={getDevoteeRoomLabel(
+                      request.devoteeId
+                    )}
+                    formatDate={formatDate}
+                    getStatusLabel={
+                      getStatusLabel
+                    }
+                    isAdministrator
+                    saving={saving}
+                    onApprove={() =>
+                      updateLeaveStatus(
+                        request.id,
+                        "approved"
+                      )
+                    }
+                    onReject={() =>
+                      updateLeaveStatus(
+                        request.id,
+                        "rejected"
+                      )
+                    }
+                  />
+                )
+              )}
+
             </div>
           )}
+
         </section>
+
       </div>
     );
   }
 
   /*
-   * ====================================================
+   * ============================================================
    * DEVOTEE VIEW
-   * ====================================================
+   * ============================================================
    */
-
   if (isDevotee) {
     return (
       <div className="leave-page">
+
         <header className="leave-header">
+
           <div>
             <span className="leave-eyebrow">
               MY COMMUNITY LIFE
             </span>
 
-            <h1>My Leave</h1>
+            <h1>
+              My Leave
+            </h1>
 
             <p>
-              Apply for leave and track the status of your
-              requests.
+              Apply for leave and track the
+              status of your requests.
             </p>
           </div>
 
           <button
+            type="button"
             className="leave-primary-button"
             onClick={() => {
-              setShowApplyForm((previous) => !previous);
+              setShowApplyForm(
+                (previous) =>
+                  !previous
+              );
+
               setError("");
+              setSuccess("");
             }}
           >
             {showApplyForm
               ? "Close Form"
               : "+ Apply for Leave"}
           </button>
+
         </header>
 
         {error && (
@@ -634,55 +1003,84 @@ function Leave() {
           </div>
         )}
 
+        {success && (
+          <div className="leave-success">
+            {success}
+          </div>
+        )}
+
         {showApplyForm && (
           <section className="leave-form-card">
+
             <div className="leave-form-header">
+
               <div>
                 <span className="leave-card-eyebrow">
                   NEW REQUEST
                 </span>
 
-                <h2>Apply for Leave</h2>
+                <h2>
+                  Apply for Leave
+                </h2>
               </div>
+
             </div>
 
             <form
               className="leave-form"
-              onSubmit={handleApplyLeave}
+              onSubmit={
+                handleApplyLeave
+              }
             >
+
               <div className="leave-form-grid">
+
                 <label>
-                  <span>From</span>
+                  <span>
+                    From
+                  </span>
 
                   <input
                     type="date"
                     name="from"
                     value={form.from}
-                    onChange={handleFormChange}
+                    onChange={
+                      handleFormChange
+                    }
                     required
                   />
                 </label>
 
                 <label>
-                  <span>To</span>
+                  <span>
+                    To
+                  </span>
 
                   <input
                     type="date"
                     name="to"
                     value={form.to}
-                    onChange={handleFormChange}
+                    min={form.from || undefined}
+                    onChange={
+                      handleFormChange
+                    }
                     required
                   />
                 </label>
+
               </div>
 
               <label>
-                <span>Reason</span>
+                <span>
+                  Reason
+                </span>
 
                 <textarea
                   name="reason"
                   value={form.reason}
-                  onChange={handleFormChange}
+                  onChange={
+                    handleFormChange
+                  }
                   placeholder="Enter the reason for your leave..."
                   rows="4"
                   maxLength="500"
@@ -691,13 +1089,25 @@ function Leave() {
               </label>
 
               <div className="leave-form-actions">
+
                 <button
                   type="button"
                   className="leave-secondary-button"
                   onClick={() => {
-                    setShowApplyForm(false);
+                    setShowApplyForm(
+                      false
+                    );
+
+                    setForm({
+                      from: "",
+                      to: "",
+                      reason: "",
+                    });
+
                     setError("");
+                    setSuccess("");
                   }}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
@@ -711,12 +1121,16 @@ function Leave() {
                     ? "Submitting..."
                     : "Submit Request"}
                 </button>
+
               </div>
+
             </form>
+
           </section>
         )}
 
         <section className="leave-stats">
+
           <StatCard
             label="My Requests"
             value={statistics.total}
@@ -744,16 +1158,21 @@ function Leave() {
             description="Rejected requests"
             type="rejected"
           />
+
         </section>
 
         <section className="leave-card">
+
           <div className="leave-card-header">
+
             <div>
               <span className="leave-card-eyebrow">
                 PERSONAL RECORD
               </span>
 
-              <h2>My Leave Applications</h2>
+              <h2>
+                My Leave Applications
+              </h2>
             </div>
 
             <span className="leave-count">
@@ -762,6 +1181,7 @@ function Leave() {
                 ? "request"
                 : "requests"}
             </span>
+
           </div>
 
           {filteredRequests.length === 0 ? (
@@ -771,24 +1191,37 @@ function Leave() {
             />
           ) : (
             <div className="leave-list">
-              {filteredRequests.map((request) => (
-                <LeaveRequest
-                  key={request.id}
-                  request={request}
-                  name="You"
-                  email={user.email}
-                  formatDate={formatDate}
-                  getStatusLabel={getStatusLabel}
-                  isAdministrator={false}
-                  saving={saving}
-                  onCancel={() =>
-                    cancelLeave(request.id)
-                  }
-                />
-              ))}
+
+              {filteredRequests.map(
+                (request) => (
+                  <LeaveRequest
+                    key={request.id}
+                    request={request}
+                    name="You"
+                    email={user?.email || ""}
+                    roomIdentity={getDevoteeRoomLabel(
+                      user?.uid
+                    )}
+                    formatDate={formatDate}
+                    getStatusLabel={
+                      getStatusLabel
+                    }
+                    isAdministrator={false}
+                    saving={saving}
+                    onCancel={() =>
+                      cancelLeave(
+                        request.id
+                      )
+                    }
+                  />
+                )
+              )}
+
             </div>
           )}
+
         </section>
+
       </div>
     );
   }
@@ -797,11 +1230,36 @@ function Leave() {
 }
 
 /*
- * ======================================================
- * STAT CARD
- * ======================================================
+ * ============================================================
+ * NORMALIZE STATUS
+ * ============================================================
  */
+function normalizeStatus(status) {
+  const value = String(
+    status || "pending"
+  )
+    .trim()
+    .toLowerCase();
 
+  if (
+    [
+      "pending",
+      "approved",
+      "rejected",
+      "cancelled",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "pending";
+}
+
+/*
+ * ============================================================
+ * STAT CARD
+ * ============================================================
+ */
 function StatCard({
   label,
   value,
@@ -809,24 +1267,34 @@ function StatCard({
   type,
 }) {
   return (
-    <article className={`leave-stat-card ${type}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{description}</small>
+    <article
+      className={`leave-stat-card ${type}`}
+    >
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+
+      <small>
+        {description}
+      </small>
     </article>
   );
 }
 
 /*
- * ======================================================
+ * ============================================================
  * LEAVE REQUEST
- * ======================================================
+ * ============================================================
  */
-
 function LeaveRequest({
   request,
   name,
   email,
+  roomIdentity,
   formatDate,
   getStatusLabel,
   isAdministrator,
@@ -835,56 +1303,112 @@ function LeaveRequest({
   onReject,
   onCancel,
 }) {
+  const status = normalizeStatus(
+    request.status
+  );
+
   return (
     <article className="leave-request">
+
       <div className="leave-request-dates">
-        <span>FROM</span>
-        <strong>{formatDate(request.from)}</strong>
+
+        <span>
+          FROM
+        </span>
+
+        <strong>
+          {formatDate(
+            request.from
+          )}
+        </strong>
 
         <small>
-          TO {formatDate(request.to)}
+          TO{" "}
+          {formatDate(
+            request.to
+          )}
         </small>
+
       </div>
 
       <div className="leave-request-main">
+
         <div className="leave-user">
+
           <div className="leave-avatar">
-            {name?.charAt(0)?.toUpperCase() || "D"}
+            {name
+              ?.charAt(0)
+              ?.toUpperCase() || "D"}
           </div>
 
           <div>
-            <strong>{name}</strong>
-            <small>{email}</small>
+            <strong>
+              {name}
+            </strong>
+
+            {email && (
+              <small>
+                {email}
+              </small>
+            )}
           </div>
+
         </div>
 
-        <p className="leave-reason">
-          {request.reason || "No reason provided"}
-        </p>
+        {roomIdentity && (
+          <div className="leave-room-identity">
 
-        <span className="leave-request-id">
-          Request ID: {request.id}
-        </span>
+            <span className="leave-room-icon">
+              🏠
+            </span>
+
+            <div>
+
+              <span className="leave-room-label">
+                RESIDENCE
+              </span>
+
+              <strong>
+                {roomIdentity}
+              </strong>
+
+            </div>
+
+          </div>
+        )}
+
+        <p className="leave-reason">
+          {request.reason ||
+            "No reason provided"}
+        </p>
 
         {request.adminNote && (
           <div className="leave-admin-note">
-            <strong>Admin note:</strong>{" "}
+            <strong>
+              Admin note:
+            </strong>{" "}
             {request.adminNote}
           </div>
         )}
+
       </div>
 
       <div className="leave-request-actions">
+
         <span
-          className={`leave-status ${request.status}`}
+          className={`leave-status ${status}`}
         >
-          {getStatusLabel(request.status)}
+          {getStatusLabel(
+            status
+          )}
         </span>
 
         {isAdministrator &&
-          request.status === "pending" && (
+          status === "pending" && (
             <div className="leave-review-actions">
+
               <button
+                type="button"
                 className="leave-approve-button"
                 onClick={onApprove}
                 disabled={saving}
@@ -893,47 +1417,61 @@ function LeaveRequest({
               </button>
 
               <button
+                type="button"
                 className="leave-reject-button"
                 onClick={onReject}
                 disabled={saving}
               >
                 × Reject
               </button>
+
             </div>
           )}
 
         {!isAdministrator &&
-          request.status === "pending" && (
+          status === "pending" && (
             <button
+              type="button"
               className="leave-cancel-button"
               onClick={onCancel}
               disabled={saving}
             >
-              Cancel Request
+              {saving
+                ? "Cancelling..."
+                : "Cancel Request"}
             </button>
           )}
+
       </div>
+
     </article>
   );
 }
 
 /*
- * ======================================================
+ * ============================================================
  * EMPTY STATE
- * ======================================================
+ * ============================================================
  */
-
 function EmptyLeaveState({
   title,
   description,
 }) {
   return (
     <div className="leave-empty">
-      <div className="leave-empty-icon">◷</div>
 
-      <h3>{title}</h3>
+      <div className="leave-empty-icon">
+        ◷
+      </div>
 
-      <p>{description}</p>
+      <h3>
+        {title}
+      </h3>
+
+      <p>
+        {description}
+      </p>
+
     </div>
   );
 }

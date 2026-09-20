@@ -121,6 +121,7 @@
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .profile-main-info p {
@@ -277,6 +278,10 @@
   line-height: 1.5;
 }
 
+/* ============================================================
+   PROFILE FORM
+   ============================================================ */
+
 .profile-edit-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -309,6 +314,7 @@
   width: 100%;
   height: 42px;
   padding: 0 11px;
+  box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 8px;
   outline: 0;
@@ -345,6 +351,10 @@
   font-size: 9px;
   line-height: 1.4;
 }
+
+/* ============================================================
+   EDIT FOOTER
+   ============================================================ */
 
 .profile-edit-footer {
   display: flex;
@@ -394,8 +404,8 @@
 }
 
 .profile-save-button:hover:not(:disabled) {
-  background: var(--primary-dark);
   border-color: var(--primary-dark);
+  background: var(--primary-dark);
   transform: translateY(-1px);
 }
 
@@ -451,10 +461,6 @@
   box-shadow: var(--shadow-md);
 }
 
-.profile-wide {
-  grid-column: 1 / -1;
-}
-
 .profile-card-header {
   margin-bottom: 21px;
 }
@@ -469,7 +475,7 @@
 }
 
 /* ============================================================
-   INFORMATION
+   INFORMATION GRID
    ============================================================ */
 
 .info-grid {
@@ -503,72 +509,118 @@
 }
 
 .profile-info-item > strong.mono-value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 /* ============================================================
-   SPIRITUAL ACTIVITY
+   RESIDENCE
    ============================================================ */
 
-.activity-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.activity-stat {
-  position: relative;
+.profile-residence {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
   min-width: 0;
-  padding: 19px;
-  overflow: hidden;
-  border: 1px solid rgba(139, 69, 19, 0.05);
+  margin-bottom: 22px;
+  padding: 15px;
+  border: 1px solid rgba(139, 69, 19, 0.1);
   border-radius: 12px;
+  background: var(--primary-light);
+}
+
+.profile-residence-empty {
+  border-color: var(--border);
   background: var(--surface-soft);
-  transition:
-    background var(--transition),
-    transform var(--transition);
 }
 
-.activity-stat:hover {
-  background: #f5eee5;
-  transform: translateY(-1px);
+.profile-residence-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 18px;
+  box-shadow: var(--shadow-sm);
 }
 
-.activity-stat strong {
-  display: block;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 25px;
+.profile-residence-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.profile-residence-label {
+  color: var(--primary);
+  font-size: 8px;
   font-weight: 800;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-stat strong.activity-text-value {
-  font-size: 16px;
+  letter-spacing: 0.1em;
   line-height: 1.4;
 }
 
-.activity-stat span {
-  display: block;
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 600;
+.profile-residence-content strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
-/* ============================================================
-   ACCOUNT INFORMATION
-   ============================================================ */
+.profile-residence-content > span:not(.profile-residence-label) {
+  overflow-wrap: anywhere;
+  color: var(--text-light);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
 
-.account-information {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+.profile-residence-content small {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.profile-residence-content p {
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.profile-residence-empty .profile-residence-icon {
+  color: var(--text-muted);
+}
+
+.profile-residence-empty .profile-residence-label {
+  color: var(--text-muted);
+}
+
+.profile-room-loading {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  margin-bottom: 22px;
+  padding: 15px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* ============================================================
@@ -670,14 +722,6 @@
   .profile-grid {
     grid-template-columns: 1fr;
   }
-
-  .profile-wide {
-    grid-column: auto;
-  }
-
-  .account-information {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 650px) {
@@ -696,11 +740,6 @@
 
   .profile-field.full-width {
     grid-column: auto;
-  }
-
-  .activity-stats,
-  .account-information {
-    grid-template-columns: 1fr;
   }
 
   .profile-card,
@@ -737,8 +776,14 @@
     width: 100%;
   }
 
-  .activity-stat {
-    padding: 17px;
+  .profile-residence {
+    padding: 13px;
+  }
+
+  .profile-residence-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
   }
 }
 
@@ -785,6 +830,19 @@
 
   .profile-edit-card {
     padding: 17px;
+  }
+
+  .profile-residence {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .profile-residence-content strong {
+    font-size: 13px;
+  }
+
+  .profile-residence-content > span:not(.profile-residence-label) {
+    font-size: 10px;
   }
 
   .profile-access {

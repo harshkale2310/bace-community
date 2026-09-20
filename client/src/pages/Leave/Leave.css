@@ -448,6 +448,60 @@
   white-space: nowrap;
 }
 
+/* ============================================================
+   ROOM IDENTITY
+   ============================================================ */
+
+.leave-room-identity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 13px;
+  padding: 8px 11px;
+  border: 1px solid rgba(139, 69, 19, 0.1);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+
+.leave-room-icon {
+  display: flex;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--primary-light);
+  font-size: 13px;
+}
+
+.leave-room-identity > div {
+  min-width: 0;
+}
+
+.leave-room-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+}
+
+.leave-room-identity strong {
+  display: block;
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .leave-reason {
   margin: 15px 0 8px;
   color: var(--text);
@@ -457,7 +511,13 @@
 
 .leave-request-id {
   color: var(--text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
   font-size: 9px;
 }
 
@@ -707,6 +767,13 @@
    RESPONSIVE
    ============================================================ */
 
+@media (max-width: 1200px) {
+  .leave-request {
+    grid-template-columns: 135px minmax(0, 1fr) 165px;
+    gap: 20px;
+  }
+}
+
 @media (max-width: 1100px) {
   .leave-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -756,6 +823,15 @@
   .leave-form-grid {
     grid-template-columns: 1fr;
   }
+
+  .leave-room-identity {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .leave-room-identity strong {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 520px) {
@@ -799,6 +875,10 @@
   .leave-empty {
     padding: 55px 18px;
   }
+
+  .leave-room-identity {
+    margin-top: 12px;
+  }
 }
 
 @media (max-width: 380px) {
@@ -822,6 +902,16 @@
   .leave-card,
   .leave-form-card {
     border-radius: 14px;
+  }
+
+  .leave-request {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .leave-form {
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }
 

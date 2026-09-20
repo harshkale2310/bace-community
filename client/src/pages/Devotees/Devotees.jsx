@@ -3,22 +3,30 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  arrayRemove,
   collection,
+  deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   signOut,
 } from "firebase/auth";
 
 import { db, secondaryAuth } from "../../services/firebase";
 import { useAuth } from "../../context/AuthContext";
 import Loader from "../../components/Common/Loader";
+
 import "./Devotees.css";
 
 function Devotees() {
@@ -26,15 +34,28 @@ function Devotees() {
   const navigate = useNavigate();
 
   const [devotees, setDevotees] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+
   const [statusFilter, setStatusFilter] = useState("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState("");
+
+  const [showRegisterModal, setShowRegisterModal] =
+    useState(false);
+
+  const [registerLoading, setRegisterLoading] =
+    useState(false);
+
+  const [registerError, setRegisterError] =
+    useState("");
+
   const [updatingId, setUpdatingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -43,13 +64,14 @@ function Devotees() {
     confirmPassword: "",
     phone: "",
     department: "Temple",
-    room: "",
-    bed: "",
   });
 
   /*
-   * Load devotees in real time.
+   * ============================================================
+   * LOAD DEVOTEES
+   * ============================================================
    */
+
   useEffect(() => {
     if (!isAdministrator) {
       setLoading(false);
@@ -69,7 +91,11 @@ function Devotees() {
             uid: userDoc.id,
             ...userDoc.data(),
           }))
-          .filter((user) => user.role === "devotee")
+          .filter(
+            (user) =>
+              user.role === "devotee" &&
+              user.status !== "deleted"
+          )
           .sort((a, b) => {
             const nameA = String(a.name || "").toLowerCase();
             const nameB = String(b.name || "").toLowerCase();
@@ -81,7 +107,10 @@ function Devotees() {
         setLoading(false);
       },
       (snapshotError) => {
-        console.error("Failed to load devotees:", snapshotError);
+        console.error(
+          "Failed to load devotees:",
+          snapshotError
+        );
 
         setError(
           "Unable to load devotees. Please check your Firebase connection and permissions."
@@ -94,46 +123,260 @@ function Devotees() {
     return () => unsubscribe();
   }, [isAdministrator]);
 
+  /*
+   * ============================================================
+   * LOAD ROOMS
+   *
+   * Rooms are the source of truth for residence assignment.
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (!isAdministrator) {
+      setRooms([]);
+      setRoomsLoading(false);
+      return undefined;
+    }
+
+    setRoomsLoading(true);
+
+    const roomsRef = collection(db, "rooms");
+
+    const unsubscribe = onSnapshot(
+      roomsRef,
+      (snapshot) => {
+        const roomRecords = snapshot.docs
+          .map((roomDoc) => ({
+            id: roomDoc.id,
+            ...roomDoc.data(),
+          }))
+          .sort((a, b) => {
+            const floorA = Number(a.floor || 0);
+            const floorB = Number(b.floor || 0);
+
+            if (floorA !== floorB) {
+              return floorA - floorB;
+            }
+
+            const numberA = String(a.roomNumber || "");
+            const numberB = String(b.roomNumber || "");
+
+            return numberA.localeCompare(
+              numberB,
+              undefined,
+              {
+                numeric: true,
+                sensitivity: "base",
+              }
+            );
+          });
+
+        setRooms(roomRecords);
+        setRoomsLoading(false);
+      },
+      (snapshotError) => {
+        console.error(
+          "Failed to load rooms:",
+          snapshotError
+        );
+
+        setRooms([]);
+        setRoomsLoading(false);
+
+        setError((previousError) => {
+          if (previousError) {
+            return previousError;
+          }
+
+          return "Unable to load room information. Please check your Firebase connection and permissions.";
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isAdministrator]);
+
+  /*
+   * ============================================================
+   * ROOM IDENTITY
+   * ============================================================
+   */
+
+  const roomsByDevotee = useMemo(() => {
+    const map = new Map();
+
+    rooms.forEach((room) => {
+      const occupants = Array.isArray(room.occupants)
+        ? room.occupants
+        : [];
+
+      occupants.forEach((occupantId) => {
+        if (!occupantId) {
+          return;
+        }
+
+        if (!map.has(occupantId)) {
+          map.set(occupantId, []);
+        }
+
+        map.get(occupantId).push(room);
+      });
+    });
+
+    return map;
+  }, [rooms]);
+
+  const getDevoteeRooms = (devotee) => {
+    if (!devotee?.uid) {
+      return [];
+    }
+
+    return roomsByDevotee.get(devotee.uid) || [];
+  };
+
+  const getRoomIdentity = (room) => {
+    if (!room) {
+      return "Not assigned";
+    }
+
+    const roomNumber = String(
+      room.roomNumber || ""
+    ).trim();
+
+    const roomName = String(
+      room.roomName || ""
+    ).trim();
+
+    const floor = String(
+      room.floor || ""
+    ).trim();
+
+    const parts = [];
+
+    if (roomNumber) {
+      parts.push(`Room ${roomNumber}`);
+    }
+
+    if (roomName) {
+      parts.push(roomName);
+    }
+
+    if (floor) {
+      parts.push(`Floor ${floor}`);
+    }
+
+    return parts.length > 0
+      ? parts.join(" · ")
+      : "Assigned room";
+  };
+
+  const getDevoteeRoomLabel = (devotee) => {
+    const devoteeRooms = getDevoteeRooms(devotee);
+
+    if (devoteeRooms.length === 0) {
+      return "Not assigned";
+    }
+
+    return devoteeRooms
+      .map((room) => getRoomIdentity(room))
+      .join(" • ");
+  };
+
+  /*
+   * ============================================================
+   * FILTER OPTIONS
+   * ============================================================
+   */
+
   const departments = useMemo(() => {
     const values = devotees
-      .map((devotee) => devotee.department)
+      .map((devotee) =>
+        String(devotee.department || "").trim()
+      )
       .filter(Boolean);
 
-    return ["All", ...Array.from(new Set(values)).sort()];
+    const uniqueDepartments = Array.from(
+      new Set(values)
+    ).sort((a, b) =>
+      a.localeCompare(b, undefined, {
+        sensitivity: "base",
+      })
+    );
+
+    return ["All", ...uniqueDepartments];
   }, [devotees]);
 
   const formDepartments = useMemo(() => {
     const values = devotees
-      .map((devotee) => devotee.department)
+      .map((devotee) =>
+        String(devotee.department || "").trim()
+      )
       .filter(Boolean);
 
-    return Array.from(new Set(["Temple", ...values])).sort();
+    return Array.from(
+      new Set(["Temple", ...values])
+    ).sort((a, b) =>
+      a.localeCompare(b, undefined, {
+        sensitivity: "base",
+      })
+    );
   }, [devotees]);
 
+  /*
+   * ============================================================
+   * FILTER DEVOTEES
+   * ============================================================
+   */
+
   const filteredDevotees = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = search
+      .trim()
+      .toLowerCase();
+
+    const normalizedDepartmentFilter = String(
+      departmentFilter || ""
+    )
+      .trim()
+      .toLowerCase();
 
     return devotees.filter((devotee) => {
-      const name = String(devotee.name || "").toLowerCase();
-      const email = String(devotee.email || "").toLowerCase();
-      const uid = String(devotee.uid || "").toLowerCase();
-      const phone = String(devotee.phone || "").toLowerCase();
-      const department = String(devotee.department || "");
+      const name = String(devotee.name || "")
+        .trim()
+        .toLowerCase();
+
+      const email = String(devotee.email || "")
+        .trim()
+        .toLowerCase();
+
+      const phone = String(devotee.phone || "")
+        .trim()
+        .toLowerCase();
+
+      const department = String(
+        devotee.department || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const roomLabel = getDevoteeRoomLabel(devotee)
+        .trim()
+        .toLowerCase();
 
       const matchesSearch =
         !normalizedSearch ||
         name.includes(normalizedSearch) ||
         email.includes(normalizedSearch) ||
-        uid.includes(normalizedSearch) ||
-        phone.includes(normalizedSearch);
+        phone.includes(normalizedSearch) ||
+        department.includes(normalizedSearch) ||
+        roomLabel.includes(normalizedSearch);
 
       const matchesStatus =
         statusFilter === "All" ||
         getStatus(devotee) === statusFilter;
 
       const matchesDepartment =
-        departmentFilter === "All" ||
-        department === departmentFilter;
+        normalizedDepartmentFilter === "all" ||
+        department === normalizedDepartmentFilter;
 
       return (
         matchesSearch &&
@@ -143,15 +386,23 @@ function Devotees() {
     });
   }, [
     devotees,
+    roomsByDevotee,
     search,
     statusFilter,
     departmentFilter,
   ]);
 
+  /*
+   * ============================================================
+   * SUMMARY
+   * ============================================================
+   */
+
   const activeCount = useMemo(
     () =>
       devotees.filter(
-        (devotee) => getStatus(devotee) === "Active"
+        (devotee) =>
+          getStatus(devotee) === "Active"
       ).length,
     [devotees]
   );
@@ -159,10 +410,29 @@ function Devotees() {
   const inactiveCount = useMemo(
     () =>
       devotees.filter(
-        (devotee) => getStatus(devotee) === "Inactive"
+        (devotee) =>
+          getStatus(devotee) === "Inactive"
       ).length,
     [devotees]
   );
+
+  const assignedCount = useMemo(
+    () =>
+      devotees.filter(
+        (devotee) =>
+          getDevoteeRooms(devotee).length > 0
+      ).length,
+    [devotees, roomsByDevotee]
+  );
+
+  const unassignedCount =
+    devotees.length - assignedCount;
+
+  /*
+   * ============================================================
+   * FORM
+   * ============================================================
+   */
 
   const handleFormInput = (event) => {
     const { name, value } = event.target;
@@ -185,8 +455,6 @@ function Devotees() {
       confirmPassword: "",
       phone: "",
       department: "Temple",
-      room: "",
-      bed: "",
     });
 
     setRegisterError("");
@@ -206,14 +474,22 @@ function Devotees() {
     resetRegisterForm();
   };
 
+  /*
+   * ============================================================
+   * REGISTER DEVOTEE
+   * ============================================================
+   *
+   * Uses secondaryAuth so the administrator's login session
+   * is never replaced by the newly-created devotee account.
+   * ============================================================
+   */
+
   const handleRegisterDevotee = async (event) => {
     event.preventDefault();
 
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.trim();
-    const room = form.room.trim();
-    const bed = form.bed.trim();
 
     if (!name) {
       setRegisterError(
@@ -222,7 +498,10 @@ function Devotees() {
       return;
     }
 
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+    if (
+      !email ||
+      !/^\S+@\S+\.\S+$/.test(email)
+    ) {
       setRegisterError(
         "Please enter a valid email address."
       );
@@ -236,10 +515,17 @@ function Devotees() {
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
-      setRegisterError("Passwords do not match.");
+    if (
+      form.password !==
+      form.confirmPassword
+    ) {
+      setRegisterError(
+        "Passwords do not match."
+      );
       return;
     }
+
+    let createdFirebaseUser = null;
 
     try {
       setRegisterLoading(true);
@@ -247,10 +533,9 @@ function Devotees() {
       setError("");
 
       /*
-       * Create the Firebase Authentication account using
-       * the secondary Auth instance.
-       *
-       * This keeps the administrator signed in.
+       * Create the devotee in the SECONDARY Firebase Auth
+       * instance. This prevents the administrator from being
+       * logged out.
        */
       const credential =
         await createUserWithEmailAndPassword(
@@ -259,37 +544,49 @@ function Devotees() {
           form.password
         );
 
-      const firebaseUser = credential.user;
+      createdFirebaseUser = credential.user;
 
       /*
-       * Create the corresponding Firestore profile.
-       *
-       * The primary Firestore instance remains authenticated
-       * as the administrator.
+       * Create Firestore profile.
        */
       await setDoc(
-        doc(db, "users", firebaseUser.uid),
+        doc(
+          db,
+          "users",
+          createdFirebaseUser.uid
+        ),
         {
-          uid: firebaseUser.uid,
+          uid: createdFirebaseUser.uid,
           name,
           email,
           phone,
-          department: form.department || "Temple",
-          room: room || "",
-          bed: bed || "",
+
+          department:
+            form.department || "Temple",
+
+          /*
+           * Legacy compatibility fields.
+           * Residence assignment is controlled by rooms.
+           */
+          room: "",
+          bed: "",
           seva: "",
           rounds: 0,
           reading: 0,
+
           role: "devotee",
           status: "active",
+
           photoURL: null,
+
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }
       );
 
       /*
-       * Sign out the temporary secondary account.
+       * Sign out only the secondary authentication instance.
+       * The administrator stays logged in.
        */
       await signOut(secondaryAuth);
 
@@ -301,29 +598,56 @@ function Devotees() {
         registrationError
       );
 
-      setRegisterError(
-        getRegistrationErrorMessage(registrationError)
-      );
-
       /*
-       * Make sure the temporary secondary session is cleared
-       * even when Firestore creation fails.
+       * If Firestore profile creation failed after
+       * Firebase Auth creation, try to remove the newly
+       * created secondary Auth account so the email is
+       * not unnecessarily left as an orphan account.
        */
-      try {
-        await signOut(secondaryAuth);
-      } catch (signOutError) {
-        console.error(
-          "Failed to clear secondary auth:",
-          signOutError
-        );
+      if (createdFirebaseUser) {
+        try {
+          await deleteUser(
+            createdFirebaseUser
+          );
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up newly-created Firebase account:",
+            cleanupError
+          );
+
+          try {
+            await signOut(secondaryAuth);
+          } catch (signOutError) {
+            console.error(
+              "Failed to clear secondary auth:",
+              signOutError
+            );
+          }
+        }
       }
+
+      setRegisterError(
+        getRegistrationErrorMessage(
+          registrationError
+        )
+      );
     } finally {
       setRegisterLoading(false);
     }
   };
 
+  /*
+   * ============================================================
+   * STATUS
+   * ============================================================
+   */
+
   const handleToggleStatus = async (devotee) => {
-    if (!devotee?.uid || updatingId) {
+    if (
+      !devotee?.uid ||
+      updatingId ||
+      deletingId
+    ) {
       return;
     }
 
@@ -341,8 +665,11 @@ function Devotees() {
       await updateDoc(
         doc(db, "users", devotee.uid),
         {
-          status: nextStatus.toLowerCase(),
-          updatedAt: serverTimestamp(),
+          status:
+            nextStatus.toLowerCase(),
+
+          updatedAt:
+            serverTimestamp(),
         }
       );
     } catch (updateError) {
@@ -352,41 +679,146 @@ function Devotees() {
       );
 
       setError(
-        "Unable to update the devotee status. Please try again."
+        getStatusErrorMessage(updateError)
       );
     } finally {
       setUpdatingId(null);
     }
   };
 
+  /*
+   * ============================================================
+   * DELETE DEVOTEE
+   * ============================================================
+   *
+   * This performs a REAL application-data deletion:
+   *
+   * 1. Delete sadhana records
+   * 2. Delete seva records
+   * 3. Delete attendance records
+   * 4. Delete leave records
+   * 5. Remove devotee from rooms
+   * 6. Delete users/{uid}
+   *
+   * Firebase Authentication account is intentionally not
+   * deleted here because another user's Auth account cannot
+   * safely be deleted from a normal client-side admin page.
+   * ============================================================
+   */
+
+  const handleDeleteDevotee = async (devotee) => {
+    if (
+      !devotee?.uid ||
+      updatingId ||
+      deletingId
+    ) {
+      return;
+    }
+
+    const devoteeName =
+      devotee.name || "this devotee";
+
+    const confirmed = window.confirm(
+      `Delete ${devoteeName} permanently?\n\n` +
+        "This will remove the devotee's BACE profile, " +
+        "attendance, sadhana, seva, leave records, " +
+        "and room assignment.\n\n" +
+        "The Firebase Authentication login account will remain stored.\n\n" +
+        "This action cannot be undone from this page."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(devotee.uid);
+      setError("");
+
+      /*
+       * Step 1:
+       * Remove all application data.
+       */
+      await cleanupDevoteeData(
+        devotee.uid
+      );
+
+      /*
+       * Step 2:
+       * Permanently remove the Firestore profile.
+       */
+      await deleteDoc(
+        doc(db, "users", devotee.uid)
+      );
+
+      /*
+       * The users onSnapshot listener automatically
+       * removes the devotee from the directory.
+       */
+    } catch (deleteError) {
+      console.error(
+        "Failed to delete devotee:",
+        deleteError
+      );
+
+      setError(
+        getDeleteErrorMessage(
+          deleteError
+        )
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  /*
+   * ============================================================
+   * VIEW PROFILE
+   * ============================================================
+   */
+
   const handleView = (devotee) => {
     if (!devotee?.uid) {
       return;
     }
 
-    navigate(`/devotees/${devotee.uid}`);
+    navigate(
+      `/devotees/${devotee.uid}`
+    );
   };
+
+  /*
+   * ============================================================
+   * ACCESS CONTROL
+   * ============================================================
+   */
 
   if (!isAdministrator) {
     return (
       <section className="access-denied">
-        <div className="access-denied-icon">!</div>
+        <div className="access-denied-icon">
+          !
+        </div>
 
         <span className="page-eyebrow">
           ACCESS RESTRICTED
         </span>
 
-        <h2>Administrator Access Required</h2>
+        <h2>
+          Administrator Access Required
+        </h2>
 
         <p>
-          You do not have permission to manage the devotee
-          directory.
+          You do not have permission to manage
+          the devotee directory.
         </p>
 
         <button
           type="button"
           className="secondary-button"
-          onClick={() => navigate("/dashboard")}
+          onClick={() =>
+            navigate("/dashboard")
+          }
         >
           Return to Dashboard
         </button>
@@ -395,8 +827,16 @@ function Devotees() {
   }
 
   if (loading) {
-    return <Loader text="Loading devotees..." />;
+    return (
+      <Loader text="Loading devotees..." />
+    );
   }
+
+  /*
+   * ============================================================
+   * PAGE
+   * ============================================================
+   */
 
   return (
     <div className="devotees-page">
@@ -409,14 +849,21 @@ function Devotees() {
           <h1>Devotees</h1>
 
           <p>
-            Manage devotees and their community information.
+            Manage devotees and their community
+            information. Residence identity is linked
+            to the live room directory.
           </p>
         </div>
 
         <div className="header-actions">
           <div className="directory-count">
-            <strong>{devotees.length}</strong>
-            <span>Total devotees</span>
+            <strong>
+              {devotees.length}
+            </strong>
+
+            <span>
+              Total devotees
+            </span>
           </div>
 
           <button
@@ -430,11 +877,19 @@ function Devotees() {
       </header>
 
       {error && (
-        <div className="devotees-alert" role="alert">
-          <span className="devotees-alert-icon">!</span>
+        <div
+          className="devotees-alert"
+          role="alert"
+        >
+          <span className="devotees-alert-icon">
+            !
+          </span>
 
           <div>
-            <strong>Something went wrong</strong>
+            <strong>
+              Something went wrong
+            </strong>
+
             <p>{error}</p>
           </div>
 
@@ -456,7 +911,9 @@ function Devotees() {
 
           <div>
             <span>Total Devotees</span>
-            <strong>{devotees.length}</strong>
+            <strong>
+              {devotees.length}
+            </strong>
           </div>
         </div>
 
@@ -467,7 +924,9 @@ function Devotees() {
 
           <div>
             <span>Active</span>
-            <strong>{activeCount}</strong>
+            <strong>
+              {activeCount}
+            </strong>
           </div>
         </div>
 
@@ -478,7 +937,35 @@ function Devotees() {
 
           <div>
             <span>Inactive</span>
-            <strong>{inactiveCount}</strong>
+            <strong>
+              {inactiveCount}
+            </strong>
+          </div>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-icon assigned">
+            🏠
+          </span>
+
+          <div>
+            <span>Room Assigned</span>
+            <strong>
+              {assignedCount}
+            </strong>
+          </div>
+        </div>
+
+        <div className="summary-card">
+          <span className="summary-icon unassigned">
+            —
+          </span>
+
+          <div>
+            <span>Not Assigned</span>
+            <strong>
+              {unassignedCount}
+            </strong>
           </div>
         </div>
       </section>
@@ -493,9 +980,11 @@ function Devotees() {
             type="search"
             value={search}
             onChange={(event) =>
-              setSearch(event.target.value)
+              setSearch(
+                event.target.value
+              )
             }
-            placeholder="Search by name, email, phone or UID..."
+            placeholder="Search by name, email, phone or room..."
             aria-label="Search devotees"
           />
 
@@ -503,7 +992,9 @@ function Devotees() {
             <button
               type="button"
               className="clear-search"
-              onClick={() => setSearch("")}
+              onClick={() =>
+                setSearch("")
+              }
               aria-label="Clear search"
             >
               ×
@@ -517,12 +1008,22 @@ function Devotees() {
           <select
             value={statusFilter}
             onChange={(event) =>
-              setStatusFilter(event.target.value)
+              setStatusFilter(
+                event.target.value
+              )
             }
           >
-            <option value="All">All statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="All">
+              All statuses
+            </option>
+
+            <option value="Active">
+              Active
+            </option>
+
+            <option value="Inactive">
+              Inactive
+            </option>
           </select>
         </label>
 
@@ -532,19 +1033,23 @@ function Devotees() {
           <select
             value={departmentFilter}
             onChange={(event) =>
-              setDepartmentFilter(event.target.value)
+              setDepartmentFilter(
+                event.target.value
+              )
             }
           >
-            {departments.map((department) => (
-              <option
-                key={department}
-                value={department}
-              >
-                {department === "All"
-                  ? "All departments"
-                  : department}
-              </option>
-            ))}
+            {departments.map(
+              (department) => (
+                <option
+                  key={department}
+                  value={department}
+                >
+                  {department === "All"
+                    ? "All departments"
+                    : department}
+                </option>
+              )
+            )}
           </select>
         </label>
       </section>
@@ -556,11 +1061,16 @@ function Devotees() {
               DEVOTEE DIRECTORY
             </span>
 
-            <h2>Resident Directory</h2>
+            <h2>
+              Resident Directory
+            </h2>
 
             <p>
-              Showing {filteredDevotees.length} of{" "}
-              {devotees.length} devotees
+              Showing{" "}
+              {filteredDevotees.length}{" "}
+              of{" "}
+              {devotees.length}{" "}
+              devotees
             </p>
           </div>
 
@@ -577,7 +1087,9 @@ function Devotees() {
                 <tr>
                   <th>Devotee</th>
                   <th>Department</th>
-                  <th>Room</th>
+                  <th>
+                    Residence Identity
+                  </th>
                   <th>Seva</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -585,103 +1097,196 @@ function Devotees() {
               </thead>
 
               <tbody>
-                {filteredDevotees.map((devotee) => {
-                  const status = getStatus(devotee);
+                {filteredDevotees.map(
+                  (devotee) => {
+                    const status =
+                      getStatus(devotee);
 
-                  const isUpdating =
-                    updatingId === devotee.uid;
+                    const isUpdating =
+                      updatingId ===
+                      devotee.uid;
 
-                  return (
-                    <tr key={devotee.uid}>
-                      <td>
-                        <div className="devotee-cell">
-                          <div className="avatar">
-                            {getInitials(devotee.name)}
+                    const isDeleting =
+                      deletingId ===
+                      devotee.uid;
+
+                    const devoteeRooms =
+                      getDevoteeRooms(
+                        devotee
+                      );
+
+                    const isBusy =
+                      isUpdating ||
+                      isDeleting;
+
+                    return (
+                      <tr
+                        key={devotee.uid}
+                      >
+                        <td>
+                          <div className="devotee-cell">
+                            <div className="avatar">
+                              {getInitials(
+                                devotee.name
+                              )}
+                            </div>
+
+                            <div className="devotee-information">
+                              <strong>
+                                {devotee.name ||
+                                  "Unnamed Devotee"}
+                              </strong>
+
+                              <span>
+                                {devotee.email ||
+                                  "No email"}
+                              </span>
+                            </div>
                           </div>
+                        </td>
 
-                          <div className="devotee-information">
-                            <strong>
-                              {devotee.name ||
-                                "Unnamed Devotee"}
-                            </strong>
+                        <td>
+                          <span className="table-primary-text">
+                            {devotee.department ||
+                              "Temple"}
+                          </span>
+                        </td>
 
-                            <span>
-                              {devotee.email ||
-                                "No email"}
-                            </span>
+                        <td>
+                          {devoteeRooms.length >
+                          0 ? (
+                            <div className="room-identity-cell">
+                              {devoteeRooms.map(
+                                (room) => (
+                                  <div
+                                    className="room-identity"
+                                    key={
+                                      room.id
+                                    }
+                                  >
+                                    <span className="room-identity-icon">
+                                      🏠
+                                    </span>
+
+                                    <div>
+                                      <strong>
+                                        {room.roomNumber
+                                          ? `Room ${room.roomNumber}`
+                                          : "Assigned Room"}
+                                      </strong>
+
+                                      <span>
+                                        {room.roomName ||
+                                          "Residence"}
+                                      </span>
+
+                                      {room.floor && (
+                                        <small>
+                                          Floor{" "}
+                                          {
+                                            room.floor
+                                          }
+                                        </small>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <div className="room-unassigned">
+                              <span className="room-unassigned-icon">
+                                —
+                              </span>
+
+                              <div>
+                                <strong>
+                                  Not assigned
+                                </strong>
+
+                                <span>
+                                  No active room assignment
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+
+                        <td>
+                          <span className="table-primary-text">
+                            {devotee.seva ||
+                              "Not assigned"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`status-badge ${status.toLowerCase()}`}
+                          >
+                            <span />
+                            {status}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              type="button"
+                              className="view-button"
+                              onClick={() =>
+                                handleView(
+                                  devotee
+                                )
+                              }
+                              disabled={
+                                isBusy
+                              }
+                            >
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              className="status-button"
+                              disabled={
+                                isBusy
+                              }
+                              onClick={() =>
+                                handleToggleStatus(
+                                  devotee
+                                )
+                              }
+                            >
+                              {isUpdating
+                                ? "Updating..."
+                                : status ===
+                                    "Active"
+                                  ? "Deactivate"
+                                  : "Activate"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="delete-button"
+                              disabled={
+                                isBusy
+                              }
+                              onClick={() =>
+                                handleDeleteDevotee(
+                                  devotee
+                                )
+                              }
+                            >
+                              {isDeleting
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
                           </div>
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="table-primary-text">
-                          {devotee.department ||
-                            "Temple"}
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className="room-value">
-                          {devotee.room ||
-                            "Not assigned"}
-                        </span>
-
-                        {devotee.bed && (
-                          <small className="table-secondary-text">
-                            {devotee.bed}
-                          </small>
-                        )}
-                      </td>
-
-                      <td>
-                        <span className="table-primary-text">
-                          {devotee.seva ||
-                            "Not assigned"}
-                        </span>
-                      </td>
-
-                      <td>
-                        <span
-                          className={`status-badge ${status.toLowerCase()}`}
-                        >
-                          <span />
-                          {status}
-                        </span>
-                      </td>
-
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            type="button"
-                            className="view-button"
-                            onClick={() =>
-                              handleView(devotee)
-                            }
-                          >
-                            View
-                          </button>
-
-                          <button
-                            type="button"
-                            className="status-button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              handleToggleStatus(
-                                devotee
-                              )
-                            }
-                          >
-                            {isUpdating
-                              ? "Updating..."
-                              : status === "Active"
-                                ? "Deactivate"
-                                : "Activate"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
@@ -691,7 +1296,9 @@ function Devotees() {
               ⌕
             </div>
 
-            <h3>No devotees found</h3>
+            <h3>
+              No devotees found
+            </h3>
 
             <p>
               {devotees.length === 0
@@ -701,14 +1308,17 @@ function Devotees() {
 
             {(search ||
               statusFilter !== "All" ||
-              departmentFilter !== "All") && (
+              departmentFilter !==
+                "All") && (
               <button
                 type="button"
                 className="secondary-button"
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("All");
-                  setDepartmentFilter("All");
+                  setDepartmentFilter(
+                    "All"
+                  );
                 }}
               >
                 Clear Filters
@@ -724,13 +1334,17 @@ function Devotees() {
         </div>
 
         <div>
-          <strong>Devotee account services</strong>
+          <strong>
+            Devotee account services
+          </strong>
 
           <p>
-            Administrators can register devotee accounts
-            directly from this page. Each registration
-            creates both a Firebase Authentication account
-            and its corresponding devotee profile.
+            Administrators can register devotee
+            accounts directly from this page. Room
+            assignment is managed separately through
+            the BACE room directory so residence
+            information stays synchronized across
+            the system.
           </p>
         </div>
       </section>
@@ -739,7 +1353,10 @@ function Devotees() {
         <div
           className="devotee-modal-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               closeRegisterModal();
             }
           }}
@@ -762,15 +1379,21 @@ function Devotees() {
 
                 <p>
                   Create a devotee account and
-                  resident profile.
+                  resident profile. Room assignment is
+                  managed separately from the residence
+                  directory.
                 </p>
               </div>
 
               <button
                 type="button"
                 className="modal-close"
-                onClick={closeRegisterModal}
-                disabled={registerLoading}
+                onClick={
+                  closeRegisterModal
+                }
+                disabled={
+                  registerLoading
+                }
                 aria-label="Close registration"
               >
                 ×
@@ -778,15 +1401,23 @@ function Devotees() {
             </div>
 
             {registerError && (
-              <div className="modal-error" role="alert">
+              <div
+                className="modal-error"
+                role="alert"
+              >
                 <span>!</span>
-                <p>{registerError}</p>
+
+                <p>
+                  {registerError}
+                </p>
               </div>
             )}
 
             <form
               className="register-devotee-form"
-              onSubmit={handleRegisterDevotee}
+              onSubmit={
+                handleRegisterDevotee
+              }
             >
               <div className="form-section">
                 <div className="form-section-title">
@@ -796,16 +1427,21 @@ function Devotees() {
                 <div className="modal-form-grid">
                   <label className="form-field full-width">
                     <span>
-                      Full Name <b>*</b>
+                      Full Name{" "}
+                      <b>*</b>
                     </span>
 
                     <input
                       name="name"
                       value={form.name}
-                      onChange={handleFormInput}
+                      onChange={
+                        handleFormInput
+                      }
                       placeholder="Enter full name"
                       autoComplete="name"
-                      disabled={registerLoading}
+                      disabled={
+                        registerLoading
+                      }
                       required
                     />
                   </label>
@@ -819,25 +1455,35 @@ function Devotees() {
                       type="email"
                       name="email"
                       value={form.email}
-                      onChange={handleFormInput}
+                      onChange={
+                        handleFormInput
+                      }
                       placeholder="devotee@example.com"
                       autoComplete="email"
-                      disabled={registerLoading}
+                      disabled={
+                        registerLoading
+                      }
                       required
                     />
                   </label>
 
                   <label className="form-field">
-                    <span>Phone</span>
+                    <span>
+                      Phone
+                    </span>
 
                     <input
                       type="tel"
                       name="phone"
                       value={form.phone}
-                      onChange={handleFormInput}
+                      onChange={
+                        handleFormInput
+                      }
                       placeholder="Enter phone number"
                       autoComplete="tel"
-                      disabled={registerLoading}
+                      disabled={
+                        registerLoading
+                      }
                     />
                   </label>
                 </div>
@@ -857,28 +1503,41 @@ function Devotees() {
                     <input
                       type="password"
                       name="password"
-                      value={form.password}
-                      onChange={handleFormInput}
+                      value={
+                        form.password
+                      }
+                      onChange={
+                        handleFormInput
+                      }
                       placeholder="Minimum 6 characters"
                       autoComplete="new-password"
-                      disabled={registerLoading}
+                      disabled={
+                        registerLoading
+                      }
                       required
                     />
                   </label>
 
                   <label className="form-field">
                     <span>
-                      Confirm Password <b>*</b>
+                      Confirm Password{" "}
+                      <b>*</b>
                     </span>
 
                     <input
                       type="password"
                       name="confirmPassword"
-                      value={form.confirmPassword}
-                      onChange={handleFormInput}
+                      value={
+                        form.confirmPassword
+                      }
+                      onChange={
+                        handleFormInput
+                      }
                       placeholder="Repeat password"
                       autoComplete="new-password"
-                      disabled={registerLoading}
+                      disabled={
+                        registerLoading
+                      }
                       required
                     />
                   </label>
@@ -892,19 +1551,31 @@ function Devotees() {
 
                 <div className="modal-form-grid">
                   <label className="form-field">
-                    <span>Department</span>
+                    <span>
+                      Department
+                    </span>
 
                     <select
                       name="department"
-                      value={form.department}
-                      onChange={handleFormInput}
-                      disabled={registerLoading}
+                      value={
+                        form.department
+                      }
+                      onChange={
+                        handleFormInput
+                      }
+                      disabled={
+                        registerLoading
+                      }
                     >
                       {formDepartments.map(
                         (department) => (
                           <option
-                            key={department}
-                            value={department}
+                            key={
+                              department
+                            }
+                            value={
+                              department
+                            }
                           >
                             {department}
                           </option>
@@ -913,29 +1584,20 @@ function Devotees() {
                     </select>
                   </label>
 
-                  <label className="form-field">
-                    <span>Room</span>
+                  <div className="assignment-information">
+                    <span>
+                      Residence
+                    </span>
 
-                    <input
-                      name="room"
-                      value={form.room}
-                      onChange={handleFormInput}
-                      placeholder="Example: Room 206"
-                      disabled={registerLoading}
-                    />
-                  </label>
+                    <strong>
+                      Assign after registration
+                    </strong>
 
-                  <label className="form-field">
-                    <span>Bed</span>
-
-                    <input
-                      name="bed"
-                      value={form.bed}
-                      onChange={handleFormInput}
-                      placeholder="Example: Bed 2"
-                      disabled={registerLoading}
-                    />
-                  </label>
+                    <small>
+                      Use Community Rooms to assign the
+                      devotee to a room.
+                    </small>
+                  </div>
                 </div>
               </div>
 
@@ -943,8 +1605,12 @@ function Devotees() {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={closeRegisterModal}
-                  disabled={registerLoading}
+                  onClick={
+                    closeRegisterModal
+                  }
+                  disabled={
+                    registerLoading
+                  }
                 >
                   Cancel
                 </button>
@@ -952,7 +1618,9 @@ function Devotees() {
                 <button
                   type="submit"
                   className="primary-button"
-                  disabled={registerLoading}
+                  disabled={
+                    registerLoading
+                  }
                 >
                   {registerLoading ? (
                     <>
@@ -972,8 +1640,215 @@ function Devotees() {
   );
 }
 
+/*
+ * ============================================================
+ * DELETE APPLICATION DATA
+ * ============================================================
+ *
+ * Looks for records using devoteeId, userId, or uid.
+ * This makes the cleanup compatible with older records
+ * that may have used a different ownership field.
+ * ============================================================
+ */
+
+async function cleanupDevoteeData(devoteeId) {
+  if (!devoteeId) {
+    throw new Error(
+      "Invalid devotee account."
+    );
+  }
+
+  const collectionsToClean = [
+    "sadhana",
+    "seva",
+    "attendance",
+    "leave",
+  ];
+
+  /*
+   * Store document references in a Map so if an old
+   * document contains more than one ownership field,
+   * it is only deleted once.
+   */
+  const recordsToDelete = new Map();
+
+  for (const collectionName of collectionsToClean) {
+    const collectionRef =
+      collection(
+        db,
+        collectionName
+      );
+
+    /*
+     * Current application ownership field.
+     */
+    const devoteeIdQuery = query(
+      collectionRef,
+      where(
+        "devoteeId",
+        "==",
+        devoteeId
+      )
+    );
+
+    const devoteeIdSnapshot =
+      await getDocs(
+        devoteeIdQuery
+      );
+
+    devoteeIdSnapshot.docs.forEach(
+      (record) => {
+        recordsToDelete.set(
+          `${collectionName}/${record.id}`,
+          record.ref
+        );
+      }
+    );
+
+    /*
+     * Compatibility with older records.
+     */
+    const userIdQuery = query(
+      collectionRef,
+      where(
+        "userId",
+        "==",
+        devoteeId
+      )
+    );
+
+    const userIdSnapshot =
+      await getDocs(
+        userIdQuery
+      );
+
+    userIdSnapshot.docs.forEach(
+      (record) => {
+        recordsToDelete.set(
+          `${collectionName}/${record.id}`,
+          record.ref
+        );
+      }
+    );
+
+    /*
+     * Compatibility with records that used uid.
+     */
+    const uidQuery = query(
+      collectionRef,
+      where(
+        "uid",
+        "==",
+        devoteeId
+      )
+    );
+
+    const uidSnapshot =
+      await getDocs(uidQuery);
+
+    uidSnapshot.docs.forEach(
+      (record) => {
+        recordsToDelete.set(
+          `${collectionName}/${record.id}`,
+          record.ref
+        );
+      }
+    );
+  }
+
+  /*
+   * ==========================================================
+   * FIND ROOMS
+   * ==========================================================
+   */
+
+  const roomsQuery = query(
+    collection(db, "rooms"),
+    where(
+      "occupants",
+      "array-contains",
+      devoteeId
+    )
+  );
+
+  const roomsSnapshot =
+    await getDocs(roomsQuery);
+
+  /*
+   * ==========================================================
+   * FIRESTORE BATCH CLEANUP
+   * ==========================================================
+   *
+   * Firestore supports up to 500 writes per batch.
+   * We use 450 as a safety margin.
+   * ==========================================================
+   */
+
+  let batch = writeBatch(db);
+  let operationCount = 0;
+
+  const commitBatchIfNeeded = async () => {
+    if (operationCount === 0) {
+      return;
+    }
+
+    await batch.commit();
+
+    batch = writeBatch(db);
+    operationCount = 0;
+  };
+
+  /*
+   * Delete application records.
+   */
+  for (const recordRef of recordsToDelete.values()) {
+    batch.delete(recordRef);
+
+    operationCount += 1;
+
+    if (operationCount >= 450) {
+      await commitBatchIfNeeded();
+    }
+  }
+
+  /*
+   * Remove devotee from rooms.
+   */
+  for (const roomDocument of roomsSnapshot.docs) {
+    batch.update(
+      roomDocument.ref,
+      {
+        occupants:
+          arrayRemove(devoteeId),
+
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    operationCount += 1;
+
+    if (operationCount >= 450) {
+      await commitBatchIfNeeded();
+    }
+  }
+
+  /*
+   * Commit remaining operations.
+   */
+  await commitBatchIfNeeded();
+}
+
+/*
+ * ============================================================
+ * HELPERS
+ * ============================================================
+ */
+
 function getStatus(devotee) {
-  const value = String(devotee?.status || "active")
+  const value = String(
+    devotee?.status || "active"
+  )
     .trim()
     .toLowerCase();
 
@@ -983,16 +1858,22 @@ function getStatus(devotee) {
 }
 
 function getInitials(name) {
-  const value = String(name || "").trim();
+  const value = String(
+    name || ""
+  ).trim();
 
   if (!value) {
     return "D";
   }
 
-  const parts = value.split(/\s+/);
+  const parts = value.split(
+    /\s+/
+  );
 
   if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
+    return parts[0]
+      .charAt(0)
+      .toUpperCase();
   }
 
   return (
@@ -1001,10 +1882,12 @@ function getInitials(name) {
   ).toUpperCase();
 }
 
-function getRegistrationErrorMessage(error) {
+function getRegistrationErrorMessage(
+  error
+) {
   switch (error?.code) {
     case "auth/email-already-in-use":
-      return "An account with this email already exists.";
+      return "An account with this email already exists. Use a different email or manage the existing Firebase account.";
 
     case "auth/invalid-email":
       return "Please enter a valid email address.";
@@ -1016,7 +1899,8 @@ function getRegistrationErrorMessage(error) {
       return "Network error. Please check your internet connection.";
 
     case "permission-denied":
-      return "You do not have permission to create this devotee profile.";
+    case "firestore/permission-denied":
+      return "You do not have permission to create this devotee profile. Check your Firestore rules.";
 
     default:
       return (
@@ -1024,6 +1908,56 @@ function getRegistrationErrorMessage(error) {
         "Unable to create the devotee account. Please try again."
       );
   }
+}
+
+function getStatusErrorMessage(error) {
+  if (
+    error?.code ===
+      "permission-denied" ||
+    error?.code ===
+      "firestore/permission-denied" ||
+    error?.code ===
+      "PERMISSION_DENIED"
+  ) {
+    return "You do not have permission to update this devotee.";
+  }
+
+  return (
+    error?.message ||
+    "Unable to update the devotee status. Please try again."
+  );
+}
+
+function getDeleteErrorMessage(error) {
+  if (
+    error?.code ===
+      "permission-denied" ||
+    error?.code ===
+      "firestore/permission-denied" ||
+    error?.code ===
+      "PERMISSION_DENIED"
+  ) {
+    return "Delete failed because Firestore denied access to one of the devotee records. Make sure the administrator has delete access to users, attendance, sadhana, seva, leave, and room records.";
+  }
+
+  if (
+    error?.code ===
+    "failed-precondition"
+  ) {
+    return "The devotee could not be removed because Firebase reported a required index or database condition.";
+  }
+
+  if (
+    error?.code ===
+    "not-found"
+  ) {
+    return "The devotee profile was already removed from Firestore.";
+  }
+
+  return (
+    error?.message ||
+    "Unable to remove the devotee. Please try again."
+  );
 }
 
 export default Devotees;

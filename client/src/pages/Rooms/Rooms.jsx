@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  addDoc,
   arrayUnion,
   collection,
   doc,
@@ -16,6 +17,198 @@ import Loader from "../../components/Common/Loader";
 
 import "./Rooms.css";
 
+/* ======================================================
+ * FACILITY IMAGES
+ * ====================================================== */
+
+const TERRACE_IMAGE = "/images/bace-terrace.jpg";
+const UPPER_TERRACE_IMAGE = "/images/bace-upper-terrace.jpg";
+
+/* ======================================================
+ * COMMON FACILITIES
+ * ====================================================== */
+
+const COMMON_FACILITIES = [
+  {
+    key: "ground-floor",
+    label: "GROUND FLOOR",
+    title: "Ground Floor",
+    subtitle: "Parking + Vrindavan Forest",
+    description:
+      "Main entrance, parking area, Vrindavan Forest and common ground-level access.",
+    image: "",
+    icon: "⌂",
+    details: [
+      "Parking area",
+      "Vrindavan Forest",
+      "Main entrance and common access",
+    ],
+  },
+  {
+    key: "terrace",
+    label: "TERRACE",
+    title: "BACE Terrace",
+    subtitle: "Shared devotional and service spaces",
+    description:
+      "The terrace contains shared spaces for lectures, prasadam, devotional activities and kitchen services.",
+    image: TERRACE_IMAGE,
+    icon: "◈",
+    details: [
+      "Bhaktivedanta Hall — Lecture Area",
+      "Mukharavinda — Temple Area",
+      "Prasadam Hall",
+      "Giriraj Rasoi — Kitchen",
+    ],
+  },
+  {
+    key: "upper-terrace",
+    label: "UPPER TERRACE",
+    title: "Upper Terrace",
+    subtitle: "Gopinathji Mandir",
+    description:
+      "The upper terrace contains the Gopinathji Mandir devotional space.",
+    image: UPPER_TERRACE_IMAGE,
+    icon: "✦",
+    details: ["Gopinathji Mandir"],
+  },
+];
+
+/* ======================================================
+ * RESIDENCE REFERENCE INFORMATION
+ * ====================================================== */
+
+const FLOOR_REFERENCE = [
+  {
+    floor: "Floor 1",
+    passage: "Chandra Sarovar",
+    bathroomInfo: "4 attached toilet bathrooms with geysers",
+    rooms: [
+      {
+        number: "1",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "2",
+        name: "",
+        capacity: 6,
+        lockers: 6,
+      },
+      {
+        number: "3",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "4",
+        name: "Study Room",
+        studyOnly: true,
+      },
+      {
+        number: "5",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "6",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "7",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "8",
+        name: "",
+        capacity: 4,
+        lockers: 4,
+      },
+    ],
+  },
+  {
+    floor: "Floor 2",
+    passage: "Kusum Sarovar + Spiritual Library",
+    bathroomInfo: "4 attached toilet bathrooms with geysers",
+    rooms: [
+      {
+        number: "1",
+        name: "Govardhan Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "2",
+        name: "Sankarshan Kund",
+        capacity: 6,
+        lockers: 6,
+      },
+      {
+        number: "3",
+        name: "Uddhava Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "4",
+        name: "Surabhi Kund",
+        studyOnly: true,
+      },
+      {
+        number: "5",
+        name: "Narad Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "6",
+        name: "Shyam Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "7",
+        name: "Radha Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+      {
+        number: "8",
+        name: "Rudra Kund",
+        capacity: 4,
+        lockers: 4,
+      },
+    ],
+  },
+];
+
+/* ======================================================
+ * ADMIN ROOM FLOORS
+ * ====================================================== */
+
+const FLOOR_OPTIONS = [
+  { value: "1", label: "Floor 1" },
+  { value: "2", label: "Floor 2" },
+  { value: "3", label: "Floor 3" },
+  { value: "4", label: "Floor 4" },
+  { value: "5", label: "Floor 5" },
+  { value: "6", label: "Floor 6" },
+  { value: "7", label: "Floor 7" },
+  { value: "8", label: "Floor 8" },
+  { value: "9", label: "Floor 9" },
+  { value: "10", label: "Floor 10" },
+];
+
+/* ======================================================
+ * ROOMS
+ * ====================================================== */
+
 function Rooms() {
   const { user, isAdministrator, isDevotee } = useAuth();
 
@@ -30,23 +223,24 @@ function Rooms() {
   const [occupancyFilter, setOccupancyFilter] = useState("all");
 
   const [showAssignForm, setShowAssignForm] = useState(false);
+  const [showRoomForm, setShowRoomForm] = useState(false);
 
   const [assignment, setAssignment] = useState({
     roomId: "",
     devoteeId: "",
   });
 
-  /*
-   * ======================================================
+  const [roomForm, setRoomForm] = useState({
+    floor: "1",
+    roomNumber: "",
+    roomName: "",
+    maximumOccupancy: "",
+    roomType: "residential",
+  });
+
+  /* ======================================================
    * LOAD ROOMS
-   * ======================================================
-   *
-   * ADMIN:
-   * Loads every room.
-   *
-   * DEVOTEE:
-   * Loads only rooms containing their Firebase UID.
-   */
+   * ====================================================== */
 
   useEffect(() => {
     if (!user?.uid) {
@@ -71,41 +265,10 @@ function Rooms() {
         const roomData = snapshot.docs.map((item) => {
           const data = item.data();
 
-          /*
-           * Support common Firebase field names.
-           *
-           * Preferred:
-           * capacity
-           *
-           * Also supports:
-           * beds
-           * totalBeds
-           */
-
           const rawCapacity =
-            data.capacity ??
-            data.beds ??
-            data.totalBeds ??
-            0;
+            data.maximumOccupancy ?? data.capacity ?? 0;
 
-          const capacity = Number(rawCapacity);
-
-          /*
-           * Support:
-           * roomNumber
-           * room
-           *
-           * If neither exists, use document ID.
-           */
-
-          const roomNumber =
-            data.roomNumber ??
-            data.room ??
-            item.id;
-
-          /*
-           * Support occupants as an array.
-           */
+          const maximumOccupancy = Number(rawCapacity);
 
           const occupants = Array.isArray(data.occupants)
             ? data.occupants
@@ -113,38 +276,63 @@ function Rooms() {
 
           return {
             id: item.id,
-            room: roomNumber,
-            roomNumber,
+
             floor:
               data.floor ??
               data.floorNumber ??
               "Not specified",
-            capacity: Number.isFinite(capacity)
-              ? capacity
+
+            roomNumber:
+              data.roomNumber ??
+              data.room ??
+              item.id,
+
+            roomName: data.roomName ?? "",
+
+            maximumOccupancy: Number.isFinite(maximumOccupancy)
+              ? maximumOccupancy
               : 0,
+
+            roomType: data.roomType ?? "residential",
+
             occupants,
           };
         });
 
-        roomData.sort((a, b) =>
-          String(a.roomNumber).localeCompare(
+        roomData.sort((a, b) => {
+          const aFloor =
+            String(a.floor).toLowerCase() === "ground floor"
+              ? 0
+              : Number(a.floor);
+
+          const bFloor =
+            String(b.floor).toLowerCase() === "ground floor"
+              ? 0
+              : Number(b.floor);
+
+          if (
+            Number.isFinite(aFloor) &&
+            Number.isFinite(bFloor) &&
+            aFloor !== bFloor
+          ) {
+            return aFloor - bFloor;
+          }
+
+          return String(a.roomNumber).localeCompare(
             String(b.roomNumber),
             undefined,
             {
               numeric: true,
               sensitivity: "base",
             }
-          )
-        );
+          );
+        });
 
         setRooms(roomData);
         setLoading(false);
       },
       (firebaseError) => {
-        console.error(
-          "Failed to load rooms:",
-          firebaseError
-        );
+        console.error("Failed to load rooms:", firebaseError);
 
         setRooms([]);
         setLoading(false);
@@ -164,13 +352,9 @@ function Rooms() {
     return () => unsubscribe();
   }, [user?.uid, isAdministrator]);
 
-  /*
-   * ======================================================
-   * LOAD DEVOTEES
-   * ======================================================
-   *
-   * ADMIN ONLY
-   */
+  /* ======================================================
+   * LOAD ACTIVE DEVOTEES ONLY
+   * ====================================================== */
 
   useEffect(() => {
     if (!isAdministrator) {
@@ -178,18 +362,36 @@ function Rooms() {
       return undefined;
     }
 
+    /*
+     * IMPORTANT:
+     * Only active devotees are loaded here.
+     *
+     * This prevents:
+     * - inactive devotees
+     * - deleted devotees
+     * - administrators
+     *
+     * from appearing in the Assign Devotee dropdown.
+     */
     const devoteesQuery = query(
       collection(db, "users"),
-      where("role", "==", "devotee")
+      where("role", "==", "devotee"),
+      where("status", "==", "active")
     );
 
     const unsubscribe = onSnapshot(
       devoteesQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          uid: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs
+          .map((item) => ({
+            uid: item.id,
+            ...item.data(),
+          }))
+          .filter(
+            (devotee) =>
+              devotee.role === "devotee" &&
+              devotee.status === "active"
+          );
 
         data.sort((a, b) =>
           String(a.name || "").localeCompare(
@@ -205,7 +407,7 @@ function Rooms() {
       },
       (firebaseError) => {
         console.error(
-          "Failed to load devotees:",
+          "Failed to load active devotees:",
           firebaseError
         );
 
@@ -222,70 +424,100 @@ function Rooms() {
     return () => unsubscribe();
   }, [isAdministrator]);
 
-  /*
-   * ======================================================
+  /* ======================================================
    * DEVOTEE MAP
-   * ======================================================
-   */
+   * ====================================================== */
 
   const devoteeMap = useMemo(() => {
     const map = {};
 
     devotees.forEach((devotee) => {
-      map[devotee.uid] = devotee;
+      /*
+       * The map contains active devotees loaded above.
+       * This means assignment/search uses current active
+       * devotee profiles only.
+       */
+      if (
+        devotee.role === "devotee" &&
+        devotee.status === "active"
+      ) {
+        map[devotee.uid] = devotee;
+      }
     });
 
     return map;
   }, [devotees]);
 
-  /*
-   * ======================================================
+  /* ======================================================
+   * ROOM HELPERS
+   * ====================================================== */
+
+  const getOccupantsCount = (room) => {
+    return Array.isArray(room.occupants)
+      ? room.occupants.length
+      : 0;
+  };
+
+  const getVacancy = (room) => {
+    const maximum = Number(room.maximumOccupancy) || 0;
+    const occupants = getOccupantsCount(room);
+
+    return Math.max(maximum - occupants, 0);
+  };
+
+  /* ======================================================
    * ASSIGNABLE ROOMS
-   * ======================================================
-   *
-   * This is deliberately calculated separately.
-   *
-   * Only rooms with:
-   *
-   * capacity > occupants
-   *
-   * can be assigned.
-   */
+   * ====================================================== */
 
   const assignableRooms = useMemo(() => {
     return rooms.filter((room) => {
-      const capacity = Number(room.capacity) || 0;
-      const occupied = Array.isArray(room.occupants)
-        ? room.occupants.length
-        : 0;
+      const maximum = Number(room.maximumOccupancy) || 0;
+      const occupants = getOccupantsCount(room);
 
-      return capacity > 0 && occupied < capacity;
+      const isGroundFloor =
+        String(room.floor).trim().toLowerCase() ===
+        "ground floor";
+
+      return (
+        !isGroundFloor &&
+        room.roomType === "residential" &&
+        maximum > 0 &&
+        occupants < maximum
+      );
     });
   }, [rooms]);
 
-  /*
-   * ======================================================
-   * AVAILABLE DEVOTEES
-   * ======================================================
-   *
-   * A devotee can only be assigned to one room.
-   */
+  /* ======================================================
+   * AVAILABLE ACTIVE DEVOTEES
+   * ====================================================== */
 
   const availableDevotees = useMemo(() => {
+    /*
+     * `devotees` already contains only active devotees.
+     *
+     * We additionally check role/status here so that even
+     * if stale realtime state exists temporarily, an
+     * inactive/deleted devotee cannot appear in the dropdown.
+     */
     return devotees.filter((devotee) => {
-      const alreadyAssigned = rooms.some((room) =>
-        room.occupants.includes(devotee.uid)
-      );
+      if (
+        devotee.role !== "devotee" ||
+        devotee.status !== "active"
+      ) {
+        return false;
+      }
 
-      return !alreadyAssigned;
+      return !rooms.some((room) =>
+        Array.isArray(room.occupants)
+          ? room.occupants.includes(devotee.uid)
+          : false
+      );
     });
   }, [devotees, rooms]);
 
-  /*
-   * ======================================================
-   * ADMIN ROOM FILTERING
-   * ======================================================
-   */
+  /* ======================================================
+   * FILTER ROOMS
+   * ====================================================== */
 
   const filteredRooms = useMemo(() => {
     if (!isAdministrator) {
@@ -293,10 +525,6 @@ function Rooms() {
     }
 
     let result = [...rooms];
-
-    /*
-     * SEARCH
-     */
 
     if (search.trim()) {
       const value = search.trim().toLowerCase();
@@ -306,58 +534,62 @@ function Rooms() {
           String(room.roomNumber)
             .toLowerCase()
             .includes(value) ||
+          String(room.roomName)
+            .toLowerCase()
+            .includes(value) ||
           String(room.floor)
             .toLowerCase()
             .includes(value);
 
-        const occupantMatches = (
-          room.occupants || []
-        ).some((uid) => {
-          const devotee = devoteeMap[uid];
+        const occupantMatches = room.occupants || [];
 
-          const name = String(
-            devotee?.name || ""
-          ).toLowerCase();
+        const devoteeMatches = occupantMatches.some(
+          (uid) => {
+            const devotee = devoteeMap[uid];
 
-          const email = String(
-            devotee?.email || ""
-          ).toLowerCase();
+            const name = String(
+              devotee?.name || ""
+            ).toLowerCase();
 
-          return (
-            name.includes(value) ||
-            email.includes(value)
-          );
-        });
+            const email = String(
+              devotee?.email || ""
+            ).toLowerCase();
 
-        return roomMatches || occupantMatches;
+            return (
+              name.includes(value) ||
+              email.includes(value)
+            );
+          }
+        );
+
+        return roomMatches || devoteeMatches;
       });
     }
 
-    /*
-     * OCCUPANCY FILTER
-     */
-
     if (occupancyFilter !== "all") {
       result = result.filter((room) => {
-        const occupied = room.occupants.length;
-        const capacity = Number(room.capacity) || 0;
+        const occupants = getOccupantsCount(room);
+        const maximum =
+          Number(room.maximumOccupancy) || 0;
 
         if (occupancyFilter === "available") {
           return (
-            capacity > 0 &&
-            occupied < capacity
+            room.roomType === "residential" &&
+            maximum > 0 &&
+            occupants < maximum
           );
         }
 
         if (occupancyFilter === "full") {
           return (
-            capacity > 0 &&
-            occupied >= capacity
+            room.roomType === "residential" &&
+            maximum > 0 &&
+            occupants >= maximum
           );
         }
 
         if (occupancyFilter === "empty") {
-          return occupied === 0;
+          return occupants === 0;
         }
 
         return true;
@@ -373,55 +605,208 @@ function Rooms() {
     devoteeMap,
   ]);
 
-  /*
-   * ======================================================
-   * ROOM STATISTICS
-   * ======================================================
-   */
+  /* ======================================================
+   * STATISTICS
+   * ====================================================== */
 
   const statistics = useMemo(() => {
-    const totalRooms = rooms.length;
+    const residentialRooms = rooms.filter(
+      (room) =>
+        room.roomType === "residential" &&
+        String(room.floor).trim().toLowerCase() !==
+          "ground floor"
+    );
 
-    const totalCapacity = rooms.reduce(
+    const totalRooms = residentialRooms.length;
+
+    const totalCapacity = residentialRooms.reduce(
       (total, room) =>
-        total + (Number(room.capacity) || 0),
+        total +
+        (Number(room.maximumOccupancy) || 0),
       0
     );
 
-    const occupiedBeds = rooms.reduce(
+    const occupants = residentialRooms.reduce(
       (total, room) =>
-        total + room.occupants.length,
+        total + getOccupantsCount(room),
       0
     );
 
-    const availableBeds = Math.max(
-      totalCapacity - occupiedBeds,
+    const vacancy = Math.max(
+      totalCapacity - occupants,
       0
     );
 
-    const fullRooms = rooms.filter((room) => {
-      const capacity = Number(room.capacity) || 0;
+    const fullRooms = residentialRooms.filter(
+      (room) =>
+        getOccupantsCount(room) >=
+        Number(room.maximumOccupancy)
+    ).length;
 
-      return (
-        capacity > 0 &&
-        room.occupants.length >= capacity
-      );
-    }).length;
+    const studyRooms = rooms.filter(
+      (room) => room.roomType === "study"
+    ).length;
 
     return {
       totalRooms,
       totalCapacity,
-      occupiedBeds,
-      availableBeds,
+      occupants,
+      vacancy,
       fullRooms,
+      studyRooms,
     };
   }, [rooms]);
 
-  /*
-   * ======================================================
+  /* ======================================================
+   * ROOM FORM
+   * ====================================================== */
+
+  const handleRoomFormChange = (event) => {
+    const { name, value } = event.target;
+
+    setRoomForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  /* ======================================================
+   * CREATE ROOM
+   * ====================================================== */
+
+  const createRoom = async (event) => {
+    event.preventDefault();
+
+    if (!isAdministrator) {
+      return;
+    }
+
+    setError("");
+
+    const floor = roomForm.floor.trim();
+    const roomNumber = roomForm.roomNumber.trim();
+    const roomName = roomForm.roomName.trim();
+
+    const maximumOccupancy = Number(
+      roomForm.maximumOccupancy
+    );
+
+    if (
+      !FLOOR_OPTIONS.some(
+        (item) => item.value === floor
+      )
+    ) {
+      setError(
+        "Please select a valid residential floor."
+      );
+      return;
+    }
+
+    if (!roomNumber) {
+      setError(
+        "Please enter the room number."
+      );
+      return;
+    }
+
+    if (!roomName) {
+      setError(
+        "Please enter the room name."
+      );
+      return;
+    }
+
+    if (
+      roomForm.roomType === "residential" &&
+      (!Number.isFinite(maximumOccupancy) ||
+        maximumOccupancy <= 0)
+    ) {
+      setError(
+        "Please enter a valid maximum occupancy."
+      );
+      return;
+    }
+
+    const duplicate = rooms.some(
+      (room) =>
+        String(room.floor)
+          .trim()
+          .toLowerCase() ===
+          floor.toLowerCase() &&
+        String(room.roomNumber)
+          .trim()
+          .toLowerCase() ===
+          roomNumber.toLowerCase()
+    );
+
+    if (duplicate) {
+      setError(
+        `Room ${roomNumber} already exists on ${floor}.`
+      );
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await addDoc(
+        collection(db, "rooms"),
+        {
+          floor,
+          roomNumber,
+          roomName,
+          maximumOccupancy:
+            roomForm.roomType === "residential"
+              ? maximumOccupancy
+              : 0,
+          roomType: roomForm.roomType,
+          occupants: [],
+          createdAt:
+            new Date().toISOString(),
+          createdBy: user.uid,
+        }
+      );
+
+      setRoomForm({
+        floor: "1",
+        roomNumber: "",
+        roomName: "",
+        maximumOccupancy: "",
+        roomType: "residential",
+      });
+
+      setShowRoomForm(false);
+      setError("");
+    } catch (firebaseError) {
+      console.error(
+        "Failed to create room:",
+        firebaseError
+      );
+
+      if (
+        firebaseError.code ===
+        "permission-denied"
+      ) {
+        setError(
+          "Firebase permission denied. Your Firestore rules must allow administrators to create rooms."
+        );
+      } else {
+        setError(
+          "Unable to create the room. Please try again."
+        );
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ======================================================
    * ASSIGNMENT FORM
-   * ======================================================
-   */
+   * ====================================================== */
 
   const handleAssignmentChange = (event) => {
     const { name, value } = event.target;
@@ -431,21 +816,10 @@ function Rooms() {
       [name]: value,
     }));
 
-    /*
-     * Clear previous error once user changes
-     * the form.
-     */
-
     if (error) {
       setError("");
     }
   };
-
-  /*
-   * ======================================================
-   * OPEN ASSIGN FORM
-   * ======================================================
-   */
 
   const openAssignForm = () => {
     setError("");
@@ -458,12 +832,6 @@ function Rooms() {
     setShowAssignForm(true);
   };
 
-  /*
-   * ======================================================
-   * CLOSE ASSIGN FORM
-   * ======================================================
-   */
-
   const closeAssignForm = () => {
     setShowAssignForm(false);
 
@@ -475,11 +843,9 @@ function Rooms() {
     setError("");
   };
 
-  /*
-   * ======================================================
+  /* ======================================================
    * ASSIGN DEVOTEE
-   * ======================================================
-   */
+   * ====================================================== */
 
   const assignDevotee = async (event) => {
     event.preventDefault();
@@ -494,12 +860,38 @@ function Rooms() {
     const devoteeId = assignment.devoteeId;
 
     if (!roomId) {
-      setError("Please select a room.");
+      setError(
+        "Please select a room."
+      );
       return;
     }
 
     if (!devoteeId) {
-      setError("Please select a devotee.");
+      setError(
+        "Please select a devotee."
+      );
+      return;
+    }
+
+    /*
+     * IMPORTANT:
+     * Look only inside the active devotee list.
+     *
+     * Even if someone manipulates the browser form,
+     * an inactive/deleted user cannot be assigned here.
+     */
+    const selectedDevotee =
+      devotees.find(
+        (devotee) =>
+          devotee.uid === devoteeId &&
+          devotee.role === "devotee" &&
+          devotee.status === "active"
+      );
+
+    if (!selectedDevotee) {
+      setError(
+        "This devotee is no longer active and cannot be assigned to a room."
+      );
       return;
     }
 
@@ -514,54 +906,59 @@ function Rooms() {
       return;
     }
 
-    const capacity =
-      Number(selectedRoom.capacity) || 0;
+    const isGroundFloor =
+      String(selectedRoom.floor)
+        .trim()
+        .toLowerCase() ===
+      "ground floor";
 
-    const occupied =
-      selectedRoom.occupants.length;
-
-    /*
-     * Capacity validation
-     */
-
-    if (capacity <= 0) {
+    if (isGroundFloor) {
       setError(
-        `Room ${selectedRoom.roomNumber} does not have a valid capacity. Please set the room capacity in Firebase first.`
+        "Ground Floor is a common facility and cannot be assigned as a residence."
       );
       return;
     }
 
-    if (occupied >= capacity) {
+    const maximum =
+      Number(
+        selectedRoom.maximumOccupancy
+      ) || 0;
+
+    const occupants =
+      getOccupantsCount(selectedRoom);
+
+    if (
+      selectedRoom.roomType !==
+      "residential"
+    ) {
+      setError(
+        "Only residential rooms can be assigned to devotees."
+      );
+      return;
+    }
+
+    if (maximum <= 0) {
+      setError(
+        `Room ${selectedRoom.roomNumber} does not have a valid maximum occupancy.`
+      );
+      return;
+    }
+
+    if (occupants >= maximum) {
       setError(
         `Room ${selectedRoom.roomNumber} is already full.`
       );
       return;
     }
 
-    /*
-     * Make sure selected devotee exists
-     */
-
-    const selectedDevotee = devotees.find(
-      (devotee) =>
-        devotee.uid === devoteeId
-    );
-
-    if (!selectedDevotee) {
-      setError(
-        "Selected devotee was not found."
+    const alreadyAssigned =
+      rooms.some((room) =>
+        Array.isArray(room.occupants)
+          ? room.occupants.includes(
+              devoteeId
+            )
+          : false
       );
-      return;
-    }
-
-    /*
-     * Make sure devotee is not already assigned.
-     */
-
-    const alreadyAssigned = rooms.some(
-      (room) =>
-        room.occupants.includes(devoteeId)
-    );
 
     if (alreadyAssigned) {
       setError(
@@ -574,9 +971,14 @@ function Rooms() {
       setSaving(true);
 
       await updateDoc(
-        doc(db, "rooms", selectedRoom.id),
+        doc(
+          db,
+          "rooms",
+          selectedRoom.id
+        ),
         {
-          occupants: arrayUnion(devoteeId),
+          occupants:
+            arrayUnion(devoteeId),
         }
       );
 
@@ -610,11 +1012,9 @@ function Rooms() {
     }
   };
 
-  /*
-   * ======================================================
+  /* ======================================================
    * REMOVE DEVOTEE
-   * ======================================================
-   */
+   * ====================================================== */
 
   const removeDevotee = async (
     roomId,
@@ -629,13 +1029,33 @@ function Rooms() {
     );
 
     if (!room) {
-      setError("Room was not found.");
+      setError(
+        "Room was not found."
+      );
+      return;
+    }
+
+    const devotee =
+      devoteeMap[devoteeId];
+
+    const devoteeName =
+      devotee?.name ||
+      devotee?.email ||
+      "this devotee";
+
+    const confirmed =
+      window.confirm(
+        `Remove ${devoteeName} from Room ${room.roomNumber}?`
+      );
+
+    if (!confirmed) {
       return;
     }
 
     const updatedOccupants =
       room.occupants.filter(
-        (uid) => uid !== devoteeId
+        (uid) =>
+          uid !== devoteeId
       );
 
     try {
@@ -643,9 +1063,14 @@ function Rooms() {
       setError("");
 
       await updateDoc(
-        doc(db, "rooms", roomId),
+        doc(
+          db,
+          "rooms",
+          roomId
+        ),
         {
-          occupants: updatedOccupants,
+          occupants:
+            updatedOccupants,
         }
       );
     } catch (firebaseError) {
@@ -671,13 +1096,17 @@ function Rooms() {
     }
   };
 
-  /*
-   * ======================================================
-   * HELPERS
-   * ======================================================
-   */
+  /* ======================================================
+   * DEVOTEE HELPERS
+   * ====================================================== */
 
   const getDevoteeName = (uid) => {
+    /*
+     * Active devotees are available in devoteeMap.
+     *
+     * If an old inactive/deleted UID is still present
+     * in a room, we do not expose a fake/stale profile.
+     */
     return (
       devoteeMap[uid]?.name ||
       devoteeMap[uid]?.email ||
@@ -686,36 +1115,43 @@ function Rooms() {
   };
 
   const getDevoteeEmail = (uid) => {
-    return devoteeMap[uid]?.email || "";
+    return (
+      devoteeMap[uid]?.email ||
+      ""
+    );
   };
 
   const getOccupancyClass = (room) => {
-    const capacity =
-      Number(room.capacity) || 0;
+    if (room.roomType === "study") {
+      return "study";
+    }
 
-    const occupied =
-      room.occupants.length;
+    const maximum =
+      Number(
+        room.maximumOccupancy
+      ) || 0;
 
-    if (capacity <= 0) {
+    const occupants =
+      getOccupantsCount(room);
+
+    if (maximum <= 0) {
       return "unknown";
     }
 
-    if (occupied >= capacity) {
+    if (occupants >= maximum) {
       return "full";
     }
 
-    if (occupied === 0) {
+    if (occupants === 0) {
       return "empty";
     }
 
     return "available";
   };
 
-  /*
-   * ======================================================
+  /* ======================================================
    * LOADING
-   * ======================================================
-   */
+   * ====================================================== */
 
   if (loading) {
     return (
@@ -723,11 +1159,9 @@ function Rooms() {
     );
   }
 
-  /*
-   * ======================================================
+  /* ======================================================
    * ADMIN VIEW
-   * ======================================================
-   */
+   * ====================================================== */
 
   if (isAdministrator) {
     return (
@@ -738,35 +1172,218 @@ function Rooms() {
               RESIDENTIAL SERVICES
             </span>
 
-            <h1>Rooms</h1>
+            <h1>Rooms & Residence</h1>
 
             <p>
-              Manage room allocation and community
-              residence occupancy.
+              Manage BACE residence rooms,
+              devotee assignments and
+              current availability.
             </p>
           </div>
 
-          <button
-            type="button"
-            className="rooms-primary-button"
-            onClick={() => {
-              if (showAssignForm) {
-                closeAssignForm();
-              } else {
-                openAssignForm();
-              }
-            }}
-          >
-            {showAssignForm
-              ? "Close"
-              : "+ Assign Devotee"}
-          </button>
+          <div className="rooms-header-actions">
+            <button
+              type="button"
+              className="rooms-secondary-button"
+              onClick={() => {
+                setShowRoomForm(
+                  !showRoomForm
+                );
+                setShowAssignForm(false);
+                setError("");
+              }}
+            >
+              {showRoomForm
+                ? "Close"
+                : "+ Add Room"}
+            </button>
+
+            <button
+              type="button"
+              className="rooms-primary-button"
+              onClick={() => {
+                if (showAssignForm) {
+                  closeAssignForm();
+                } else {
+                  openAssignForm();
+                  setShowRoomForm(
+                    false
+                  );
+                }
+              }}
+            >
+              {showAssignForm
+                ? "Close"
+                : "+ Assign Devotee"}
+            </button>
+          </div>
         </header>
 
         {error && (
           <div className="rooms-error">
             {error}
           </div>
+        )}
+
+        {showRoomForm && (
+          <section className="rooms-form-card">
+            <div className="rooms-card-header">
+              <div>
+                <span className="rooms-card-eyebrow">
+                  ROOM REGISTRATION
+                </span>
+
+                <h2>
+                  Add Residence Room
+                </h2>
+              </div>
+            </div>
+
+            <form
+              className="rooms-form"
+              onSubmit={createRoom}
+            >
+              <label>
+                <span>Floor No.</span>
+
+                <select
+                  name="floor"
+                  value={
+                    roomForm.floor
+                  }
+                  onChange={
+                    handleRoomFormChange
+                  }
+                  required
+                >
+                  {FLOOR_OPTIONS.map(
+                    (floor) => (
+                      <option
+                        key={
+                          floor.value
+                        }
+                        value={
+                          floor.value
+                        }
+                      >
+                        {floor.label}
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <small>
+                  Ground Floor is reserved
+                  for common facilities.
+                </small>
+              </label>
+
+              <label>
+                <span>Room No.</span>
+
+                <input
+                  type="text"
+                  name="roomNumber"
+                  value={
+                    roomForm.roomNumber
+                  }
+                  onChange={
+                    handleRoomFormChange
+                  }
+                  placeholder="e.g. 101"
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Room Name</span>
+
+                <input
+                  type="text"
+                  name="roomName"
+                  value={
+                    roomForm.roomName
+                  }
+                  onChange={
+                    handleRoomFormChange
+                  }
+                  placeholder="e.g. Govardhan Kund"
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Room Type</span>
+
+                <select
+                  name="roomType"
+                  value={
+                    roomForm.roomType
+                  }
+                  onChange={
+                    handleRoomFormChange
+                  }
+                >
+                  <option value="residential">
+                    Residential
+                  </option>
+
+                  <option value="study">
+                    Study Room
+                  </option>
+                </select>
+              </label>
+
+              {roomForm.roomType ===
+                "residential" && (
+                <label>
+                  <span>
+                    Maximum Occupancy
+                  </span>
+
+                  <input
+                    type="number"
+                    name="maximumOccupancy"
+                    value={
+                      roomForm.maximumOccupancy
+                    }
+                    onChange={
+                      handleRoomFormChange
+                    }
+                    min="1"
+                    placeholder="e.g. 4"
+                    required
+                  />
+                </label>
+              )}
+
+              <div className="rooms-form-actions">
+                <button
+                  type="button"
+                  className="rooms-secondary-button"
+                  onClick={() => {
+                    setShowRoomForm(
+                      false
+                    );
+                    setError("");
+                  }}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="rooms-primary-button"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : "Save Room"}
+                </button>
+              </div>
+            </form>
+          </section>
         )}
 
         {showAssignForm && (
@@ -788,62 +1405,64 @@ function Rooms() {
               onSubmit={assignDevotee}
             >
               <label>
-                <span>Room</span>
+                <span>
+                  Available Room
+                </span>
 
                 <select
                   name="roomId"
-                  value={assignment.roomId}
+                  value={
+                    assignment.roomId
+                  }
                   onChange={
                     handleAssignmentChange
                   }
                   required
                 >
                   <option value="">
-                    Select room
+                    Select available room
                   </option>
 
-                  {rooms.map((room) => {
-                    const occupied =
-                      room.occupants.length;
+                  {assignableRooms.map(
+                    (room) => {
+                      const vacancy =
+                        getVacancy(room);
 
-                    const capacity =
-                      Number(room.capacity) || 0;
-
-                    const isAvailable =
-                      capacity > 0 &&
-                      occupied < capacity;
-
-                    return (
-                      <option
-                        key={room.id}
-                        value={room.id}
-                        disabled={!isAvailable}
-                      >
-                        Room {room.roomNumber} ·{" "}
-                        {occupied}/{capacity}
-                        {!capacity
-                          ? " · Capacity not set"
-                          : occupied >= capacity
-                            ? " · Full"
-                            : " · Available"}
-                      </option>
-                    );
-                  })}
+                      return (
+                        <option
+                          key={room.id}
+                          value={room.id}
+                        >
+                          Floor{" "}
+                          {room.floor} ·
+                          Room{" "}
+                          {
+                            room.roomNumber
+                          }{" "}
+                          ·{" "}
+                          {room.roomName ||
+                            "Unnamed Room"}{" "}
+                          · {vacancy}{" "}
+                          vacancy
+                        </option>
+                      );
+                    }
+                  )}
                 </select>
 
-                {rooms.length > 0 &&
-                  assignableRooms.length === 0 && (
-                    <small>
-                      No rooms are currently
-                      available for assignment.
-                      Check room capacity and
-                      occupancy in Firebase.
-                    </small>
-                  )}
+                {assignableRooms.length ===
+                  0 && (
+                  <small>
+                    No residential rooms
+                    currently have vacancy.
+                  </small>
+                )}
               </label>
 
               <label>
-                <span>Devotee</span>
+                <span>
+                  Devotee
+                </span>
 
                 <select
                   name="devoteeId"
@@ -856,7 +1475,7 @@ function Rooms() {
                   required
                 >
                   <option value="">
-                    Select devotee
+                    Select active devotee
                   </option>
 
                   {availableDevotees.length ===
@@ -865,14 +1484,19 @@ function Rooms() {
                       value=""
                       disabled
                     >
-                      No unassigned devotees
+                      No unassigned active
+                      devotees
                     </option>
                   ) : (
                     availableDevotees.map(
                       (devotee) => (
                         <option
-                          key={devotee.uid}
-                          value={devotee.uid}
+                          key={
+                            devotee.uid
+                          }
+                          value={
+                            devotee.uid
+                          }
                         >
                           {devotee.name ||
                             devotee.email}
@@ -881,6 +1505,11 @@ function Rooms() {
                     )
                   )}
                 </select>
+
+                <small>
+                  Only active, unassigned
+                  devotees are shown.
+                </small>
               </label>
 
               <div className="rooms-form-actions">
@@ -917,11 +1546,11 @@ function Rooms() {
 
         <section className="rooms-stats">
           <RoomStat
-            label="Total Rooms"
+            label="Residence Rooms"
             value={
               statistics.totalRooms
             }
-            description="Registered rooms"
+            description="Residential rooms"
           />
 
           <RoomStat
@@ -929,27 +1558,31 @@ function Rooms() {
             value={
               statistics.totalCapacity
             }
-            description="Total beds"
+            description="Maximum occupants"
           />
 
           <RoomStat
-            label="Occupied"
+            label="Occupants"
             value={
-              statistics.occupiedBeds
+              statistics.occupants
             }
-            description="Current residents"
+            description="Currently assigned"
             type="occupied"
           />
 
           <RoomStat
-            label="Available"
+            label="Vacancy"
             value={
-              statistics.availableBeds
+              statistics.vacancy
             }
-            description="Beds available"
+            description="Available spaces"
             type="available"
           />
         </section>
+
+        <ResidencePlaces />
+
+        <ResidenceReference />
 
         <section className="rooms-toolbar">
           <div className="rooms-search">
@@ -997,26 +1630,30 @@ function Rooms() {
           <div className="rooms-card-header">
             <div>
               <span className="rooms-card-eyebrow">
-                ROOM DIRECTORY
+                RESIDENCE DIRECTORY
               </span>
 
-              <h2>Community Rooms</h2>
+              <h2>
+                BACE Residence Rooms
+              </h2>
             </div>
 
             <span className="rooms-count">
               {filteredRooms.length}{" "}
-              {filteredRooms.length === 1
+              {filteredRooms.length ===
+              1
                 ? "room"
                 : "rooms"}
             </span>
           </div>
 
-          {filteredRooms.length === 0 ? (
+          {filteredRooms.length ===
+          0 ? (
             <EmptyRoomsState
               title="No rooms found"
               description={
                 rooms.length === 0
-                  ? "No room records have been added to Firebase yet."
+                  ? "No room records have been added yet."
                   : "No rooms match the current filters."
               }
             />
@@ -1036,6 +1673,12 @@ function Rooms() {
                     getOccupancyClass={
                       getOccupancyClass
                     }
+                    getOccupantsCount={
+                      getOccupantsCount
+                    }
+                    getVacancy={
+                      getVacancy
+                    }
                     onRemove={
                       removeDevotee
                     }
@@ -1050,11 +1693,9 @@ function Rooms() {
     );
   }
 
-  /*
-   * ======================================================
+  /* ======================================================
    * DEVOTEE VIEW
-   * ======================================================
-   */
+   * ====================================================== */
 
   if (isDevotee) {
     const ownRooms = rooms.filter(
@@ -1075,8 +1716,9 @@ function Rooms() {
             <h1>My Room</h1>
 
             <p>
-              View your current community residence
-              assignment.
+              View your assigned BACE
+              residence and common
+              facilities.
             </p>
           </div>
         </header>
@@ -1087,81 +1729,128 @@ function Rooms() {
           </div>
         )}
 
+        <ResidencePlaces />
+
         {ownRooms.length === 0 ? (
           <section className="rooms-empty-personal">
             <div className="rooms-empty-icon">
               ⌂
             </div>
 
-            <h2>No Room Assigned</h2>
+            <h2>
+              No Room Assigned
+            </h2>
 
             <p>
-              You currently do not have a
-              room assignment. Please contact
+              You currently do not have
+              a residential room
+              assignment. Please contact
               the BACE administrator.
             </p>
           </section>
         ) : (
           <div className="my-room-list">
-            {ownRooms.map((room) => (
-              <article
-                className="my-room-card"
-                key={room.id}
-              >
-                <div className="my-room-top">
-                  <div className="my-room-icon">
-                    ⌂
+            {ownRooms.map((room) => {
+              const occupants =
+                getOccupantsCount(room);
+
+              const vacancy =
+                getVacancy(room);
+
+              return (
+                <article
+                  className="my-room-card"
+                  key={room.id}
+                >
+                  <div className="my-room-top">
+                    <div className="my-room-icon">
+                      ⌂
+                    </div>
+
+                    <div>
+                      <span>
+                        MY ASSIGNED ROOM
+                      </span>
+
+                      <h2>
+                        {room.roomName ||
+                          `Room ${room.roomNumber}`}
+                      </h2>
+
+                      <p className="my-room-identity">
+                        Floor {room.floor} ·
+                        Room{" "}
+                        {
+                          room.roomNumber
+                        }
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <span>
-                      MY ASSIGNED ROOM
-                    </span>
+                  <div className="my-room-details">
+                    <div>
+                      <span>Floor</span>
 
-                    <h2>
-                      Room{" "}
-                      {room.roomNumber}
-                    </h2>
+                      <strong>
+                        {room.floor}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Room No.
+                      </span>
+
+                      <strong>
+                        {
+                          room.roomNumber
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Room Name
+                      </span>
+
+                      <strong>
+                        {room.roomName ||
+                          "Not specified"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Occupancy
+                      </span>
+
+                      <strong>
+                        {occupants} /{" "}
+                        {
+                          room.maximumOccupancy
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Vacancy
+                      </span>
+
+                      <strong>
+                        {vacancy}
+                      </strong>
+                    </div>
                   </div>
-                </div>
 
-                <div className="my-room-details">
-                  <div>
-                    <span>Floor</span>
-
-                    <strong>
-                      {room.floor}
-                    </strong>
+                  <div className="my-room-notice">
+                    Room allocation is
+                    managed by the BACE
+                    administrator.
                   </div>
-
-                  <div>
-                    <span>Occupancy</span>
-
-                    <strong>
-                      {room.occupants.length}{" "}
-                      / {room.capacity}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Status</span>
-
-                    <strong>
-                      {getOccupancyClass(
-                        room
-                      ) === "full"
-                        ? "Full"
-                        : "Assigned"}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="my-room-notice">
-                  Room allocation is managed by
-                  the BACE administrator.
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1171,11 +1860,9 @@ function Rooms() {
   return null;
 }
 
-/*
- * ======================================================
+/* ======================================================
  * ROOM STAT
- * ======================================================
- */
+ * ====================================================== */
 
 function RoomStat({
   label,
@@ -1196,146 +1883,410 @@ function RoomStat({
   );
 }
 
-/*
- * ======================================================
+/* ======================================================
  * ROOM CARD
- * ======================================================
- */
+ * ====================================================== */
 
 function RoomCard({
   room,
   getDevoteeName,
   getDevoteeEmail,
   getOccupancyClass,
+  getOccupantsCount,
+  getVacancy,
   onRemove,
   saving,
 }) {
   const occupancyClass =
     getOccupancyClass(room);
 
-  const capacity =
-    Number(room.capacity) || 0;
+  const maximum =
+    Number(
+      room.maximumOccupancy
+    ) || 0;
 
-  const occupied =
-    room.occupants.length;
+  const occupants =
+    getOccupantsCount(room);
 
-  const available = Math.max(
-    capacity - occupied,
-    0
-  );
+  const vacancy =
+    getVacancy(room);
 
   const progress =
-    capacity > 0
+    maximum > 0
       ? Math.min(
-          (occupied / capacity) * 100,
+          (occupants / maximum) *
+            100,
           100
         )
       : 0;
+
+  const isStudyRoom =
+    room.roomType === "study";
 
   return (
     <article className="room-card">
       <div className="room-card-top">
         <div>
           <span className="room-floor">
-            {room.floor}
+            Floor {room.floor}
           </span>
 
           <h3>
-            Room {room.roomNumber}
+            {room.roomName ||
+              `Room ${room.roomNumber}`}
           </h3>
+
+          <small>
+            Room No.{" "}
+            {room.roomNumber}
+          </small>
         </div>
 
         <span
           className={`room-status ${occupancyClass}`}
         >
-          {occupancyClass === "full"
-            ? "Full"
-            : occupancyClass === "empty"
-              ? "Empty"
-              : occupancyClass ===
-                  "unknown"
-                ? "Capacity not set"
-                : `${available} available`}
+          {isStudyRoom
+            ? "Study Room"
+            : maximum <= 0
+              ? "Capacity not set"
+              : vacancy > 0
+                ? `${vacancy} available`
+                : "Full"}
         </span>
       </div>
 
-      <div className="room-occupancy">
-        <div className="room-occupancy-header">
-          <span>Occupancy</span>
+      {isStudyRoom ? (
+        <div className="room-occupancy">
+          <div className="room-occupancy-header">
+            <span>
+              Room Purpose
+            </span>
 
-          <strong>
-            {occupied} / {capacity}
-          </strong>
+            <strong>
+              Study Only
+            </strong>
+          </div>
         </div>
+      ) : (
+        <div className="room-occupancy">
+          <div className="room-occupancy-header">
+            <span>
+              Occupancy
+            </span>
 
-        <div className="room-progress">
-          <span
-            style={{
-              width: `${progress}%`,
-            }}
-          />
+            <strong>
+              {occupants} /{" "}
+              {maximum}
+            </strong>
+          </div>
+
+          <div className="room-progress">
+            <span
+              style={{
+                width: `${progress}%`,
+              }}
+            />
+          </div>
+
+          <div className="room-occupancy-header">
+            <span>
+              Vacancy
+            </span>
+
+            <strong>
+              {vacancy}
+            </strong>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="room-occupants">
         <span className="room-section-label">
-          RESIDENTS
+          OCCUPANTS
         </span>
 
-        {room.occupants.length === 0 ? (
+        {isStudyRoom ? (
+          <div className="room-no-occupants">
+            This room is reserved
+            for study purposes.
+          </div>
+        ) : room.occupants.length ===
+          0 ? (
           <div className="room-no-occupants">
             No devotees assigned.
           </div>
         ) : (
-          room.occupants.map((uid) => (
-            <div
-              className="room-occupant"
-              key={uid}
-            >
-              <div className="room-occupant-avatar">
-                {getDevoteeName(uid)
-                  ?.charAt(0)
-                  ?.toUpperCase() || "D"}
-              </div>
-
-              <div className="room-occupant-info">
-                <strong>
-                  {getDevoteeName(uid)}
-                </strong>
-
-                <small>
-                  {getDevoteeEmail(uid)}
-                </small>
-              </div>
-
-              <button
-                type="button"
-                className="room-remove-button"
-                onClick={() =>
-                  onRemove(
-                    room.id,
+          room.occupants.map(
+            (uid) => (
+              <div
+                className="room-occupant"
+                key={uid}
+              >
+                <div className="room-occupant-avatar">
+                  {getDevoteeName(
                     uid
                   )
-                }
-                disabled={saving}
-              >
-                {saving
-                  ? "..."
-                  : "Remove"}
-              </button>
-            </div>
-          ))
+                    ?.charAt(0)
+                    ?.toUpperCase() ||
+                    "D"}
+                </div>
+
+                <div className="room-occupant-info">
+                  <strong>
+                    {getDevoteeName(
+                      uid
+                    )}
+                  </strong>
+
+                  <small>
+                    {getDevoteeEmail(
+                      uid
+                    )}
+                  </small>
+                </div>
+
+                <button
+                  type="button"
+                  className="room-remove-button"
+                  onClick={() =>
+                    onRemove(
+                      room.id,
+                      uid
+                    )
+                  }
+                  disabled={saving}
+                >
+                  {saving
+                    ? "..."
+                    : "Remove"}
+                </button>
+              </div>
+            )
+          )
         )}
       </div>
     </article>
   );
 }
 
-/*
- * ======================================================
+/* ======================================================
+ * COMMON FACILITIES
+ * ====================================================== */
+
+function ResidencePlaces() {
+  return (
+    <section className="rooms-card facilities-card">
+      <div className="rooms-card-header">
+        <div>
+          <span className="rooms-card-eyebrow">
+            BACE FACILITIES
+          </span>
+
+          <h2>
+            Common Areas & Sacred Spaces
+          </h2>
+
+          <p className="facilities-intro">
+            Shared spaces available to
+            the BACE community.
+          </p>
+        </div>
+      </div>
+
+      <div className="facilities-grid">
+        {COMMON_FACILITIES.map(
+          (facility) => (
+            <article
+              className={`facility-card ${
+                facility.key ===
+                "ground-floor"
+                  ? "facility-ground"
+                  : "facility-image-card"
+              }`}
+              key={facility.key}
+            >
+              {facility.image && (
+                <div className="facility-image-wrap">
+                  <img
+                    src={facility.image}
+                    alt={facility.title}
+                    loading="lazy"
+                    onError={(
+                      event
+                    ) => {
+                      event.currentTarget.style.display =
+                        "none";
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="facility-card-content">
+                <div className="facility-heading">
+                  <div>
+                    <span className="room-floor">
+                      {facility.label}
+                    </span>
+
+                    <h3>
+                      {facility.title}
+                    </h3>
+
+                    <p className="facility-subtitle">
+                      {facility.subtitle}
+                    </p>
+                  </div>
+
+                  <div className="facility-icon">
+                    {facility.icon}
+                  </div>
+                </div>
+
+                <p className="facility-description">
+                  {facility.description}
+                </p>
+
+                <div className="facility-details">
+                  {facility.details.map(
+                    (detail) => (
+                      <div
+                        className="facility-detail"
+                        key={detail}
+                      >
+                        <span>
+                          ✓
+                        </span>
+
+                        <p>
+                          {detail}
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </article>
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ======================================================
+ * RESIDENCE REFERENCE
+ * ====================================================== */
+
+function ResidenceReference() {
+  return (
+    <section className="rooms-card residence-reference-card">
+      <div className="rooms-card-header">
+        <div>
+          <span className="rooms-card-eyebrow">
+            RESIDENCE LAYOUT
+          </span>
+
+          <h2>
+            Floor Reference
+          </h2>
+
+          <p className="facilities-intro">
+            Reference layout for the residential floors.
+            Actual assignments are managed above.
+          </p>
+        </div>
+      </div>
+
+      <div className="reference-floor-grid">
+        {FLOOR_REFERENCE.map(
+          (floor) => (
+            <article
+              className="reference-floor"
+              key={floor.floor}
+            >
+              <div className="reference-floor-header">
+                <div>
+                  <span>
+                    RESIDENTIAL FLOOR
+                  </span>
+
+                  <h3>
+                    {floor.floor}
+                  </h3>
+                </div>
+
+                <span className="reference-room-count">
+                  {floor.rooms.length} rooms
+                </span>
+              </div>
+
+              <div className="reference-room-list">
+                {floor.rooms.map(
+                  (room) => (
+                    <div
+                      className="reference-room"
+                      key={`${floor.floor}-${room.number}`}
+                    >
+                      <div className="reference-room-number">
+                        {room.number}
+                      </div>
+
+                      <div className="reference-room-main">
+                        <strong>
+                          {room.name ||
+                            `Room ${room.number}`}
+                        </strong>
+
+                        {room.studyOnly ? (
+                          <span>
+                            Study Room Only
+                          </span>
+                        ) : (
+                          <span>
+                            Capacity{" "}
+                            {room.capacity}{" "}
+                            · {room.lockers}{" "}
+                            lockers
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="reference-floor-notes">
+                <div>
+                  <span>
+                    Passage
+                  </span>
+
+                  <strong>
+                    {floor.passage}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Facilities
+                  </span>
+
+                  <strong>
+                    {floor.bathroomInfo}
+                  </strong>
+                </div>
+              </div>
+            </article>
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ======================================================
  * EMPTY STATE
- * ======================================================
- */
+ * ====================================================== */
 
 function EmptyRoomsState({
   title,

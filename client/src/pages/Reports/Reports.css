@@ -207,6 +207,7 @@
   font-size: 29px;
   font-weight: 800;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .report-card small {
@@ -302,7 +303,12 @@
   font-size: 23px;
   font-weight: 800;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
+
+/* ============================================================
+   STATUS
+   ============================================================ */
 
 .report-status-badge {
   display: inline-flex;
