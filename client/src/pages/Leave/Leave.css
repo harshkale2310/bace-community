@@ -106,7 +106,7 @@
 }
 
 /* ============================================================
-   ERROR
+   ERROR / SUCCESS
    ============================================================ */
 
 .leave-error {
@@ -119,6 +119,21 @@
   border-radius: 10px;
   background: var(--danger-light);
   color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.leave-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 13px 16px;
+  border: 1px solid rgba(54, 128, 73, 0.18);
+  border-radius: 10px;
+  background: var(--success-light);
+  color: var(--success);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
@@ -362,7 +377,7 @@
 
 .leave-request {
   display: grid;
-  grid-template-columns: 155px minmax(0, 1fr) 190px;
+  grid-template-columns: 155px minmax(0, 1fr) 205px;
   gap: 25px;
   align-items: center;
   padding: 25px 24px;
@@ -532,7 +547,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 11px;
+  gap: 9px;
 }
 
 .leave-status {
@@ -575,7 +590,8 @@
 
 .leave-approve-button,
 .leave-reject-button,
-.leave-cancel-button {
+.leave-cancel-button,
+.leave-delete-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -590,6 +606,7 @@
   transition:
     background 0.16s ease,
     border-color 0.16s ease,
+    color 0.16s ease,
     transform 0.16s ease;
 }
 
@@ -623,6 +640,26 @@
   border-color: #cdbbab;
 }
 
+/* ============================================================
+   DELETE BUTTON
+   ============================================================ */
+
+.leave-delete-button {
+  border: 1px solid #e3b6b6;
+  background: #fffafa;
+  color: var(--danger);
+}
+
+.leave-delete-button:hover:not(:disabled) {
+  border-color: #d99393;
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.leave-delete-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .leave-approve-button:active:not(:disabled),
 .leave-reject-button:active:not(:disabled),
 .leave-cancel-button:active:not(:disabled) {
@@ -631,7 +668,8 @@
 
 .leave-approve-button:disabled,
 .leave-reject-button:disabled,
-.leave-cancel-button:disabled {
+.leave-cancel-button:disabled,
+.leave-delete-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -769,7 +807,7 @@
 
 @media (max-width: 1200px) {
   .leave-request {
-    grid-template-columns: 135px minmax(0, 1fr) 165px;
+    grid-template-columns: 135px minmax(0, 1fr) 175px;
     gap: 20px;
   }
 }
@@ -860,7 +898,8 @@
 
   .leave-approve-button,
   .leave-reject-button,
-  .leave-cancel-button {
+  .leave-cancel-button,
+  .leave-delete-button {
     flex: 1;
   }
 
@@ -878,6 +917,14 @@
 
   .leave-room-identity {
     margin-top: 12px;
+  }
+
+  .leave-request-actions {
+    width: 100%;
+  }
+
+  .leave-delete-button {
+    width: 100%;
   }
 }
 
@@ -945,7 +992,8 @@
   .leave-form input,
   .leave-form textarea,
   .leave-review-actions button,
-  .leave-request {
+  .leave-request,
+  .leave-delete-button {
     animation: none;
     transition: none;
   }

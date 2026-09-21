@@ -88,8 +88,13 @@ function Seva() {
   const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
   const [devoteesLoading, setDevoteesLoading] =
     useState(false);
+
+  const [devoteesLoaded, setDevoteesLoaded] =
+    useState(false);
+
   const [roomsLoading, setRoomsLoading] =
     useState(false);
 
@@ -197,23 +202,38 @@ function Seva() {
   /* ---------------------------------------------------------
      LOAD ACTIVE DEVOTEES
 
-     IMPORTANT:
-     Only currently existing + active devotee
-     accounts are included.
+     We intentionally query only by role.
 
-     Therefore:
-     - deleted devotee -> not included
-     - inactive devotee -> not included
-     - active devotee -> included
+     Status is filtered locally so this page does not
+     depend on a composite Firestore index for:
+
+       role == devotee
+       status == active
+
+     Active:
+       included
+
+     Inactive:
+       excluded
+
+     Deleted:
+       excluded
+
+     Missing:
+       naturally absent
   --------------------------------------------------------- */
 
   useEffect(() => {
     if (!isAdministrator) {
       setDevotees([]);
+      setDevoteesLoaded(true);
+      setDevoteesLoading(false);
+
       return undefined;
     }
 
     setDevoteesLoading(true);
+    setDevoteesLoaded(false);
 
     const devoteesQuery = query(
       collection(db, "users"),
@@ -228,11 +248,15 @@ function Seva() {
             id: document.id,
             ...document.data(),
           }))
-          .filter(
-            (devotee) =>
-              devotee.status === "active" ||
-              !devotee.status
-          )
+          .filter((devotee) => {
+            const status = String(
+              devotee.status || "active"
+            )
+              .trim()
+              .toLowerCase();
+
+            return status === "active";
+          })
           .sort((a, b) =>
             String(a.name || "").localeCompare(
               String(b.name || ""),
@@ -245,6 +269,7 @@ function Seva() {
 
         setDevotees(records);
         setDevoteesLoading(false);
+        setDevoteesLoaded(true);
 
         setForm((previous) => {
           const currentDevoteeStillExists =
@@ -254,9 +279,7 @@ function Seva() {
                 previous.devoteeId
             );
 
-          if (
-            currentDevoteeStillExists
-          ) {
+          if (currentDevoteeStillExists) {
             return previous;
           }
 
@@ -275,6 +298,13 @@ function Seva() {
 
         setDevotees([]);
         setDevoteesLoading(false);
+
+        /*
+         * Important:
+         * Do not treat a failed user query as an empty
+         * successful list.
+         */
+        setDevoteesLoaded(false);
       }
     );
 
@@ -331,6 +361,13 @@ function Seva() {
 
   /* ---------------------------------------------------------
      DEVOTEE LOOKUP
+
+     Admin:
+       only active devotees are included.
+
+     Devotee:
+       their own authenticated profile is also available
+       for rendering their own seva.
   --------------------------------------------------------- */
 
   const devoteeMap = useMemo(() => {
@@ -343,14 +380,37 @@ function Seva() {
       );
     });
 
+    if (
+      isDevotee &&
+      user?.uid
+    ) {
+      map.set(user.uid, {
+        id: user.uid,
+        uid: user.uid,
+        name:
+          user.name ||
+          user.email ||
+          "Devotee",
+        email:
+          user.email || "",
+        status: "active",
+        role: "devotee",
+      });
+    }
+
     return map;
-  }, [devotees]);
+  }, [
+    devotees,
+    isDevotee,
+    user,
+  ]);
 
   /* ---------------------------------------------------------
      ROOM LOOKUP
 
      Map:
-     devotee UID -> rooms[]
+
+       devotee UID -> rooms[]
   --------------------------------------------------------- */
 
   const roomMap = useMemo(() => {
@@ -385,27 +445,24 @@ function Seva() {
     devoteeId
   ) => {
     return (
-      roomMap.get(devoteeId) || []
+      roomMap.get(devoteeId) ||
+      []
     );
   };
 
   /* ---------------------------------------------------------
      CURRENT VALID ASSIGNMENTS
 
-     THIS IS THE IMPORTANT FIX.
+     IMPORTANT:
 
-     An old seva record may still exist in Firestore
-     after its devotee account has been deleted.
+     Old seva documents may remain in Firestore after
+     a devotee is made inactive/deleted.
 
-     We DO NOT use the old stored devoteeName/email
-     as proof that the devotee still exists.
+     Those records are NOT shown to administrators.
 
-     Admin:
-       only show assignments whose devotee currently
-       exists as an active devotee.
-
-     Devotee:
-       only show their own assignments.
+     We check the CURRENT users collection instead of
+     trusting the old devoteeName/devoteeEmail saved
+     inside the seva document.
   --------------------------------------------------------- */
 
   const validAssignments = useMemo(() => {
@@ -418,6 +475,17 @@ function Seva() {
     }
 
     if (isAdministrator) {
+      /*
+       * Until the active-devotee snapshot has successfully
+       * loaded, do not display admin assignments.
+       *
+       * This prevents a temporary empty devotee list from
+       * making all assignments disappear during loading.
+       */
+      if (!devoteesLoaded) {
+        return [];
+      }
+
       return assignments.filter(
         (assignment) =>
           !!assignment.devoteeId &&
@@ -431,6 +499,7 @@ function Seva() {
   }, [
     assignments,
     devoteeMap,
+    devoteesLoaded,
     isAdministrator,
     isDevotee,
     user?.uid,
@@ -686,6 +755,10 @@ function Seva() {
       return;
     }
 
+    /*
+     * Always look up the selected devotee
+     * from the CURRENT active-devotee list.
+     */
     const selectedDevotee =
       devotees.find(
         (devotee) =>
@@ -695,7 +768,7 @@ function Seva() {
 
     if (!selectedDevotee) {
       setError(
-        "Selected devotee is not available."
+        "Selected devotee is not active or no longer exists."
       );
       return;
     }
@@ -719,15 +792,20 @@ function Seva() {
             "",
 
           title,
+
           department:
             form.department,
-          date: form.date,
+
+          date:
+            form.date,
+
           time,
 
           notes:
             form.notes.trim(),
 
-          status: "Assigned",
+          status:
+            "Assigned",
 
           createdBy:
             user.uid,
@@ -773,11 +851,9 @@ function Seva() {
     }
 
     /*
-     * Additional safety:
-     * Do not update an assignment for a deleted/
-     * inactive devotee from the admin interface.
+     * Admin must only modify records belonging
+     * to currently active devotees.
      */
-
     if (
       isAdministrator &&
       !devoteeMap.has(
@@ -1137,6 +1213,7 @@ function Seva() {
                   className="primary-button"
                   disabled={
                     devoteesLoading ||
+                    !devoteesLoaded ||
                     devotees.length ===
                       0
                   }
@@ -1370,12 +1447,6 @@ function Seva() {
 
             {visibleAssignments.map(
               (assignment) => {
-                /*
-                 * Because validAssignments has
-                 * already removed deleted/inactive
-                 * devotees, this lookup is safe.
-                 */
-
                 const devotee =
                   devoteeMap.get(
                     assignment.devoteeId

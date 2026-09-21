@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -24,6 +25,9 @@ function Leave() {
   const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [devoteesLoading, setDevoteesLoading] = useState(
+    isAdministrator
+  );
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -45,18 +49,9 @@ function Leave() {
    * LOAD LEAVE REQUESTS
    * ============================================================
    *
-   * Firestore collection used by this page:
+   * Firestore collection:
    *
-   *      leaveRequests
-   *
-   * IMPORTANT:
-   * Your Firestore security rules must also contain:
-   *
-   *      match /leaveRequests/{leaveId}
-   *
-   * and not only:
-   *
-   *      match /leave/{leaveId}
+   *     leaveRequests
    */
   useEffect(() => {
     if (!user?.uid) {
@@ -71,7 +66,9 @@ function Leave() {
     let leaveQuery;
 
     if (isAdministrator) {
-      leaveQuery = query(collection(db, "leaveRequests"));
+      leaveQuery = query(
+        collection(db, "leaveRequests")
+      );
     } else {
       leaveQuery = query(
         collection(db, "leaveRequests"),
@@ -104,9 +101,11 @@ function Leave() {
         );
 
         setRequests([]);
+
         setError(
           "Unable to load leave requests. Please check your Firestore permissions."
         );
+
         setLoading(false);
       }
     );
@@ -119,12 +118,22 @@ function Leave() {
    * LOAD DEVOTEES
    * ADMIN ONLY
    * ============================================================
+   *
+   * Only active devotees are allowed to have their leave
+   * requests displayed in the administrator view.
+   *
+   * inactive -> hidden
+   * deleted  -> hidden
+   * missing  -> hidden
    */
   useEffect(() => {
     if (!isAdministrator) {
       setDevotees([]);
+      setDevoteesLoading(false);
       return undefined;
     }
+
+    setDevoteesLoading(true);
 
     const usersQuery = query(
       collection(db, "users"),
@@ -140,6 +149,7 @@ function Leave() {
         }));
 
         setDevotees(data);
+        setDevoteesLoading(false);
       },
       (firebaseError) => {
         console.error(
@@ -148,6 +158,12 @@ function Leave() {
         );
 
         setDevotees([]);
+
+        /*
+         * Do not display leave requests until we can
+         * verify the devotee profiles.
+         */
+        setDevoteesLoading(false);
       }
     );
 
@@ -158,6 +174,12 @@ function Leave() {
    * ============================================================
    * LOAD ROOMS
    * ============================================================
+   *
+   * Administrator:
+   *   Can read all rooms.
+   *
+   * Devotee:
+   *   Only reads rooms where their own UID is an occupant.
    */
   useEffect(() => {
     if (!user?.uid) {
@@ -165,7 +187,22 @@ function Leave() {
       return undefined;
     }
 
-    const roomsQuery = query(collection(db, "rooms"));
+    let roomsQuery;
+
+    if (isAdministrator) {
+      roomsQuery = query(
+        collection(db, "rooms")
+      );
+    } else {
+      roomsQuery = query(
+        collection(db, "rooms"),
+        where(
+          "occupants",
+          "array-contains",
+          user.uid
+        )
+      );
+    }
 
     const unsubscribe = onSnapshot(
       roomsQuery,
@@ -188,7 +225,70 @@ function Leave() {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [user?.uid, isAdministrator]);
+
+  /*
+   * ============================================================
+   * ACTIVE DEVOTEE IDS
+   * ============================================================
+   */
+  const activeDevoteeIds = useMemo(() => {
+    const ids = new Set();
+
+    devotees.forEach((devotee) => {
+      const status = String(
+        devotee.status || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      if (status === "active") {
+        ids.add(devotee.uid);
+      }
+    });
+
+    return ids;
+  }, [devotees]);
+
+  /*
+   * ============================================================
+   * VISIBLE REQUESTS
+   * ============================================================
+   */
+  const visibleRequests = useMemo(() => {
+    /*
+     * Devotee:
+     * Firestore already restricts the query to the
+     * current devotee's own requests.
+     */
+    if (!isAdministrator) {
+      return requests;
+    }
+
+    /*
+     * Administrator:
+     * Only display leave requests belonging to active
+     * devotee accounts.
+     */
+    if (devoteesLoading) {
+      return [];
+    }
+
+    return requests.filter((request) => {
+      if (!request.devoteeId) {
+        return false;
+      }
+
+      return activeDevoteeIds.has(
+        request.devoteeId
+      );
+    });
+  }, [
+    requests,
+    isAdministrator,
+    devoteesLoading,
+    activeDevoteeIds,
+  ]);
 
   /*
    * ============================================================
@@ -214,7 +314,9 @@ function Leave() {
     const map = {};
 
     rooms.forEach((room) => {
-      const occupants = Array.isArray(room.occupants)
+      const occupants = Array.isArray(
+        room.occupants
+      )
         ? room.occupants
         : [];
 
@@ -238,7 +340,9 @@ function Leave() {
    * ============================================================
    */
   const getDevoteeRooms = (devoteeId) => {
-    if (!devoteeId) return [];
+    if (!devoteeId) {
+      return [];
+    }
 
     return roomMap[devoteeId] || [];
   };
@@ -249,7 +353,9 @@ function Leave() {
    * ============================================================
    */
   const getRoomIdentity = (room) => {
-    if (!room) return "";
+    if (!room) {
+      return "";
+    }
 
     const floor =
       room.floor !== undefined &&
@@ -265,9 +371,14 @@ function Leave() {
         ? `Room ${room.roomNumber}`
         : "";
 
-    const roomName = room.roomName || "";
+    const roomName =
+      room.roomName || "";
 
-    return [floor, roomNumber, roomName]
+    return [
+      floor,
+      roomNumber,
+      roomName,
+    ]
       .filter(Boolean)
       .join(" · ");
   };
@@ -278,14 +389,17 @@ function Leave() {
    * ============================================================
    */
   const getDevoteeRoomLabel = (devoteeId) => {
-    const devoteeRooms = getDevoteeRooms(devoteeId);
+    const devoteeRooms =
+      getDevoteeRooms(devoteeId);
 
     if (!devoteeRooms.length) {
       return "Residence not assigned";
     }
 
     const labels = devoteeRooms
-      .map((room) => getRoomIdentity(room))
+      .map((room) =>
+        getRoomIdentity(room)
+      )
       .filter(Boolean);
 
     if (!labels.length) {
@@ -301,51 +415,72 @@ function Leave() {
    * ============================================================
    */
   const filteredRequests = useMemo(() => {
-    let result = [...requests];
+    let result = [...visibleRequests];
 
-    if (isAdministrator && search.trim()) {
-      const value = search.trim().toLowerCase();
+    if (
+      isAdministrator &&
+      search.trim()
+    ) {
+      const value = search
+        .trim()
+        .toLowerCase();
 
-      result = result.filter((request) => {
-        const devotee = devoteeMap[request.devoteeId];
+      result = result.filter(
+        (request) => {
+          const devotee =
+            devoteeMap[
+              request.devoteeId
+            ];
 
-        const name =
-          devotee?.name ||
-          request.devoteeName ||
-          "";
+          const name =
+            devotee?.name ||
+            request.devoteeName ||
+            "";
 
-        const email =
-          devotee?.email ||
-          request.devoteeEmail ||
-          "";
+          const email =
+            devotee?.email ||
+            request.devoteeEmail ||
+            "";
 
-        const roomIdentity = getDevoteeRoomLabel(
-          request.devoteeId
-        ).toLowerCase();
+          const roomIdentity =
+            getDevoteeRoomLabel(
+              request.devoteeId
+            ).toLowerCase();
 
-        const reason = String(
-          request.reason || ""
-        ).toLowerCase();
+          const reason = String(
+            request.reason || ""
+          ).toLowerCase();
 
-        return (
-          name.toLowerCase().includes(value) ||
-          email.toLowerCase().includes(value) ||
-          roomIdentity.includes(value) ||
-          reason.includes(value)
-        );
-      });
+          return (
+            name
+              .toLowerCase()
+              .includes(value) ||
+            email
+              .toLowerCase()
+              .includes(value) ||
+            roomIdentity.includes(
+              value
+            ) ||
+            reason.includes(value)
+          );
+        }
+      );
     }
 
-    if (statusFilter !== "all") {
+    if (
+      statusFilter !== "all"
+    ) {
       result = result.filter(
         (request) =>
-          normalizeStatus(request.status) === statusFilter
+          normalizeStatus(
+            request.status
+          ) === statusFilter
       );
     }
 
     return result;
   }, [
-    requests,
+    visibleRequests,
     search,
     statusFilter,
     isAdministrator,
@@ -360,29 +495,42 @@ function Leave() {
    */
   const statistics = useMemo(() => {
     return {
-      total: requests.length,
+      total:
+        visibleRequests.length,
 
-      pending: requests.filter(
-        (item) =>
-          normalizeStatus(item.status) === "pending"
-      ).length,
+      pending:
+        visibleRequests.filter(
+          (item) =>
+            normalizeStatus(
+              item.status
+            ) === "pending"
+        ).length,
 
-      approved: requests.filter(
-        (item) =>
-          normalizeStatus(item.status) === "approved"
-      ).length,
+      approved:
+        visibleRequests.filter(
+          (item) =>
+            normalizeStatus(
+              item.status
+            ) === "approved"
+        ).length,
 
-      rejected: requests.filter(
-        (item) =>
-          normalizeStatus(item.status) === "rejected"
-      ).length,
+      rejected:
+        visibleRequests.filter(
+          (item) =>
+            normalizeStatus(
+              item.status
+            ) === "rejected"
+        ).length,
 
-      cancelled: requests.filter(
-        (item) =>
-          normalizeStatus(item.status) === "cancelled"
-      ).length,
+      cancelled:
+        visibleRequests.filter(
+          (item) =>
+            normalizeStatus(
+              item.status
+            ) === "cancelled"
+        ).length,
     };
-  }, [requests]);
+  }, [visibleRequests]);
 
   /*
    * ============================================================
@@ -390,7 +538,10 @@ function Leave() {
    * ============================================================
    */
   const handleFormChange = (event) => {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setForm((previous) => ({
       ...previous,
@@ -406,19 +557,29 @@ function Leave() {
    * APPLY FOR LEAVE
    * ============================================================
    */
-  const handleApplyLeave = async (event) => {
+  const handleApplyLeave = async (
+    event
+  ) => {
     event.preventDefault();
 
-    if (!isDevotee || !user?.uid) {
+    if (
+      !isDevotee ||
+      !user?.uid
+    ) {
       return;
     }
 
     setError("");
     setSuccess("");
 
-    const from = form.from.trim();
-    const to = form.to.trim();
-    const reason = form.reason.trim();
+    const from =
+      form.from.trim();
+
+    const to =
+      form.to.trim();
+
+    const reason =
+      form.reason.trim();
 
     if (!from || !to) {
       setError(
@@ -452,25 +613,29 @@ function Leave() {
       setSaving(true);
 
       await addDoc(
-        collection(db, "leaveRequests"),
+        collection(
+          db,
+          "leaveRequests"
+        ),
         {
-          devoteeId: user.uid,
+          devoteeId:
+            user.uid,
 
           devoteeName:
-            user.name ||
-            "",
+            user.name || "",
 
           devoteeEmail:
-            user.email ||
-            "",
+            user.email || "",
 
           from,
           to,
           reason,
 
-          status: "pending",
+          status:
+            "pending",
 
-          adminNote: "",
+          adminNote:
+            "",
 
           createdAt:
             serverTimestamp(),
@@ -478,9 +643,11 @@ function Leave() {
           updatedAt:
             serverTimestamp(),
 
-          reviewedBy: null,
+          reviewedBy:
+            null,
 
-          reviewedAt: null,
+          reviewedAt:
+            null,
         }
       );
 
@@ -518,21 +685,42 @@ function Leave() {
     requestId,
     status
   ) => {
-    if (!isAdministrator || !user?.uid) {
+    if (
+      !isAdministrator ||
+      !user?.uid
+    ) {
       return;
     }
 
-    const request = requests.find(
-      (item) => item.id === requestId
-    );
+    const request =
+      requests.find(
+        (item) =>
+          item.id === requestId
+      );
 
     if (!request) {
       return;
     }
 
+    /*
+     * Do not allow an administrator to review
+     * an inactive/deleted devotee's request.
+     */
     if (
-      normalizeStatus(request.status) !==
-      "pending"
+      !activeDevoteeIds.has(
+        request.devoteeId
+      )
+    ) {
+      setError(
+        "This leave request belongs to an inactive or deleted devotee."
+      );
+      return;
+    }
+
+    if (
+      normalizeStatus(
+        request.status
+      ) !== "pending"
     ) {
       return;
     }
@@ -588,29 +776,111 @@ function Leave() {
 
   /*
    * ============================================================
-   * DEVOTEE CANCEL
+   * ADMIN DELETE LEAVE REQUEST
    * ============================================================
    */
-  const cancelLeave = async (requestId) => {
-    if (!isDevotee || !user?.uid) {
+  const deleteLeaveRequest = async (
+    requestId
+  ) => {
+    if (
+      !isAdministrator ||
+      !user?.uid
+    ) {
       return;
     }
 
-    const request = requests.find(
-      (item) => item.id === requestId
-    );
+    const request =
+      requests.find(
+        (item) =>
+          item.id === requestId
+      );
 
     if (!request) {
       return;
     }
 
-    if (request.devoteeId !== user.uid) {
+    const name =
+      devoteeMap[
+        request.devoteeId
+      ]?.name ||
+      request.devoteeName ||
+      "this devotee";
+
+    const confirmed =
+      window.confirm(
+        `Delete this leave request from ${name}?\n\nThis will permanently remove the request from the leave records.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      await deleteDoc(
+        doc(
+          db,
+          "leaveRequests",
+          requestId
+        )
+      );
+
+      setSuccess(
+        "Leave request deleted successfully."
+      );
+    } catch (firebaseError) {
+      console.error(
+        "Failed to delete leave request:",
+        firebaseError
+      );
+
+      setError(
+        "Unable to delete leave request. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /*
+   * ============================================================
+   * DEVOTEE CANCEL
+   * ============================================================
+   */
+  const cancelLeave = async (
+    requestId
+  ) => {
+    if (
+      !isDevotee ||
+      !user?.uid
+    ) {
+      return;
+    }
+
+    const request =
+      requests.find(
+        (item) =>
+          item.id === requestId
+      );
+
+    if (!request) {
       return;
     }
 
     if (
-      normalizeStatus(request.status) !==
-      "pending"
+      request.devoteeId !==
+      user.uid
+    ) {
+      return;
+    }
+
+    if (
+      normalizeStatus(
+        request.status
+      ) !== "pending"
     ) {
       return;
     }
@@ -627,7 +897,9 @@ function Leave() {
           requestId
         ),
         {
-          status: "cancelled",
+          status:
+            "cancelled",
+
           updatedAt:
             serverTimestamp(),
         }
@@ -655,13 +927,23 @@ function Leave() {
    * NAME
    * ============================================================
    */
-  const getDevoteeName = (request) => {
-    if (request.devoteeId === user?.uid) {
-      return user?.name || "You";
+  const getDevoteeName = (
+    request
+  ) => {
+    if (
+      request.devoteeId ===
+      user?.uid
+    ) {
+      return (
+        user?.name ||
+        "You"
+      );
     }
 
     return (
-      devoteeMap[request.devoteeId]?.name ||
+      devoteeMap[
+        request.devoteeId
+      ]?.name ||
       request.devoteeName ||
       "Community resident"
     );
@@ -672,13 +954,23 @@ function Leave() {
    * EMAIL
    * ============================================================
    */
-  const getDevoteeEmail = (request) => {
-    if (request.devoteeId === user?.uid) {
-      return user?.email || "";
+  const getDevoteeEmail = (
+    request
+  ) => {
+    if (
+      request.devoteeId ===
+      user?.uid
+    ) {
+      return (
+        user?.email ||
+        ""
+      );
     }
 
     return (
-      devoteeMap[request.devoteeId]?.email ||
+      devoteeMap[
+        request.devoteeId
+      ]?.email ||
       request.devoteeEmail ||
       ""
     );
@@ -689,14 +981,17 @@ function Leave() {
    * DATE FORMAT
    * ============================================================
    */
-  const formatDate = (date) => {
+  const formatDate = (
+    date
+  ) => {
     if (!date) {
       return "—";
     }
 
-    const parsed = new Date(
-      `${date}T00:00:00`
-    );
+    const parsed =
+      new Date(
+        `${date}T00:00:00`
+      );
 
     if (
       Number.isNaN(
@@ -721,20 +1016,32 @@ function Leave() {
    * STATUS
    * ============================================================
    */
-  const getStatusLabel = (status) => {
+  const getStatusLabel = (
+    status
+  ) => {
     const normalized =
-      normalizeStatus(status);
+      normalizeStatus(
+        status
+      );
 
     const labels = {
-      pending: "Pending",
-      approved: "Approved",
-      rejected: "Rejected",
-      cancelled: "Cancelled",
+      pending:
+        "Pending",
+
+      approved:
+        "Approved",
+
+      rejected:
+        "Rejected",
+
+      cancelled:
+        "Cancelled",
     };
 
     return (
-      labels[normalized] ||
-      "Pending"
+      labels[
+        normalized
+      ] || "Pending"
     );
   };
 
@@ -743,7 +1050,13 @@ function Leave() {
    * LOADING
    * ============================================================
    */
-  if (loading) {
+  if (
+    loading ||
+    (
+      isAdministrator &&
+      devoteesLoading
+    )
+  ) {
     return (
       <Loader text="Loading leave requests..." />
     );
@@ -757,7 +1070,6 @@ function Leave() {
   if (isAdministrator) {
     return (
       <div className="leave-page">
-
         <header className="leave-header">
           <div>
             <span className="leave-eyebrow">
@@ -788,39 +1100,44 @@ function Leave() {
         )}
 
         <section className="leave-stats">
-
           <StatCard
             label="Total Requests"
-            value={statistics.total}
-            description="Community requests"
+            value={
+              statistics.total
+            }
+            description="Active community requests"
             type="default"
           />
 
           <StatCard
             label="Pending"
-            value={statistics.pending}
+            value={
+              statistics.pending
+            }
             description="Awaiting review"
             type="pending"
           />
 
           <StatCard
             label="Approved"
-            value={statistics.approved}
+            value={
+              statistics.approved
+            }
             description="Approved requests"
             type="approved"
           />
 
           <StatCard
             label="Rejected"
-            value={statistics.rejected}
+            value={
+              statistics.rejected
+            }
             description="Rejected requests"
             type="rejected"
           />
-
         </section>
 
         <section className="leave-toolbar">
-
           <div className="leave-search">
             <span>⌕</span>
 
@@ -837,13 +1154,14 @@ function Leave() {
           </div>
 
           <label className="leave-filter">
-
             <span>
               Status
             </span>
 
             <select
-              value={statusFilter}
+              value={
+                statusFilter
+              }
               onChange={(event) =>
                 setStatusFilter(
                   event.target.value
@@ -870,15 +1188,11 @@ function Leave() {
                 Cancelled
               </option>
             </select>
-
           </label>
-
         </section>
 
         <section className="leave-card">
-
           <div className="leave-card-header">
-
             <div>
               <span className="leave-card-eyebrow">
                 COMMUNITY REQUESTS
@@ -890,22 +1204,24 @@ function Leave() {
             </div>
 
             <span className="leave-count">
-              {filteredRequests.length}{" "}
-              {filteredRequests.length === 1
+              {
+                filteredRequests.length
+              }{" "}
+              {filteredRequests.length ===
+              1
                 ? "request"
                 : "requests"}
             </span>
-
           </div>
 
-          {filteredRequests.length === 0 ? (
+          {filteredRequests.length ===
+          0 ? (
             <EmptyLeaveState
               title="No leave requests found"
               description="There are no leave requests matching the current filters."
             />
           ) : (
             <div className="leave-list">
-
               {filteredRequests.map(
                 (request) => (
                   <LeaveRequest
@@ -920,7 +1236,9 @@ function Leave() {
                     roomIdentity={getDevoteeRoomLabel(
                       request.devoteeId
                     )}
-                    formatDate={formatDate}
+                    formatDate={
+                      formatDate
+                    }
                     getStatusLabel={
                       getStatusLabel
                     }
@@ -938,15 +1256,17 @@ function Leave() {
                         "rejected"
                       )
                     }
+                    onDelete={() =>
+                      deleteLeaveRequest(
+                        request.id
+                      )
+                    }
                   />
                 )
               )}
-
             </div>
           )}
-
         </section>
-
       </div>
     );
   }
@@ -959,9 +1279,7 @@ function Leave() {
   if (isDevotee) {
     return (
       <div className="leave-page">
-
         <header className="leave-header">
-
           <div>
             <span className="leave-eyebrow">
               MY COMMUNITY LIFE
@@ -994,7 +1312,6 @@ function Leave() {
               ? "Close Form"
               : "+ Apply for Leave"}
           </button>
-
         </header>
 
         {error && (
@@ -1011,9 +1328,7 @@ function Leave() {
 
         {showApplyForm && (
           <section className="leave-form-card">
-
             <div className="leave-form-header">
-
               <div>
                 <span className="leave-card-eyebrow">
                   NEW REQUEST
@@ -1023,7 +1338,6 @@ function Leave() {
                   Apply for Leave
                 </h2>
               </div>
-
             </div>
 
             <form
@@ -1032,9 +1346,7 @@ function Leave() {
                 handleApplyLeave
               }
             >
-
               <div className="leave-form-grid">
-
                 <label>
                   <span>
                     From
@@ -1043,7 +1355,9 @@ function Leave() {
                   <input
                     type="date"
                     name="from"
-                    value={form.from}
+                    value={
+                      form.from
+                    }
                     onChange={
                       handleFormChange
                     }
@@ -1059,15 +1373,19 @@ function Leave() {
                   <input
                     type="date"
                     name="to"
-                    value={form.to}
-                    min={form.from || undefined}
+                    value={
+                      form.to
+                    }
+                    min={
+                      form.from ||
+                      undefined
+                    }
                     onChange={
                       handleFormChange
                     }
                     required
                   />
                 </label>
-
               </div>
 
               <label>
@@ -1077,7 +1395,9 @@ function Leave() {
 
                 <textarea
                   name="reason"
-                  value={form.reason}
+                  value={
+                    form.reason
+                  }
                   onChange={
                     handleFormChange
                   }
@@ -1089,7 +1409,6 @@ function Leave() {
               </label>
 
               <div className="leave-form-actions">
-
                 <button
                   type="button"
                   className="leave-secondary-button"
@@ -1107,7 +1426,9 @@ function Leave() {
                     setError("");
                     setSuccess("");
                   }}
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                 >
                   Cancel
                 </button>
@@ -1115,56 +1436,59 @@ function Leave() {
                 <button
                   type="submit"
                   className="leave-primary-button"
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                 >
                   {saving
                     ? "Submitting..."
                     : "Submit Request"}
                 </button>
-
               </div>
-
             </form>
-
           </section>
         )}
 
         <section className="leave-stats">
-
           <StatCard
             label="My Requests"
-            value={statistics.total}
+            value={
+              statistics.total
+            }
             description="Total applications"
             type="default"
           />
 
           <StatCard
             label="Pending"
-            value={statistics.pending}
+            value={
+              statistics.pending
+            }
             description="Awaiting approval"
             type="pending"
           />
 
           <StatCard
             label="Approved"
-            value={statistics.approved}
+            value={
+              statistics.approved
+            }
             description="Approved leave"
             type="approved"
           />
 
           <StatCard
             label="Rejected"
-            value={statistics.rejected}
+            value={
+              statistics.rejected
+            }
             description="Rejected requests"
             type="rejected"
           />
-
         </section>
 
         <section className="leave-card">
-
           <div className="leave-card-header">
-
             <div>
               <span className="leave-card-eyebrow">
                 PERSONAL RECORD
@@ -1176,37 +1500,46 @@ function Leave() {
             </div>
 
             <span className="leave-count">
-              {filteredRequests.length}{" "}
-              {filteredRequests.length === 1
+              {
+                filteredRequests.length
+              }{" "}
+              {filteredRequests.length ===
+              1
                 ? "request"
                 : "requests"}
             </span>
-
           </div>
 
-          {filteredRequests.length === 0 ? (
+          {filteredRequests.length ===
+          0 ? (
             <EmptyLeaveState
               title="No leave requests yet"
               description="You have not submitted any leave applications."
             />
           ) : (
             <div className="leave-list">
-
               {filteredRequests.map(
                 (request) => (
                   <LeaveRequest
                     key={request.id}
                     request={request}
                     name="You"
-                    email={user?.email || ""}
+                    email={
+                      user?.email ||
+                      ""
+                    }
                     roomIdentity={getDevoteeRoomLabel(
                       user?.uid
                     )}
-                    formatDate={formatDate}
+                    formatDate={
+                      formatDate
+                    }
                     getStatusLabel={
                       getStatusLabel
                     }
-                    isAdministrator={false}
+                    isAdministrator={
+                      false
+                    }
                     saving={saving}
                     onCancel={() =>
                       cancelLeave(
@@ -1216,12 +1549,9 @@ function Leave() {
                   />
                 )
               )}
-
             </div>
           )}
-
         </section>
-
       </div>
     );
   }
@@ -1234,7 +1564,9 @@ function Leave() {
  * NORMALIZE STATUS
  * ============================================================
  */
-function normalizeStatus(status) {
+function normalizeStatus(
+  status
+) {
   const value = String(
     status || "pending"
   )
@@ -1302,16 +1634,16 @@ function LeaveRequest({
   onApprove,
   onReject,
   onCancel,
+  onDelete,
 }) {
-  const status = normalizeStatus(
-    request.status
-  );
+  const status =
+    normalizeStatus(
+      request.status
+    );
 
   return (
     <article className="leave-request">
-
       <div className="leave-request-dates">
-
         <span>
           FROM
         </span>
@@ -1328,17 +1660,15 @@ function LeaveRequest({
             request.to
           )}
         </small>
-
       </div>
 
       <div className="leave-request-main">
-
         <div className="leave-user">
-
           <div className="leave-avatar">
             {name
               ?.charAt(0)
-              ?.toUpperCase() || "D"}
+              ?.toUpperCase() ||
+              "D"}
           </div>
 
           <div>
@@ -1352,18 +1682,15 @@ function LeaveRequest({
               </small>
             )}
           </div>
-
         </div>
 
         {roomIdentity && (
           <div className="leave-room-identity">
-
             <span className="leave-room-icon">
               🏠
             </span>
 
             <div>
-
               <span className="leave-room-label">
                 RESIDENCE
               </span>
@@ -1371,9 +1698,7 @@ function LeaveRequest({
               <strong>
                 {roomIdentity}
               </strong>
-
             </div>
-
           </div>
         )}
 
@@ -1390,11 +1715,9 @@ function LeaveRequest({
             {request.adminNote}
           </div>
         )}
-
       </div>
 
       <div className="leave-request-actions">
-
         <span
           className={`leave-status ${status}`}
         >
@@ -1404,14 +1727,18 @@ function LeaveRequest({
         </span>
 
         {isAdministrator &&
-          status === "pending" && (
+          status ===
+            "pending" && (
             <div className="leave-review-actions">
-
               <button
                 type="button"
                 className="leave-approve-button"
-                onClick={onApprove}
-                disabled={saving}
+                onClick={
+                  onApprove
+                }
+                disabled={
+                  saving
+                }
               >
                 ✓ Approve
               </button>
@@ -1419,31 +1746,52 @@ function LeaveRequest({
               <button
                 type="button"
                 className="leave-reject-button"
-                onClick={onReject}
-                disabled={saving}
+                onClick={
+                  onReject
+                }
+                disabled={
+                  saving
+                }
               >
                 × Reject
               </button>
-
             </div>
           )}
 
+        {isAdministrator && (
+          <button
+            type="button"
+            className="leave-delete-button"
+            onClick={
+              onDelete
+            }
+            disabled={
+              saving
+            }
+          >
+            🗑 Delete
+          </button>
+        )}
+
         {!isAdministrator &&
-          status === "pending" && (
+          status ===
+            "pending" && (
             <button
               type="button"
               className="leave-cancel-button"
-              onClick={onCancel}
-              disabled={saving}
+              onClick={
+                onCancel
+              }
+              disabled={
+                saving
+              }
             >
               {saving
                 ? "Cancelling..."
                 : "Cancel Request"}
             </button>
           )}
-
       </div>
-
     </article>
   );
 }
@@ -1459,7 +1807,6 @@ function EmptyLeaveState({
 }) {
   return (
     <div className="leave-empty">
-
       <div className="leave-empty-icon">
         ◷
       </div>
@@ -1471,7 +1818,6 @@ function EmptyLeaveState({
       <p>
         {description}
       </p>
-
     </div>
   );
 }

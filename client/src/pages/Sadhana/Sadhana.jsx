@@ -60,9 +60,7 @@ function Sadhana() {
   const [devotees, setDevotees] = useState([]);
   const [records, setRecords] = useState([]);
 
-  const [selectedDate, setSelectedDate] = useState(
-    getToday()
-  );
+  const [selectedDate, setSelectedDate] = useState(getToday());
 
   const [ownRecord, setOwnRecord] = useState(null);
 
@@ -70,18 +68,17 @@ function Sadhana() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
 
   const todayDate = getToday();
 
   const isToday = selectedDate === todayDate;
-
-  const isPastDate =
-    selectedDate < todayDate;
-
-  const isFutureDate =
-    selectedDate > todayDate;
+  const isPastDate = selectedDate < todayDate;
+  const isFutureDate = selectedDate > todayDate;
 
   const canEditToday =
     isDevotee &&
@@ -92,6 +89,20 @@ function Sadhana() {
    * ======================================================
    * LOAD DEVOTEES
    * ======================================================
+   *
+   * Administrators can see all devotee profiles here.
+   *
+   * IMPORTANT:
+   *
+   * We do NOT remove inactive users from this list.
+   * Their status is used later to decide whether their
+   * historical Sadhana should be visible.
+   *
+   * This is what allows:
+   *
+   * active -> visible
+   * inactive -> hidden
+   * active again -> visible again
    */
 
   useEffect(() => {
@@ -108,12 +119,10 @@ function Sadhana() {
     const unsubscribe = onSnapshot(
       devoteesQuery,
       (snapshot) => {
-        const devoteeData = snapshot.docs.map(
-          (item) => ({
-            uid: item.id,
-            ...item.data(),
-          })
-        );
+        const devoteeData = snapshot.docs.map((item) => ({
+          uid: item.id,
+          ...item.data(),
+        }));
 
         devoteeData.sort((a, b) =>
           String(a.name || "").localeCompare(
@@ -136,8 +145,7 @@ function Sadhana() {
         setDevotees([]);
 
         if (
-          firebaseError.code ===
-          "permission-denied"
+          firebaseError.code === "permission-denied"
         ) {
           setError(
             "Firebase permission denied while loading devotees."
@@ -155,34 +163,89 @@ function Sadhana() {
 
   /*
    * ======================================================
-   * DEVOTEE MAP
+   * ACTIVE DEVOTEES
+   * ======================================================
+   *
+   * Only active devotees appear in the administrator
+   * Sadhana view.
+   *
+   * IMPORTANT:
+   *
+   * Inactive users are NOT deleted from this list.
+   * They are simply excluded from the active map.
+   *
+   * Therefore their Sadhana remains stored in Firestore.
+   *
+   * If the user is reactivated later, the profile becomes
+   * active again and their historical Sadhana automatically
+   * becomes visible again.
+   */
+
+  const activeDevotees = useMemo(() => {
+    return devotees.filter((devotee) => {
+      const status = String(
+        devotee.status || "active"
+      )
+        .trim()
+        .toLowerCase();
+
+      return status === "active";
+    });
+  }, [devotees]);
+
+  /*
+   * ======================================================
+   * ACTIVE DEVOTEE MAP
    * ======================================================
    */
 
   const devoteeMap = useMemo(() => {
     const map = {};
 
-    devotees.forEach((devotee) => {
+    activeDevotees.forEach((devotee) => {
       map[devotee.uid] = devotee;
     });
 
     return map;
-  }, [devotees]);
+  }, [activeDevotees]);
 
   /*
    * ======================================================
    * CLEAN ORPHAN SADHANA RECORDS
    * ======================================================
    *
-   * This removes old records belonging to accounts that
-   * no longer exist.
+   * This is intentionally different from deactivation.
    *
-   * Example:
+   * If a devotee is merely deactivated:
    *
-   * users/{oldUid}      -> deleted
-   * sadhana/{recordId}  -> still exists
+   *   users/{uid} still exists
+   *   status = inactive
    *
-   * The orphan Sadhana record is deleted here.
+   * their Sadhana is PRESERVED.
+   *
+   * If the devotee profile is actually deleted:
+   *
+   *   users/{uid} no longer exists
+   *
+   * then the Sadhana records belonging to that missing
+   * devotee are permanently deleted.
+   *
+   * This means:
+   *
+   * DEACTIVATE
+   * -> preserve Sadhana
+   * -> hide Sadhana
+   *
+   * REACTIVATE
+   * -> preserve Sadhana
+   * -> show Sadhana again
+   *
+   * DELETE PROFILE
+   * -> delete orphan Sadhana permanently
+   *
+   * NOTE:
+   * This cleanup runs when the administrator opens/loads
+   * the Sadhana page.
    */
 
   useEffect(() => {
@@ -201,13 +264,10 @@ function Sadhana() {
           getDocs(
             query(
               collection(db, "users"),
-              where(
-                "role",
-                "==",
-                "devotee"
-              )
+              where("role", "==", "devotee")
             )
           ),
+
           getDocs(
             collection(db, "sadhana")
           ),
@@ -217,31 +277,49 @@ function Sadhana() {
           return;
         }
 
-        const existingDevoteeIds =
-          new Set(
-            usersSnapshot.docs.map(
-              (item) => item.id
-            )
-          );
+        /*
+         * These are devotees whose Firestore profile
+         * actually exists.
+         *
+         * IMPORTANT:
+         *
+         * We intentionally include inactive and deleted-status
+         * profiles here because their documents still exist.
+         *
+         * Only a completely missing profile is considered
+         * an orphan.
+         */
+
+        const existingDevoteeIds = new Set(
+          usersSnapshot.docs.map(
+            (item) => item.id
+          )
+        );
 
         const orphanRecords =
           sadhanaSnapshot.docs.filter(
             (item) => {
               const data = item.data();
 
+              /*
+               * No devoteeId means the record cannot be
+               * associated with a valid devotee.
+               */
               if (!data.devoteeId) {
                 return true;
               }
 
+              /*
+               * If the user profile no longer exists,
+               * this Sadhana record becomes orphaned.
+               */
               return !existingDevoteeIds.has(
                 data.devoteeId
               );
             }
           );
 
-        if (
-          orphanRecords.length === 0
-        ) {
+        if (orphanRecords.length === 0) {
           return;
         }
 
@@ -287,17 +365,23 @@ function Sadhana() {
 
     let unsubscribe;
 
+    /*
+     * ADMINISTRATOR
+     *
+     * Load all Sadhana records.
+     * They are filtered later using active devotees.
+     */
+
     if (isAdministrator) {
       unsubscribe = onSnapshot(
         collection(db, "sadhana"),
         (snapshot) => {
-          const recordData =
-            snapshot.docs.map(
-              (item) => ({
-                id: item.id,
-                ...item.data(),
-              })
-            );
+          const recordData = snapshot.docs.map(
+            (item) => ({
+              id: item.id,
+              ...item.data(),
+            })
+          );
 
           setRecords(recordData);
           setLoading(false);
@@ -326,6 +410,13 @@ function Sadhana() {
         }
       );
     } else {
+      /*
+       * DEVOTEE
+       *
+       * Load only the currently signed-in devotee's
+       * own records.
+       */
+
       const ownQuery = query(
         collection(db, "sadhana"),
         where(
@@ -338,13 +429,12 @@ function Sadhana() {
       unsubscribe = onSnapshot(
         ownQuery,
         (snapshot) => {
-          const recordData =
-            snapshot.docs.map(
-              (item) => ({
-                id: item.id,
-                ...item.data(),
-              })
-            );
+          const recordData = snapshot.docs.map(
+            (item) => ({
+              id: item.id,
+              ...item.data(),
+            })
+          );
 
           setRecords(recordData);
           setLoading(false);
@@ -386,14 +476,21 @@ function Sadhana() {
 
   /*
    * ======================================================
-   * ONLY VALID ADMIN RECORDS
+   * VALID RECORDS
    * ======================================================
    *
-   * This is an additional safety layer.
+   * ADMINISTRATOR:
    *
-   * Even if an orphan record exists temporarily while
-   * cleanup is running, it will never render as
-   * "Unknown Devotee".
+   * Only Sadhana belonging to ACTIVE devotees is shown.
+   *
+   * inactive -> hidden
+   * deleted-status -> hidden
+   * missing profile -> hidden
+   * active -> shown
+   *
+   * DEVOTEE:
+   *
+   * The signed-in devotee sees their own records.
    */
 
   const validRecords = useMemo(() => {
@@ -407,9 +504,7 @@ function Sadhana() {
     return records.filter(
       (record) =>
         !!record.devoteeId &&
-        !!devoteeMap[
-          record.devoteeId
-        ]
+        !!devoteeMap[record.devoteeId]
     );
   }, [
     records,
@@ -420,20 +515,19 @@ function Sadhana() {
 
   /*
    * ======================================================
-   * RECORD FOR SELECTED DATE
+   * RECORDS FOR SELECTED DATE
    * ======================================================
    */
 
-  const selectedDateRecords =
-    useMemo(() => {
-      return validRecords.filter(
-        (record) =>
-          record.date === selectedDate
-      );
-    }, [
-      validRecords,
-      selectedDate,
-    ]);
+  const selectedDateRecords = useMemo(() => {
+    return validRecords.filter(
+      (record) =>
+        record.date === selectedDate
+    );
+  }, [
+    validRecords,
+    selectedDate,
+  ]);
 
   /*
    * ======================================================
@@ -450,10 +544,8 @@ function Sadhana() {
     const record =
       validRecords.find(
         (item) =>
-          item.devoteeId ===
-            user.uid &&
-          item.date ===
-            selectedDate
+          item.devoteeId === user.uid &&
+          item.date === selectedDate
       ) || null;
 
     setOwnRecord(record);
@@ -496,9 +588,9 @@ function Sadhana() {
           ownRecord.notes || "",
       });
     } else {
-      setForm(
-        EMPTY_FORM
-      );
+      setForm({
+        ...EMPTY_FORM,
+      });
     }
 
     setError("");
@@ -527,11 +619,12 @@ function Sadhana() {
 
     setForm((previous) => ({
       ...previous,
+
       [name]:
         name === "notes"
           ? value
           : value === ""
-            ? 0
+            ? ""
             : Number(value),
     }));
 
@@ -545,9 +638,7 @@ function Sadhana() {
    * ======================================================
    */
 
-  const saveSadhana = async (
-    event
-  ) => {
+  const saveSadhana = async (event) => {
     event.preventDefault();
 
     setError("");
@@ -571,23 +662,20 @@ function Sadhana() {
       return;
     }
 
-    const rounds =
-      Math.max(
-        0,
-        Number(form.rounds) || 0
-      );
+    const rounds = Math.max(
+      0,
+      Number(form.rounds) || 0
+    );
 
-    const reading =
-      Math.max(
-        0,
-        Number(form.reading) || 0
-      );
+    const reading = Math.max(
+      0,
+      Number(form.reading) || 0
+    );
 
-    const meditation =
-      Math.max(
-        0,
-        Number(form.meditation) || 0
-      );
+    const meditation = Math.max(
+      0,
+      Number(form.meditation) || 0
+    );
 
     try {
       setSaving(true);
@@ -605,10 +693,13 @@ function Sadhana() {
         recordRef,
         {
           devoteeId: user.uid,
+
           date: selectedDate,
 
           rounds,
+
           reading,
+
           meditation,
 
           notes:
@@ -667,9 +758,11 @@ function Sadhana() {
     recordsForDate.reduce(
       (total, record) =>
         total +
-        (Number(
-          record.rounds
-        ) || 0),
+        (
+          Number(
+            record.rounds
+          ) || 0
+        ),
       0
     );
 
@@ -684,9 +777,10 @@ function Sadhana() {
   const averageRounds =
     practiceRecorded > 0
       ? Math.round(
-          (totalRounds /
-            practiceRecorded) *
-            10
+          (
+            totalRounds /
+            practiceRecorded
+          ) * 10
         ) / 10
       : 0;
 
@@ -1059,7 +1153,7 @@ function Sadhana() {
             </strong>
 
             <small>
-              Devotees with rounds
+              Active devotees with rounds
             </small>
           </article>
 
@@ -1071,7 +1165,7 @@ function Sadhana() {
             </strong>
 
             <small>
-              Community total
+              Active community total
             </small>
           </article>
 
@@ -1085,7 +1179,7 @@ function Sadhana() {
             </strong>
 
             <small>
-              Per recorded devotee
+              Per active recorded devotee
             </small>
           </article>
         </section>
@@ -1112,15 +1206,13 @@ function Sadhana() {
 
             <input
               type="search"
+              value={searchTerm}
               placeholder="Search name or email..."
               onChange={(event) => {
-                const value =
+                setSearchTerm(
                   event.target.value
                     .trim()
-                    .toLowerCase();
-
-                setSearchTerm(
-                  value
+                    .toLowerCase()
                 );
               }}
             />
@@ -1130,6 +1222,7 @@ function Sadhana() {
         <AdminSadhanaTable
           records={recordsForDate}
           devoteeMap={devoteeMap}
+          searchTerm={searchTerm}
         />
 
         <section className="sadhana-info-card">
@@ -1168,10 +1261,8 @@ function Sadhana() {
 function AdminSadhanaTable({
   records,
   devoteeMap,
+  searchTerm,
 }) {
-  const [searchTerm, setSearchTerm] =
-    useState("");
-
   const filteredRecords =
     useMemo(() => {
       if (!searchTerm) {
@@ -1221,8 +1312,8 @@ function AdminSadhanaTable({
           </h3>
 
           <p>
-            No valid devotee Sadhana
-            records exist for the
+            No valid active devotee
+            Sadhana records exist for the
             selected date.
           </p>
         </div>
@@ -1243,8 +1334,8 @@ function AdminSadhanaTable({
           </h2>
 
           <p>
-            Read-only overview of devotee
-            spiritual practice.
+            Read-only overview of active
+            devotee spiritual practice.
           </p>
         </div>
       </div>
@@ -1269,11 +1360,6 @@ function AdminSadhanaTable({
                     record.devoteeId
                   ];
 
-                /*
-                 * This should never be reached
-                 * for an orphan record because
-                 * validRecords already removes it.
-                 */
                 if (!devotee) {
                   return null;
                 }

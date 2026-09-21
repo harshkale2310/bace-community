@@ -5,6 +5,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
   updateDoc,
@@ -362,17 +363,6 @@ function Rooms() {
       return undefined;
     }
 
-    /*
-     * IMPORTANT:
-     * Only active devotees are loaded here.
-     *
-     * This prevents:
-     * - inactive devotees
-     * - deleted devotees
-     * - administrators
-     *
-     * from appearing in the Assign Devotee dropdown.
-     */
     const devoteesQuery = query(
       collection(db, "users"),
       where("role", "==", "devotee"),
@@ -425,6 +415,122 @@ function Rooms() {
   }, [isAdministrator]);
 
   /* ======================================================
+   * AUTOMATICALLY REMOVE INACTIVE / DELETED DEVOTEES
+   * FROM ROOM ASSIGNMENTS
+   *
+   * IMPORTANT:
+   * This runs only for administrators.
+   *
+   * Firestore users with:
+   * - status = inactive
+   * - status = deleted
+   * - missing user profile
+   *
+   * are removed from every room's occupants array.
+   * ====================================================== */
+
+  useEffect(() => {
+    if (!isAdministrator || rooms.length === 0) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const cleanupRoomAssignments = async () => {
+      try {
+        const usersSnapshot = await getDocs(
+          collection(db, "users")
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const validActiveDevoteeIds = new Set();
+
+        usersSnapshot.forEach((userDocument) => {
+          const data = userDocument.data();
+
+          const role = String(
+            data.role || ""
+          )
+            .trim()
+            .toLowerCase();
+
+          const status = String(
+            data.status || "active"
+          )
+            .trim()
+            .toLowerCase();
+
+          if (
+            role === "devotee" &&
+            status === "active"
+          ) {
+            validActiveDevoteeIds.add(
+              userDocument.id
+            );
+          }
+        });
+
+        const cleanupPromises = [];
+
+        rooms.forEach((room) => {
+          if (!Array.isArray(room.occupants)) {
+            return;
+          }
+
+          const validOccupants =
+            room.occupants.filter((uid) =>
+              validActiveDevoteeIds.has(uid)
+            );
+
+          const hasInvalidOccupants =
+            validOccupants.length !==
+            room.occupants.length;
+
+          if (!hasInvalidOccupants) {
+            return;
+          }
+
+          cleanupPromises.push(
+            updateDoc(
+              doc(db, "rooms", room.id),
+              {
+                occupants: validOccupants,
+              }
+            )
+          );
+        });
+
+        if (cleanupPromises.length > 0) {
+          await Promise.all(cleanupPromises);
+        }
+      } catch (firebaseError) {
+        console.error(
+          "Failed to clean inactive/deleted devotees from rooms:",
+          firebaseError
+        );
+
+        if (
+          firebaseError.code ===
+          "permission-denied"
+        ) {
+          setError(
+            "Firebase permission denied while cleaning inactive room assignments."
+          );
+        }
+      }
+    };
+
+    cleanupRoomAssignments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdministrator, rooms]);
+
+  /* ======================================================
    * DEVOTEE MAP
    * ====================================================== */
 
@@ -432,11 +538,6 @@ function Rooms() {
     const map = {};
 
     devotees.forEach((devotee) => {
-      /*
-       * The map contains active devotees loaded above.
-       * This means assignment/search uses current active
-       * devotee profiles only.
-       */
       if (
         devotee.role === "devotee" &&
         devotee.status === "active"
@@ -471,11 +572,16 @@ function Rooms() {
 
   const assignableRooms = useMemo(() => {
     return rooms.filter((room) => {
-      const maximum = Number(room.maximumOccupancy) || 0;
-      const occupants = getOccupantsCount(room);
+      const maximum =
+        Number(room.maximumOccupancy) || 0;
+
+      const occupants =
+        getOccupantsCount(room);
 
       const isGroundFloor =
-        String(room.floor).trim().toLowerCase() ===
+        String(room.floor)
+          .trim()
+          .toLowerCase() ===
         "ground floor";
 
       return (
@@ -492,13 +598,6 @@ function Rooms() {
    * ====================================================== */
 
   const availableDevotees = useMemo(() => {
-    /*
-     * `devotees` already contains only active devotees.
-     *
-     * We additionally check role/status here so that even
-     * if stale realtime state exists temporarily, an
-     * inactive/deleted devotee cannot appear in the dropdown.
-     */
     return devotees.filter((devotee) => {
       if (
         devotee.role !== "devotee" ||
@@ -509,7 +608,9 @@ function Rooms() {
 
       return !rooms.some((room) =>
         Array.isArray(room.occupants)
-          ? room.occupants.includes(devotee.uid)
+          ? room.occupants.includes(
+              devotee.uid
+            )
           : false
       );
     });
@@ -527,7 +628,8 @@ function Rooms() {
     let result = [...rooms];
 
     if (search.trim()) {
-      const value = search.trim().toLowerCase();
+      const value =
+        search.trim().toLowerCase();
 
       result = result.filter((room) => {
         const roomMatches =
@@ -541,54 +643,75 @@ function Rooms() {
             .toLowerCase()
             .includes(value);
 
-        const occupantMatches = room.occupants || [];
+        const occupantMatches =
+          room.occupants || [];
 
-        const devoteeMatches = occupantMatches.some(
-          (uid) => {
-            const devotee = devoteeMap[uid];
+        const devoteeMatches =
+          occupantMatches.some(
+            (uid) => {
+              const devotee =
+                devoteeMap[uid];
 
-            const name = String(
-              devotee?.name || ""
-            ).toLowerCase();
+              const name = String(
+                devotee?.name || ""
+              ).toLowerCase();
 
-            const email = String(
-              devotee?.email || ""
-            ).toLowerCase();
+              const email = String(
+                devotee?.email || ""
+              ).toLowerCase();
 
-            return (
-              name.includes(value) ||
-              email.includes(value)
-            );
-          }
+              return (
+                name.includes(value) ||
+                email.includes(value)
+              );
+            }
+          );
+
+        return (
+          roomMatches ||
+          devoteeMatches
         );
-
-        return roomMatches || devoteeMatches;
       });
     }
 
     if (occupancyFilter !== "all") {
       result = result.filter((room) => {
-        const occupants = getOccupantsCount(room);
-        const maximum =
-          Number(room.maximumOccupancy) || 0;
+        const occupants =
+          getOccupantsCount(room);
 
-        if (occupancyFilter === "available") {
+        const maximum =
+          Number(
+            room.maximumOccupancy
+          ) || 0;
+
+        if (
+          occupancyFilter ===
+          "available"
+        ) {
           return (
-            room.roomType === "residential" &&
+            room.roomType ===
+              "residential" &&
             maximum > 0 &&
             occupants < maximum
           );
         }
 
-        if (occupancyFilter === "full") {
+        if (
+          occupancyFilter ===
+          "full"
+        ) {
           return (
-            room.roomType === "residential" &&
+            room.roomType ===
+              "residential" &&
             maximum > 0 &&
             occupants >= maximum
           );
         }
 
-        if (occupancyFilter === "empty") {
+        if (
+          occupancyFilter ===
+          "empty"
+        ) {
           return occupants === 0;
         }
 
@@ -610,42 +733,57 @@ function Rooms() {
    * ====================================================== */
 
   const statistics = useMemo(() => {
-    const residentialRooms = rooms.filter(
-      (room) =>
-        room.roomType === "residential" &&
-        String(room.floor).trim().toLowerCase() !==
-          "ground floor"
-    );
+    const residentialRooms =
+      rooms.filter(
+        (room) =>
+          room.roomType ===
+            "residential" &&
+          String(room.floor)
+            .trim()
+            .toLowerCase() !==
+            "ground floor"
+      );
 
-    const totalRooms = residentialRooms.length;
+    const totalRooms =
+      residentialRooms.length;
 
-    const totalCapacity = residentialRooms.reduce(
-      (total, room) =>
-        total +
-        (Number(room.maximumOccupancy) || 0),
-      0
-    );
+    const totalCapacity =
+      residentialRooms.reduce(
+        (total, room) =>
+          total +
+          (Number(
+            room.maximumOccupancy
+          ) || 0),
+        0
+      );
 
-    const occupants = residentialRooms.reduce(
-      (total, room) =>
-        total + getOccupantsCount(room),
-      0
-    );
+    const occupants =
+      residentialRooms.reduce(
+        (total, room) =>
+          total +
+          getOccupantsCount(room),
+        0
+      );
 
     const vacancy = Math.max(
       totalCapacity - occupants,
       0
     );
 
-    const fullRooms = residentialRooms.filter(
-      (room) =>
-        getOccupantsCount(room) >=
-        Number(room.maximumOccupancy)
-    ).length;
+    const fullRooms =
+      residentialRooms.filter(
+        (room) =>
+          getOccupantsCount(room) >=
+          Number(
+            room.maximumOccupancy
+          )
+      ).length;
 
-    const studyRooms = rooms.filter(
-      (room) => room.roomType === "study"
-    ).length;
+    const studyRooms =
+      rooms.filter(
+        (room) =>
+          room.roomType === "study"
+      ).length;
 
     return {
       totalRooms,
@@ -661,8 +799,13 @@ function Rooms() {
    * ROOM FORM
    * ====================================================== */
 
-  const handleRoomFormChange = (event) => {
-    const { name, value } = event.target;
+  const handleRoomFormChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+    } = event.target;
 
     setRoomForm((previous) => ({
       ...previous,
@@ -678,7 +821,9 @@ function Rooms() {
    * CREATE ROOM
    * ====================================================== */
 
-  const createRoom = async (event) => {
+  const createRoom = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (!isAdministrator) {
@@ -687,17 +832,24 @@ function Rooms() {
 
     setError("");
 
-    const floor = roomForm.floor.trim();
-    const roomNumber = roomForm.roomNumber.trim();
-    const roomName = roomForm.roomName.trim();
+    const floor =
+      roomForm.floor.trim();
 
-    const maximumOccupancy = Number(
-      roomForm.maximumOccupancy
-    );
+    const roomNumber =
+      roomForm.roomNumber.trim();
+
+    const roomName =
+      roomForm.roomName.trim();
+
+    const maximumOccupancy =
+      Number(
+        roomForm.maximumOccupancy
+      );
 
     if (
       !FLOOR_OPTIONS.some(
-        (item) => item.value === floor
+        (item) =>
+          item.value === floor
       )
     ) {
       setError(
@@ -721,8 +873,11 @@ function Rooms() {
     }
 
     if (
-      roomForm.roomType === "residential" &&
-      (!Number.isFinite(maximumOccupancy) ||
+      roomForm.roomType ===
+        "residential" &&
+      (!Number.isFinite(
+        maximumOccupancy
+      ) ||
         maximumOccupancy <= 0)
     ) {
       setError(
@@ -731,17 +886,18 @@ function Rooms() {
       return;
     }
 
-    const duplicate = rooms.some(
-      (room) =>
-        String(room.floor)
-          .trim()
-          .toLowerCase() ===
-          floor.toLowerCase() &&
-        String(room.roomNumber)
-          .trim()
-          .toLowerCase() ===
-          roomNumber.toLowerCase()
-    );
+    const duplicate =
+      rooms.some(
+        (room) =>
+          String(room.floor)
+            .trim()
+            .toLowerCase() ===
+            floor.toLowerCase() &&
+          String(room.roomNumber)
+            .trim()
+            .toLowerCase() ===
+            roomNumber.toLowerCase()
+      );
 
     if (duplicate) {
       setError(
@@ -754,16 +910,21 @@ function Rooms() {
       setSaving(true);
 
       await addDoc(
-        collection(db, "rooms"),
+        collection(
+          db,
+          "rooms"
+        ),
         {
           floor,
           roomNumber,
           roomName,
           maximumOccupancy:
-            roomForm.roomType === "residential"
+            roomForm.roomType ===
+            "residential"
               ? maximumOccupancy
               : 0,
-          roomType: roomForm.roomType,
+          roomType:
+            roomForm.roomType,
           occupants: [],
           createdAt:
             new Date().toISOString(),
@@ -776,7 +937,8 @@ function Rooms() {
         roomNumber: "",
         roomName: "",
         maximumOccupancy: "",
-        roomType: "residential",
+        roomType:
+          "residential",
       });
 
       setShowRoomForm(false);
@@ -808,8 +970,13 @@ function Rooms() {
    * ASSIGNMENT FORM
    * ====================================================== */
 
-  const handleAssignmentChange = (event) => {
-    const { name, value } = event.target;
+  const handleAssignmentChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+    } = event.target;
 
     setAssignment((previous) => ({
       ...previous,
@@ -847,7 +1014,9 @@ function Rooms() {
    * ASSIGN DEVOTEE
    * ====================================================== */
 
-  const assignDevotee = async (event) => {
+  const assignDevotee = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (!isAdministrator) {
@@ -856,8 +1025,11 @@ function Rooms() {
 
     setError("");
 
-    const roomId = assignment.roomId;
-    const devoteeId = assignment.devoteeId;
+    const roomId =
+      assignment.roomId;
+
+    const devoteeId =
+      assignment.devoteeId;
 
     if (!roomId) {
       setError(
@@ -873,19 +1045,15 @@ function Rooms() {
       return;
     }
 
-    /*
-     * IMPORTANT:
-     * Look only inside the active devotee list.
-     *
-     * Even if someone manipulates the browser form,
-     * an inactive/deleted user cannot be assigned here.
-     */
     const selectedDevotee =
       devotees.find(
         (devotee) =>
-          devotee.uid === devoteeId &&
-          devotee.role === "devotee" &&
-          devotee.status === "active"
+          devotee.uid ===
+            devoteeId &&
+          devotee.role ===
+            "devotee" &&
+          devotee.status ===
+            "active"
       );
 
     if (!selectedDevotee) {
@@ -895,9 +1063,11 @@ function Rooms() {
       return;
     }
 
-    const selectedRoom = rooms.find(
-      (room) => room.id === roomId
-    );
+    const selectedRoom =
+      rooms.find(
+        (room) =>
+          room.id === roomId
+      );
 
     if (!selectedRoom) {
       setError(
@@ -907,7 +1077,9 @@ function Rooms() {
     }
 
     const isGroundFloor =
-      String(selectedRoom.floor)
+      String(
+        selectedRoom.floor
+      )
         .trim()
         .toLowerCase() ===
       "ground floor";
@@ -925,7 +1097,9 @@ function Rooms() {
       ) || 0;
 
     const occupants =
-      getOccupantsCount(selectedRoom);
+      getOccupantsCount(
+        selectedRoom
+      );
 
     if (
       selectedRoom.roomType !==
@@ -953,7 +1127,9 @@ function Rooms() {
 
     const alreadyAssigned =
       rooms.some((room) =>
-        Array.isArray(room.occupants)
+        Array.isArray(
+          room.occupants
+        )
           ? room.occupants.includes(
               devoteeId
             )
@@ -978,7 +1154,9 @@ function Rooms() {
         ),
         {
           occupants:
-            arrayUnion(devoteeId),
+            arrayUnion(
+              devoteeId
+            ),
         }
       );
 
@@ -1024,9 +1202,11 @@ function Rooms() {
       return;
     }
 
-    const room = rooms.find(
-      (item) => item.id === roomId
-    );
+    const room =
+      rooms.find(
+        (item) =>
+          item.id === roomId
+      );
 
     if (!room) {
       setError(
@@ -1100,13 +1280,9 @@ function Rooms() {
    * DEVOTEE HELPERS
    * ====================================================== */
 
-  const getDevoteeName = (uid) => {
-    /*
-     * Active devotees are available in devoteeMap.
-     *
-     * If an old inactive/deleted UID is still present
-     * in a room, we do not expose a fake/stale profile.
-     */
+  const getDevoteeName = (
+    uid
+  ) => {
     return (
       devoteeMap[uid]?.name ||
       devoteeMap[uid]?.email ||
@@ -1114,15 +1290,22 @@ function Rooms() {
     );
   };
 
-  const getDevoteeEmail = (uid) => {
+  const getDevoteeEmail = (
+    uid
+  ) => {
     return (
       devoteeMap[uid]?.email ||
       ""
     );
   };
 
-  const getOccupancyClass = (room) => {
-    if (room.roomType === "study") {
+  const getOccupancyClass = (
+    room
+  ) => {
+    if (
+      room.roomType ===
+      "study"
+    ) {
       return "study";
     }
 
@@ -1172,7 +1355,9 @@ function Rooms() {
               RESIDENTIAL SERVICES
             </span>
 
-            <h1>Rooms & Residence</h1>
+            <h1>
+              Rooms & Residence
+            </h1>
 
             <p>
               Manage BACE residence rooms,
@@ -1206,9 +1391,7 @@ function Rooms() {
                   closeAssignForm();
                 } else {
                   openAssignForm();
-                  setShowRoomForm(
-                    false
-                  );
+                  setShowRoomForm(false);
                 }
               }}
             >
@@ -1241,10 +1424,14 @@ function Rooms() {
 
             <form
               className="rooms-form"
-              onSubmit={createRoom}
+              onSubmit={
+                createRoom
+              }
             >
               <label>
-                <span>Floor No.</span>
+                <span>
+                  Floor No.
+                </span>
 
                 <select
                   name="floor"
@@ -1266,7 +1453,9 @@ function Rooms() {
                           floor.value
                         }
                       >
-                        {floor.label}
+                        {
+                          floor.label
+                        }
                       </option>
                     )
                   )}
@@ -1279,7 +1468,9 @@ function Rooms() {
               </label>
 
               <label>
-                <span>Room No.</span>
+                <span>
+                  Room No.
+                </span>
 
                 <input
                   type="text"
@@ -1296,7 +1487,9 @@ function Rooms() {
               </label>
 
               <label>
-                <span>Room Name</span>
+                <span>
+                  Room Name
+                </span>
 
                 <input
                   type="text"
@@ -1313,7 +1506,9 @@ function Rooms() {
               </label>
 
               <label>
-                <span>Room Type</span>
+                <span>
+                  Room Type
+                </span>
 
                 <select
                   name="roomType"
@@ -1402,7 +1597,9 @@ function Rooms() {
 
             <form
               className="rooms-form"
-              onSubmit={assignDevotee}
+              onSubmit={
+                assignDevotee
+              }
             >
               <label>
                 <span>
@@ -1426,12 +1623,16 @@ function Rooms() {
                   {assignableRooms.map(
                     (room) => {
                       const vacancy =
-                        getVacancy(room);
+                        getVacancy(
+                          room
+                        );
 
                       return (
                         <option
                           key={room.id}
-                          value={room.id}
+                          value={
+                            room.id
+                          }
                         >
                           Floor{" "}
                           {room.floor} ·
@@ -1601,7 +1802,9 @@ function Rooms() {
           </div>
 
           <select
-            value={occupancyFilter}
+            value={
+              occupancyFilter
+            }
             onChange={(event) =>
               setOccupancyFilter(
                 event.target.value
@@ -1639,7 +1842,9 @@ function Rooms() {
             </div>
 
             <span className="rooms-count">
-              {filteredRooms.length}{" "}
+              {
+                filteredRooms.length
+              }{" "}
               {filteredRooms.length ===
               1
                 ? "room"
@@ -1698,12 +1903,13 @@ function Rooms() {
    * ====================================================== */
 
   if (isDevotee) {
-    const ownRooms = rooms.filter(
-      (room) =>
-        room.occupants.includes(
-          user.uid
-        )
-    );
+    const ownRooms =
+      rooms.filter(
+        (room) =>
+          room.occupants.includes(
+            user.uid
+          )
+      );
 
     return (
       <div className="rooms-page">
@@ -1713,7 +1919,9 @@ function Rooms() {
               MY RESIDENCE
             </span>
 
-            <h1>My Room</h1>
+            <h1>
+              My Room
+            </h1>
 
             <p>
               View your assigned BACE
@@ -1750,107 +1958,118 @@ function Rooms() {
           </section>
         ) : (
           <div className="my-room-list">
-            {ownRooms.map((room) => {
-              const occupants =
-                getOccupantsCount(room);
+            {ownRooms.map(
+              (room) => {
+                const occupants =
+                  getOccupantsCount(
+                    room
+                  );
 
-              const vacancy =
-                getVacancy(room);
+                const vacancy =
+                  getVacancy(
+                    room
+                  );
 
-              return (
-                <article
-                  className="my-room-card"
-                  key={room.id}
-                >
-                  <div className="my-room-top">
-                    <div className="my-room-icon">
-                      ⌂
+                return (
+                  <article
+                    className="my-room-card"
+                    key={room.id}
+                  >
+                    <div className="my-room-top">
+                      <div className="my-room-icon">
+                        ⌂
+                      </div>
+
+                      <div>
+                        <span>
+                          MY ASSIGNED ROOM
+                        </span>
+
+                        <h2>
+                          {room.roomName ||
+                            `Room ${room.roomNumber}`}
+                        </h2>
+
+                        <p className="my-room-identity">
+                          Floor{" "}
+                          {room.floor} ·
+                          Room{" "}
+                          {
+                            room.roomNumber
+                          }
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <span>
-                        MY ASSIGNED ROOM
-                      </span>
+                    <div className="my-room-details">
+                      <div>
+                        <span>
+                          Floor
+                        </span>
 
-                      <h2>
-                        {room.roomName ||
-                          `Room ${room.roomNumber}`}
-                      </h2>
+                        <strong>
+                          {
+                            room.floor
+                          }
+                        </strong>
+                      </div>
 
-                      <p className="my-room-identity">
-                        Floor {room.floor} ·
-                        Room{" "}
-                        {
-                          room.roomNumber
-                        }
-                      </p>
-                    </div>
-                  </div>
+                      <div>
+                        <span>
+                          Room No.
+                        </span>
 
-                  <div className="my-room-details">
-                    <div>
-                      <span>Floor</span>
+                        <strong>
+                          {
+                            room.roomNumber
+                          }
+                        </strong>
+                      </div>
 
-                      <strong>
-                        {room.floor}
-                      </strong>
-                    </div>
+                      <div>
+                        <span>
+                          Room Name
+                        </span>
 
-                    <div>
-                      <span>
-                        Room No.
-                      </span>
+                        <strong>
+                          {room.roomName ||
+                            "Not specified"}
+                        </strong>
+                      </div>
 
-                      <strong>
-                        {
-                          room.roomNumber
-                        }
-                      </strong>
-                    </div>
+                      <div>
+                        <span>
+                          Occupancy
+                        </span>
 
-                    <div>
-                      <span>
-                        Room Name
-                      </span>
+                        <strong>
+                          {occupants} /{" "}
+                          {
+                            room.maximumOccupancy
+                          }
+                        </strong>
+                      </div>
 
-                      <strong>
-                        {room.roomName ||
-                          "Not specified"}
-                      </strong>
-                    </div>
+                      <div>
+                        <span>
+                          Vacancy
+                        </span>
 
-                    <div>
-                      <span>
-                        Occupancy
-                      </span>
-
-                      <strong>
-                        {occupants} /{" "}
-                        {
-                          room.maximumOccupancy
-                        }
-                      </strong>
+                        <strong>
+                          {vacancy}
+                        </strong>
+                      </div>
                     </div>
 
-                    <div>
-                      <span>
-                        Vacancy
-                      </span>
-
-                      <strong>
-                        {vacancy}
-                      </strong>
+                    <div className="my-room-notice">
+                      Room allocation is
+                      managed by the BACE
+                      administrator.
                     </div>
-                  </div>
-
-                  <div className="my-room-notice">
-                    Room allocation is
-                    managed by the BACE
-                    administrator.
-                  </div>
-                </article>
-              );
-            })}
+                  </article>
+                );
+              }
+            )}
           </div>
         )}
       </div>
@@ -1878,7 +2097,9 @@ function RoomStat({
 
       <strong>{value}</strong>
 
-      <small>{description}</small>
+      <small>
+        {description}
+      </small>
     </article>
   );
 }
@@ -1914,14 +2135,16 @@ function RoomCard({
   const progress =
     maximum > 0
       ? Math.min(
-          (occupants / maximum) *
+          (occupants /
+            maximum) *
             100,
           100
         )
       : 0;
 
   const isStudyRoom =
-    room.roomType === "study";
+    room.roomType ===
+    "study";
 
   return (
     <article className="room-card">
@@ -2103,13 +2326,19 @@ function ResidencePlaces() {
                   ? "facility-ground"
                   : "facility-image-card"
               }`}
-              key={facility.key}
+              key={
+                facility.key
+              }
             >
               {facility.image && (
                 <div className="facility-image-wrap">
                   <img
-                    src={facility.image}
-                    alt={facility.title}
+                    src={
+                      facility.image
+                    }
+                    alt={
+                      facility.title
+                    }
                     loading="lazy"
                     onError={(
                       event
@@ -2125,25 +2354,35 @@ function ResidencePlaces() {
                 <div className="facility-heading">
                   <div>
                     <span className="room-floor">
-                      {facility.label}
+                      {
+                        facility.label
+                      }
                     </span>
 
                     <h3>
-                      {facility.title}
+                      {
+                        facility.title
+                      }
                     </h3>
 
                     <p className="facility-subtitle">
-                      {facility.subtitle}
+                      {
+                        facility.subtitle
+                      }
                     </p>
                   </div>
 
                   <div className="facility-icon">
-                    {facility.icon}
+                    {
+                      facility.icon
+                    }
                   </div>
                 </div>
 
                 <p className="facility-description">
-                  {facility.description}
+                  {
+                    facility.description
+                  }
                 </p>
 
                 <div className="facility-details">
@@ -2151,7 +2390,9 @@ function ResidencePlaces() {
                     (detail) => (
                       <div
                         className="facility-detail"
-                        key={detail}
+                        key={
+                          detail
+                        }
                       >
                         <span>
                           ✓
@@ -2216,7 +2457,11 @@ function ResidenceReference() {
                 </div>
 
                 <span className="reference-room-count">
-                  {floor.rooms.length} rooms
+                  {
+                    floor.rooms
+                      .length
+                  }{" "}
+                  rooms
                 </span>
               </div>
 
@@ -2228,7 +2473,9 @@ function ResidenceReference() {
                       key={`${floor.floor}-${room.number}`}
                     >
                       <div className="reference-room-number">
-                        {room.number}
+                        {
+                          room.number
+                        }
                       </div>
 
                       <div className="reference-room-main">
@@ -2244,8 +2491,13 @@ function ResidenceReference() {
                         ) : (
                           <span>
                             Capacity{" "}
-                            {room.capacity}{" "}
-                            · {room.lockers}{" "}
+                            {
+                              room.capacity
+                            }{" "}
+                            ·{" "}
+                            {
+                              room.lockers
+                            }{" "}
                             lockers
                           </span>
                         )}
@@ -2262,7 +2514,9 @@ function ResidenceReference() {
                   </span>
 
                   <strong>
-                    {floor.passage}
+                    {
+                      floor.passage
+                    }
                   </strong>
                 </div>
 
@@ -2272,7 +2526,9 @@ function ResidenceReference() {
                   </span>
 
                   <strong>
-                    {floor.bathroomInfo}
+                    {
+                      floor.bathroomInfo
+                    }
                   </strong>
                 </div>
               </div>
@@ -2298,9 +2554,13 @@ function EmptyRoomsState({
         ⌂
       </div>
 
-      <h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
-      <p>{description}</p>
+      <p>
+        {description}
+      </p>
     </div>
   );
 }
