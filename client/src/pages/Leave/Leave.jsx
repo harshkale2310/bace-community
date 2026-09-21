@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -17,26 +19,111 @@ import Loader from "../../components/Common/Loader";
 
 import "./Leave.css";
 
+/*
+ * ============================================================
+ * NOTIFICATION HELPER
+ * ============================================================
+ *
+ * Notification failures are intentionally isolated from the
+ * main leave operation. A leave request should still be saved
+ * even if notification delivery encounters an error.
+ */
+async function createNotification({
+  recipientId,
+  type,
+  title,
+  message,
+  metadata = {},
+}) {
+  if (!recipientId) {
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "notifications"), {
+      recipientId,
+      type,
+      title,
+      message,
+      read: false,
+      createdAt: serverTimestamp(),
+      ...metadata,
+    });
+  } catch (notificationError) {
+    console.warn(
+      "Notification could not be created:",
+      notificationError
+    );
+  }
+}
+
+/*
+ * ============================================================
+ * NOTIFY ACTIVE ADMINISTRATORS
+ * ============================================================
+ */
+async function notifyActiveAdministrators({
+  type,
+  title,
+  message,
+  metadata = {},
+}) {
+  try {
+    const administratorsQuery = query(
+      collection(db, "users"),
+      where("role", "==", "administrator"),
+      where("status", "==", "active")
+    );
+
+    const snapshot = await getDocs(
+      administratorsQuery
+    );
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    await Promise.all(
+      snapshot.docs.map((administrator) =>
+        createNotification({
+          recipientId: administrator.id,
+          type,
+          title,
+          message,
+          metadata,
+        })
+      )
+    );
+  } catch (notificationError) {
+    console.warn(
+      "Administrator notifications could not be created:",
+      notificationError
+    );
+  }
+}
+
 function Leave() {
-  const { user, isAdministrator, isDevotee } = useAuth();
+  const { user, isAdministrator, isDevotee } =
+    useAuth();
 
   const [requests, setRequests] = useState([]);
   const [devotees, setDevotees] = useState([]);
   const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [devoteesLoading, setDevoteesLoading] = useState(
-    isAdministrator
-  );
+  const [devoteesLoading, setDevoteesLoading] =
+    useState(isAdministrator);
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] =
+    useState("all");
 
-  const [showApplyForm, setShowApplyForm] = useState(false);
+  const [showApplyForm, setShowApplyForm] =
+    useState(false);
 
   const [form, setForm] = useState({
     from: "",
@@ -48,10 +135,6 @@ function Leave() {
    * ============================================================
    * LOAD LEAVE REQUESTS
    * ============================================================
-   *
-   * Firestore collection:
-   *
-   *     leaveRequests
    */
   useEffect(() => {
     if (!user?.uid) {
@@ -72,21 +155,30 @@ function Leave() {
     } else {
       leaveQuery = query(
         collection(db, "leaveRequests"),
-        where("devoteeId", "==", user.uid)
+        where(
+          "devoteeId",
+          "==",
+          user.uid
+        )
       );
     }
 
     const unsubscribe = onSnapshot(
       leaveQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
         data.sort((a, b) => {
-          const aSeconds = a.createdAt?.seconds || 0;
-          const bSeconds = b.createdAt?.seconds || 0;
+          const aSeconds =
+            a.createdAt?.seconds || 0;
+
+          const bSeconds =
+            b.createdAt?.seconds || 0;
 
           return bSeconds - aSeconds;
         });
@@ -118,13 +210,6 @@ function Leave() {
    * LOAD DEVOTEES
    * ADMIN ONLY
    * ============================================================
-   *
-   * Only active devotees are allowed to have their leave
-   * requests displayed in the administrator view.
-   *
-   * inactive -> hidden
-   * deleted  -> hidden
-   * missing  -> hidden
    */
   useEffect(() => {
     if (!isAdministrator) {
@@ -137,16 +222,22 @@ function Leave() {
 
     const usersQuery = query(
       collection(db, "users"),
-      where("role", "==", "devotee")
+      where(
+        "role",
+        "==",
+        "devotee"
+      )
     );
 
     const unsubscribe = onSnapshot(
       usersQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          uid: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs.map(
+          (item) => ({
+            uid: item.id,
+            ...item.data(),
+          })
+        );
 
         setDevotees(data);
         setDevoteesLoading(false);
@@ -158,11 +249,6 @@ function Leave() {
         );
 
         setDevotees([]);
-
-        /*
-         * Do not display leave requests until we can
-         * verify the devotee profiles.
-         */
         setDevoteesLoading(false);
       }
     );
@@ -174,12 +260,6 @@ function Leave() {
    * ============================================================
    * LOAD ROOMS
    * ============================================================
-   *
-   * Administrator:
-   *   Can read all rooms.
-   *
-   * Devotee:
-   *   Only reads rooms where their own UID is an occupant.
    */
   useEffect(() => {
     if (!user?.uid) {
@@ -207,10 +287,12 @@ function Leave() {
     const unsubscribe = onSnapshot(
       roomsQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...item.data(),
+          })
+        );
 
         setRooms(data);
       },
@@ -256,20 +338,10 @@ function Leave() {
    * ============================================================
    */
   const visibleRequests = useMemo(() => {
-    /*
-     * Devotee:
-     * Firestore already restricts the query to the
-     * current devotee's own requests.
-     */
     if (!isAdministrator) {
       return requests;
     }
 
-    /*
-     * Administrator:
-     * Only display leave requests belonging to active
-     * devotee accounts.
-     */
     if (devoteesLoading) {
       return [];
     }
@@ -321,7 +393,9 @@ function Leave() {
         : [];
 
       occupants.forEach((occupantId) => {
-        if (!occupantId) return;
+        if (!occupantId) {
+          return;
+        }
 
         if (!map[occupantId]) {
           map[occupantId] = [];
@@ -388,7 +462,9 @@ function Leave() {
    * ROOM LABEL
    * ============================================================
    */
-  const getDevoteeRoomLabel = (devoteeId) => {
+  const getDevoteeRoomLabel = (
+    devoteeId
+  ) => {
     const devoteeRooms =
       getDevoteeRooms(devoteeId);
 
@@ -651,6 +727,25 @@ function Leave() {
         }
       );
 
+      /*
+       * Notify all active administrators.
+       *
+       * This is deliberately performed after the leave
+       * request has been successfully saved.
+       */
+      await notifyActiveAdministrators({
+        type: "leave_request",
+        title: "New Leave Request",
+        message: `A new leave request has been submitted by ${
+          user.name || "a community resident"
+        }.`,
+        metadata: {
+          devoteeId: user.uid,
+          from,
+          to,
+        },
+      });
+
       setForm({
         from: "",
         to: "",
@@ -660,7 +755,7 @@ function Leave() {
       setShowApplyForm(false);
 
       setSuccess(
-        "Your leave request has been submitted."
+        "Your leave request has been submitted successfully."
       );
     } catch (firebaseError) {
       console.error(
@@ -702,10 +797,6 @@ function Leave() {
       return;
     }
 
-    /*
-     * Do not allow an administrator to review
-     * an inactive/deleted devotee's request.
-     */
     if (
       !activeDevoteeIds.has(
         request.devoteeId
@@ -757,8 +848,82 @@ function Leave() {
         }
       );
 
+      /*
+       * Notify the devotee after the leave request
+       * has been successfully updated.
+       */
+      const devoteeName =
+        devoteeMap[
+          request.devoteeId
+        ]?.name ||
+        request.devoteeName ||
+        "your";
+
+      const formattedFrom =
+        formatDate(request.from);
+
+      const formattedTo =
+        formatDate(request.to);
+
+      const dateMessage =
+        request.from === request.to
+          ? formattedFrom
+          : `${formattedFrom} to ${formattedTo}`;
+
+      if (status === "approved") {
+        await createNotification({
+          recipientId:
+            request.devoteeId,
+
+          type:
+            "leave_approved",
+
+          title:
+            "Leave Approved",
+
+          message:
+            `Your leave request for ${dateMessage} has been approved.`,
+
+          metadata: {
+            leaveRequestId:
+              requestId,
+            from:
+              request.from,
+            to:
+              request.to,
+          },
+        });
+      }
+
+      if (status === "rejected") {
+        await createNotification({
+          recipientId:
+            request.devoteeId,
+
+          type:
+            "leave_rejected",
+
+          title:
+            "Leave Rejected",
+
+          message:
+            `Your leave request for ${dateMessage} has been declined.`,
+
+          metadata: {
+            leaveRequestId:
+              requestId,
+            from:
+              request.from,
+            to:
+              request.to,
+          },
+        });
+      }
+
       setSuccess(
-        `Leave request ${status}.`
+        status === "approved"
+          ? "Leave request approved successfully."
+          : "Leave request declined successfully."
       );
     } catch (firebaseError) {
       console.error(

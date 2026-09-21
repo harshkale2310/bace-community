@@ -207,6 +207,42 @@ const FLOOR_OPTIONS = [
 ];
 
 /* ======================================================
+ * NOTIFICATION HELPER
+ * ====================================================== */
+
+async function createRoomNotification({
+  recipientId,
+  type,
+  title,
+  message,
+  metadata = {},
+}) {
+  if (!recipientId) {
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "notifications"), {
+      recipientId,
+      type,
+      title,
+      message,
+      read: false,
+      createdAt: new Date().toISOString(),
+      ...metadata,
+    });
+  } catch (notificationError) {
+    /*
+     * Notification failure must never stop the room operation.
+     */
+    console.error(
+      "Failed to create room notification:",
+      notificationError
+    );
+  }
+}
+
+/* ======================================================
  * ROOMS
  * ====================================================== */
 
@@ -272,7 +308,7 @@ function Rooms() {
           const maximumOccupancy = Number(rawCapacity);
 
           const occupants = Array.isArray(data.occupants)
-            ? data.occupants
+            ? data.occupants.filter(Boolean)
             : [];
 
           return {
@@ -363,10 +399,13 @@ function Rooms() {
       return undefined;
     }
 
+    /*
+     * Query only by role to avoid requiring a composite index.
+     * Status is filtered locally.
+     */
     const devoteesQuery = query(
       collection(db, "users"),
-      where("role", "==", "devotee"),
-      where("status", "==", "active")
+      where("role", "==", "devotee")
     );
 
     const unsubscribe = onSnapshot(
@@ -377,11 +416,18 @@ function Rooms() {
             uid: item.id,
             ...item.data(),
           }))
-          .filter(
-            (devotee) =>
+          .filter((devotee) => {
+            const status = String(
+              devotee.status || "active"
+            )
+              .trim()
+              .toLowerCase();
+
+            return (
               devotee.role === "devotee" &&
-              devotee.status === "active"
-          );
+              status === "active"
+            );
+          });
 
         data.sort((a, b) =>
           String(a.name || "").localeCompare(
@@ -415,18 +461,8 @@ function Rooms() {
   }, [isAdministrator]);
 
   /* ======================================================
-   * AUTOMATICALLY REMOVE INACTIVE / DELETED DEVOTEES
-   * FROM ROOM ASSIGNMENTS
-   *
-   * IMPORTANT:
-   * This runs only for administrators.
-   *
-   * Firestore users with:
-   * - status = inactive
-   * - status = deleted
-   * - missing user profile
-   *
-   * are removed from every room's occupants array.
+   * AUTOMATICALLY REMOVE INACTIVE / DELETED / MISSING
+   * DEVOTEES FROM ROOM ASSIGNMENTS
    * ====================================================== */
 
   useEffect(() => {
@@ -438,6 +474,10 @@ function Rooms() {
 
     const cleanupRoomAssignments = async () => {
       try {
+        /*
+         * Read the current user profiles once.
+         * Only active devotee profiles remain valid occupants.
+         */
         const usersSnapshot = await getDocs(
           collection(db, "users")
         );
@@ -451,9 +491,7 @@ function Rooms() {
         usersSnapshot.forEach((userDocument) => {
           const data = userDocument.data();
 
-          const role = String(
-            data.role || ""
-          )
+          const role = String(data.role || "")
             .trim()
             .toLowerCase();
 
@@ -480,10 +518,9 @@ function Rooms() {
             return;
           }
 
-          const validOccupants =
-            room.occupants.filter((uid) =>
-              validActiveDevoteeIds.has(uid)
-            );
+          const validOccupants = room.occupants.filter(
+            (uid) => validActiveDevoteeIds.has(uid)
+          );
 
           const hasInvalidOccupants =
             validOccupants.length !==
@@ -538,9 +575,15 @@ function Rooms() {
     const map = {};
 
     devotees.forEach((devotee) => {
+      const status = String(
+        devotee.status || "active"
+      )
+        .trim()
+        .toLowerCase();
+
       if (
         devotee.role === "devotee" &&
-        devotee.status === "active"
+        status === "active"
       ) {
         map[devotee.uid] = devotee;
       }
@@ -560,10 +603,16 @@ function Rooms() {
   };
 
   const getVacancy = (room) => {
-    const maximum = Number(room.maximumOccupancy) || 0;
-    const occupants = getOccupantsCount(room);
+    const maximum =
+      Number(room.maximumOccupancy) || 0;
 
-    return Math.max(maximum - occupants, 0);
+    const occupants =
+      getOccupantsCount(room);
+
+    return Math.max(
+      maximum - occupants,
+      0
+    );
   };
 
   /* ======================================================
@@ -599,9 +648,15 @@ function Rooms() {
 
   const availableDevotees = useMemo(() => {
     return devotees.filter((devotee) => {
+      const status = String(
+        devotee.status || "active"
+      )
+        .trim()
+        .toLowerCase();
+
       if (
         devotee.role !== "devotee" ||
-        devotee.status !== "active"
+        status !== "active"
       ) {
         return false;
       }
@@ -1052,7 +1107,11 @@ function Rooms() {
             devoteeId &&
           devotee.role ===
             "devotee" &&
-          devotee.status ===
+          String(
+            devotee.status || ""
+          )
+            .trim()
+            .toLowerCase() ===
             "active"
       );
 
@@ -1160,6 +1219,27 @@ function Rooms() {
         }
       );
 
+      /*
+       * Room assignment notification.
+       * Notification failure does not affect
+       * the successful room assignment.
+       */
+      await createRoomNotification({
+        recipientId: devoteeId,
+        type: "room-assignment",
+        title: "Room Assignment",
+        message: `You have been assigned to ${selectedRoom.roomName || `Room ${selectedRoom.roomNumber}`}.`,
+        metadata: {
+          roomId: selectedRoom.id,
+          roomNumber:
+            selectedRoom.roomNumber,
+          roomName:
+            selectedRoom.roomName || "",
+          floor:
+            selectedRoom.floor,
+        },
+      });
+
       setAssignment({
         roomId: "",
         devoteeId: "",
@@ -1253,6 +1333,26 @@ function Rooms() {
             updatedOccupants,
         }
       );
+
+      /*
+       * Notify the devotee that the room assignment
+       * has been removed.
+       */
+      await createRoomNotification({
+        recipientId: devoteeId,
+        type: "room-assignment-updated",
+        title: "Room Assignment Updated",
+        message: `Your room assignment for Room ${room.roomNumber} has been updated.`,
+        metadata: {
+          roomId: room.id,
+          roomNumber:
+            room.roomNumber,
+          roomName:
+            room.roomName || "",
+          floor:
+            room.floor,
+        },
+      });
     } catch (firebaseError) {
       console.error(
         "Failed to remove devotee:",
@@ -1906,6 +2006,9 @@ function Rooms() {
     const ownRooms =
       rooms.filter(
         (room) =>
+          Array.isArray(
+            room.occupants
+          ) &&
           room.occupants.includes(
             user.uid
           )

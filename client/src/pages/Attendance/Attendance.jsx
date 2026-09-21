@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  addDoc,
   collection,
   doc,
   getDocs,
@@ -27,9 +28,11 @@ function getTodayDate() {
   const today = new Date();
 
   const year = today.getFullYear();
+
   const month = String(
     today.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     today.getDate()
   ).padStart(2, "0");
@@ -77,7 +80,9 @@ function getRoomIdentity(room) {
     return "Not assigned";
   }
 
-  const floorNumber = Number(room.floor);
+  const floorNumber = Number(
+    room.floor
+  );
 
   const floorLabel = Number.isFinite(
     floorNumber
@@ -124,6 +129,70 @@ function buildRoomMap(rooms) {
   return map;
 }
 
+/*
+ * ============================================================
+ * NOTIFICATION HELPER
+ * ============================================================
+ */
+
+async function sendAttendanceNotification({
+  recipientId,
+  devoteeName,
+  field,
+  status,
+  date,
+}) {
+  if (!recipientId) {
+    return;
+  }
+
+  if (status === "Not Marked") {
+    return;
+  }
+
+  const isMorning = field === "morning";
+
+  const programName = isMorning
+    ? "Morning"
+    : "Evening";
+
+  const formattedDate = formatDate(date);
+
+  const title = `${programName} Attendance`;
+
+  const message =
+    `Your ${programName.toLowerCase()} attendance has been marked as ` +
+    `${status.toLowerCase()} for ${formattedDate}.`;
+
+  await addDoc(
+    collection(db, "notifications"),
+    {
+      recipientId,
+      type: isMorning
+        ? "attendance_morning"
+        : "attendance_evening",
+
+      title,
+      message,
+
+      read: false,
+
+      createdAt:
+        serverTimestamp(),
+
+      attendanceDate: date,
+
+      attendanceStatus: status,
+
+      attendanceSession:
+        programName.toLowerCase(),
+
+      devoteeName:
+        devoteeName || "Devotee",
+    }
+  );
+}
+
 function Attendance() {
   const {
     user,
@@ -137,8 +206,10 @@ function Attendance() {
   const [devotees, setDevotees] =
     useState([]);
 
-  const [attendanceRecords, setAttendanceRecords] =
-    useState([]);
+  const [
+    attendanceRecords,
+    setAttendanceRecords,
+  ] = useState([]);
 
   const [rooms, setRooms] =
     useState([]);
@@ -146,8 +217,10 @@ function Attendance() {
   const [search, setSearch] =
     useState("");
 
-  const [statusFilter, setStatusFilter] =
-    useState("All");
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState("All");
 
   const [loading, setLoading] =
     useState(true);
@@ -188,25 +261,8 @@ function Attendance() {
          * --------------------------------------------------------
          * ADMINISTRATOR
          * --------------------------------------------------------
-         *
-         * IMPORTANT:
-         * Only ACTIVE devotees are loaded.
-         *
-         * This means:
-         *
-         * status = active
-         *      -> shown
-         *
-         * status = inactive
-         *      -> hidden
-         *
-         * status = deleted
-         *      -> hidden
-         *
-         * The attendance records themselves do not need
-         * to be deleted for this page. We simply do not
-         * show attendance for accounts that are no longer active.
          */
+
         if (isAdministrator) {
           const devoteesQuery =
             query(
@@ -249,13 +305,6 @@ function Attendance() {
             getDocs(roomsQuery),
           ]);
 
-          /*
-           * Extra client-side status protection.
-           *
-           * This makes sure that even if a stale/cached
-           * result contains an inactive/deleted profile,
-           * it will never enter the attendance table.
-           */
           const devoteeList =
             devoteesSnapshot.docs
               .map((item) => ({
@@ -308,13 +357,8 @@ function Attendance() {
          * --------------------------------------------------------
          * DEVOTEE
          * --------------------------------------------------------
-         *
-         * AuthContext already prevents inactive/deleted
-         * users from entering the application.
-         *
-         * Therefore this query only runs for an active
-         * authenticated devotee.
          */
+
         if (isDevotee) {
           const attendanceQuery =
             query(
@@ -423,11 +467,6 @@ function Attendance() {
     }
 
     return devotees
-      /*
-       * Extra protection:
-       * Only active devotees can ever become
-       * attendance rows.
-       */
       .filter(
         (devotee) =>
           devotee.role ===
@@ -468,7 +507,7 @@ function Attendance() {
 
           department:
             devotee.department ||
-            "Temple",
+            "BACE",
 
           room,
 
@@ -668,6 +707,7 @@ function Attendance() {
      * Never create/update attendance for an
      * inactive or deleted devotee.
      */
+
     const devotee =
       devotees.find(
         (item) =>
@@ -690,6 +730,29 @@ function Attendance() {
     const recordId =
       `${devoteeId}_${date}`;
 
+    const existingRecord =
+      attendanceRecords.find(
+        (record) =>
+          record.id ===
+          recordId
+      );
+
+    const previousValue =
+      existingRecord?.[field] ||
+      "Not Marked";
+
+    /*
+     * No need to save or notify if the
+     * administrator selected the existing value.
+     */
+
+    if (
+      previousValue ===
+      value
+    ) {
+      return;
+    }
+
     setSavingId(
       `${recordId}_${field}`
     );
@@ -703,6 +766,12 @@ function Attendance() {
           "attendance",
           recordId
         );
+
+      /*
+       * --------------------------------------------------------
+       * SAVE ATTENDANCE
+       * --------------------------------------------------------
+       */
 
       await setDoc(
         attendanceRef,
@@ -723,6 +792,12 @@ function Attendance() {
           merge: true,
         }
       );
+
+      /*
+       * --------------------------------------------------------
+       * UPDATE LOCAL STATE
+       * --------------------------------------------------------
+       */
 
       setAttendanceRecords(
         (previous) => {
@@ -751,13 +826,52 @@ function Attendance() {
             ...previous,
             {
               id: recordId,
+
               devoteeId,
+
               date,
-              [field]: value,
+
+              [field]:
+                value,
             },
           ];
         }
       );
+
+      /*
+       * --------------------------------------------------------
+       * SEND NOTIFICATION
+       * --------------------------------------------------------
+       *
+       * Notification failure must never make a successful
+       * attendance update appear unsuccessful.
+       */
+
+      try {
+        await sendAttendanceNotification(
+          {
+            recipientId:
+              devoteeId,
+
+            devoteeName:
+              devotee.name,
+
+            field,
+
+            status:
+              value,
+
+            date,
+          }
+        );
+      } catch (
+        notificationError
+      ) {
+        console.warn(
+          "Attendance was saved, but the notification could not be delivered:",
+          notificationError
+        );
+      }
     } catch (firebaseError) {
       console.error(
         "Attendance update error:",
@@ -1469,9 +1583,9 @@ function Attendance() {
 }
 
 /*
- * ==============================================================
+ * ============================================================
  * ADMIN STAT CARD
- * ==============================================================
+ * ============================================================
  */
 
 function AttendanceStat({
@@ -1502,9 +1616,9 @@ function AttendanceStat({
 }
 
 /*
- * ==============================================================
+ * ============================================================
  * ADMIN ATTENDANCE EDITOR
- * ==============================================================
+ * ============================================================
  */
 
 function AttendanceEditor({
@@ -1548,9 +1662,9 @@ function AttendanceEditor({
 }
 
 /*
- * ==============================================================
+ * ============================================================
  * DEVOTEE TIMELINE ITEM
- * ==============================================================
+ * ============================================================
  */
 
 function AttendanceTimelineItem({
@@ -1594,9 +1708,9 @@ function AttendanceTimelineItem({
 }
 
 /*
- * ==============================================================
+ * ============================================================
  * HELPERS
- * ==============================================================
+ * ============================================================
  */
 
 function getStatusClass(status) {

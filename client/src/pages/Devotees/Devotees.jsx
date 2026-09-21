@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -14,6 +15,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  addDoc,
 } from "firebase/firestore";
 
 import {
@@ -33,12 +35,9 @@ function Devotees() {
 
   const [devotees, setDevotees] = useState([]);
   const [rooms, setRooms] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [roomsLoading, setRoomsLoading] = useState(true);
-
   const [error, setError] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -127,8 +126,6 @@ function Devotees() {
   /*
    * ============================================================
    * LOAD ROOMS
-   *
-   * Rooms are the source of truth for residence assignment.
    * ============================================================
    */
 
@@ -478,8 +475,6 @@ function Devotees() {
   /*
    * ============================================================
    * REGISTER DEVOTEE
-   *
-   * Uses secondaryAuth so administrator stays logged in.
    * ============================================================
    */
 
@@ -497,6 +492,7 @@ function Devotees() {
       return;
     }
 
+    // Fixed email validation.
     if (
       !email ||
       !/^\S+@\S+\.\S+$/.test(email)
@@ -532,7 +528,7 @@ function Devotees() {
       setError("");
 
       /*
-       * Create the devotee in SECONDARY Firebase Auth.
+       * Create devotee in SECONDARY Firebase Auth.
        * Administrator remains logged in.
        */
 
@@ -563,11 +559,6 @@ function Devotees() {
           department:
             form.department || "Temple",
 
-          /*
-           * Legacy compatibility fields.
-           * Residence assignment is controlled by rooms.
-           */
-
           room: "",
           bed: "",
           seva: "",
@@ -576,6 +567,7 @@ function Devotees() {
 
           role: "devotee",
           status: "active",
+
           photoURL: null,
 
           createdAt: serverTimestamp(),
@@ -584,7 +576,7 @@ function Devotees() {
       );
 
       /*
-       * Sign out only the secondary authentication instance.
+       * Sign out only secondary authentication.
        */
 
       await signOut(secondaryAuth);
@@ -596,11 +588,6 @@ function Devotees() {
         "Failed to register devotee:",
         registrationError
       );
-
-      /*
-       * If Firestore creation failed after Auth
-       * account creation, remove the new Auth account.
-       */
 
       if (createdFirebaseUser) {
         try {
@@ -637,15 +624,18 @@ function Devotees() {
   /*
    * ============================================================
    * STATUS
+   * ============================================================
    *
    * Active -> Inactive:
    * - profile remains
    * - history remains
    * - room assignment is removed
+   * - devotee receives an account notification
    *
    * Inactive -> Active:
    * - profile becomes active
-   * - no old room is automatically restored
+   * - old room is not automatically restored
+   * - devotee receives an account notification
    * ============================================================
    */
 
@@ -670,7 +660,7 @@ function Devotees() {
       setError("");
 
       /*
-       * Update profile status first.
+       * Update profile status.
        */
 
       await updateDoc(
@@ -684,16 +674,45 @@ function Devotees() {
       );
 
       /*
-       * When deactivated, immediately remove the
+       * When deactivated, immediately remove
        * devotee from every room.
-       *
-       * Their historical Sadhana, Seva, Attendance
-       * and Leave data are intentionally preserved.
        */
 
       if (nextStatus === "Inactive") {
         await removeDevoteeFromRooms(
           devotee.uid
+        );
+      }
+
+      /*
+       * Create notification for the devotee.
+       *
+       * Notification failure should NOT make the
+       * account status update fail.
+       */
+
+      try {
+        if (nextStatus === "Inactive") {
+          await createNotification({
+            recipientId: devotee.uid,
+            type: "account_deactivated",
+            title: "Account Deactivated",
+            message:
+              "Your account has been deactivated. Please contact the administrator for assistance.",
+          });
+        } else {
+          await createNotification({
+            recipientId: devotee.uid,
+            type: "account_reactivated",
+            title: "Account Reactivated",
+            message:
+              "Your account has been reactivated.",
+          });
+        }
+      } catch (notificationError) {
+        console.error(
+          "Failed to create account status notification:",
+          notificationError
         );
       }
     } catch (updateError) {
@@ -713,20 +732,6 @@ function Devotees() {
   /*
    * ============================================================
    * DELETE DEVOTEE
-   *
-   * Permanent application-data deletion:
-   *
-   * 1. Sadhana
-   * 2. Seva
-   * 3. Attendance
-   * 4. Leave
-   * 5. Leave Requests
-   * 6. Room assignment
-   * 7. users/{uid}
-   *
-   * Firebase Authentication account remains because
-   * another user's Auth account cannot safely be deleted
-   * from the normal client-side administrator page.
    * ============================================================
    */
 
@@ -774,11 +779,6 @@ function Devotees() {
       await deleteDoc(
         doc(db, "users", devotee.uid)
       );
-
-      /*
-       * The users onSnapshot listener automatically
-       * removes the devotee from the directory.
-       */
     } catch (deleteError) {
       console.error(
         "Failed to delete devotee:",
@@ -1665,12 +1665,46 @@ function Devotees() {
 
 /*
  * ============================================================
- * REMOVE DEVOTEE FROM ALL ROOMS
+ * CREATE NOTIFICATION
  * ============================================================
  *
- * Used when a devotee is deactivated.
+ * Administrator actions are allowed to create notifications
+ * according to the Firestore notification rules.
  *
- * Their historical records remain untouched.
+ * This function intentionally does not throw into the main
+ * account-status operation. Notification failure should not
+ * undo a successful status change.
+ * ============================================================
+ */
+
+async function createNotification({
+  recipientId,
+  type,
+  title,
+  message,
+  metadata = {},
+}) {
+  if (!recipientId) {
+    return;
+  }
+
+  await addDoc(
+    collection(db, "notifications"),
+    {
+      recipientId,
+      type,
+      title,
+      message,
+      read: false,
+      createdAt: serverTimestamp(),
+      ...metadata,
+    }
+  );
+}
+
+/*
+ * ============================================================
+ * REMOVE DEVOTEE FROM ALL ROOMS
  * ============================================================
  */
 
@@ -1736,23 +1770,6 @@ async function removeDevoteeFromRooms(
  * ============================================================
  * DELETE APPLICATION DATA
  * ============================================================
- *
- * Looks for records using:
- *
- * - devoteeId
- * - userId
- * - uid
- *
- * Collections cleaned:
- *
- * - sadhana
- * - seva
- * - attendance
- * - leave
- * - leaveRequests
- *
- * Room assignments are removed separately.
- * ============================================================
  */
 
 async function cleanupDevoteeData(
@@ -1764,13 +1781,6 @@ async function cleanupDevoteeData(
     );
   }
 
-  /*
-   * Include BOTH leave and leaveRequests.
-   *
-   * The current Leave page uses leaveRequests,
-   * while older data/rules may still use leave.
-   */
-
   const collectionsToClean = [
     "sadhana",
     "seva",
@@ -1778,13 +1788,6 @@ async function cleanupDevoteeData(
     "leave",
     "leaveRequests",
   ];
-
-  /*
-   * Store document references in a Map.
-   *
-   * If an old record contains more than one
-   * ownership field, it is deleted only once.
-   */
 
   const recordsToDelete = new Map();
 
@@ -1796,7 +1799,7 @@ async function cleanupDevoteeData(
       );
 
     /*
-     * Current application ownership field.
+     * devoteeId
      */
 
     const devoteeIdQuery = query(
@@ -1823,7 +1826,7 @@ async function cleanupDevoteeData(
     );
 
     /*
-     * Compatibility with older records.
+     * userId
      */
 
     const userIdQuery = query(
@@ -1850,7 +1853,7 @@ async function cleanupDevoteeData(
     );
 
     /*
-     * Compatibility with records that used uid.
+     * uid
      */
 
     const uidQuery = query(
@@ -1876,9 +1879,7 @@ async function cleanupDevoteeData(
   }
 
   /*
-   * ==========================================================
-   * FIND ROOMS
-   * ==========================================================
+   * Find rooms.
    */
 
   const roomsQuery = query(
@@ -1894,12 +1895,7 @@ async function cleanupDevoteeData(
     await getDocs(roomsQuery);
 
   /*
-   * ==========================================================
-   * FIRESTORE BATCH CLEANUP
-   * ==========================================================
-   *
-   * Firestore supports up to 500 writes per batch.
-   * 450 is used as a safety margin.
+   * Firestore batch cleanup.
    */
 
   let batch = writeBatch(db);

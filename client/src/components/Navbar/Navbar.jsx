@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   collection,
   deleteDoc,
@@ -7,6 +8,7 @@ import {
   onSnapshot,
   query,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 
@@ -26,20 +28,16 @@ function Navbar() {
   const [notificationsOpen, setNotificationsOpen] =
     useState(false);
 
-  const [notifications, setNotifications] =
-    useState([]);
-
+  const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] =
     useState(true);
 
   const profileRef = useRef(null);
   const notificationRef = useRef(null);
 
-  /*
-   * =========================================================
-   * INITIALS
-   * =========================================================
-   */
+  /* =========================================================
+     INITIALS
+  ========================================================= */
 
   const getInitials = (name = "") => {
     const words = name
@@ -58,22 +56,18 @@ function Navbar() {
       .toUpperCase();
   };
 
-  /*
-   * =========================================================
-   * DISPLAY NAME
-   * =========================================================
-   */
+  /* =========================================================
+     DISPLAY NAME
+  ========================================================= */
 
   const displayName =
     user?.role === "administrator"
       ? "BACE Administrator"
       : user?.name || "User";
 
-  /*
-   * =========================================================
-   * ROLE
-   * =========================================================
-   */
+  /* =========================================================
+     ROLE
+  ========================================================= */
 
   const isAdministrator =
     user?.role === "administrator";
@@ -88,24 +82,16 @@ function Navbar() {
 
   const initials = getInitials(displayName);
 
-  /*
-   * =========================================================
-   * NOTIFICATION SUBSCRIPTION
-   *
-   * Notifications are stored in:
-   *
-   * notifications/{notificationId}
-   *
-   * Each notification must contain:
-   *
-   * recipientId
-   * type
-   * title
-   * message
-   * read
-   * createdAt
-   * =========================================================
-   */
+  /* =========================================================
+     NOTIFICATION SUBSCRIPTION
+
+     IMPORTANT:
+     The Firestore query filters by recipientId directly.
+
+     Do NOT load the complete notifications collection and
+     filter it in JavaScript. Firestore security rules are
+     evaluated before client-side filtering.
+  ========================================================= */
 
   useEffect(() => {
     if (!user?.uid) {
@@ -117,35 +103,35 @@ function Navbar() {
     setNotificationsLoading(true);
 
     const notificationsQuery = query(
-      collection(db, "notifications")
+      collection(db, "notifications"),
+      where("recipientId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(
       notificationsQuery,
       (snapshot) => {
-        const currentNotifications =
-          snapshot.docs
-            .map((notificationDoc) => ({
-              id: notificationDoc.id,
-              ...notificationDoc.data(),
-            }))
-            .filter(
-              (notification) =>
-                notification.recipientId === user.uid
-            )
-            .sort((a, b) => {
-              const aTime =
-                a.createdAt?.toMillis?.() ||
-                new Date(a.createdAt || 0).getTime() ||
-                0;
+        const currentNotifications = snapshot.docs
+          .map((notificationDoc) => ({
+            id: notificationDoc.id,
+            ...notificationDoc.data(),
+          }))
+          .sort((a, b) => {
+            const aTime =
+              a.createdAt?.toMillis?.() ||
+              (a.createdAt
+                ? new Date(a.createdAt).getTime()
+                : 0) ||
+              0;
 
-              const bTime =
-                b.createdAt?.toMillis?.() ||
-                new Date(b.createdAt || 0).getTime() ||
-                0;
+            const bTime =
+              b.createdAt?.toMillis?.() ||
+              (b.createdAt
+                ? new Date(b.createdAt).getTime()
+                : 0) ||
+              0;
 
-              return bTime - aTime;
-            });
+            return bTime - aTime;
+          });
 
         setNotifications(currentNotifications);
         setNotificationsLoading(false);
@@ -164,22 +150,17 @@ function Navbar() {
     return () => unsubscribe();
   }, [user?.uid]);
 
-  /*
-   * =========================================================
-   * UNREAD COUNT
-   * =========================================================
-   */
+  /* =========================================================
+     UNREAD COUNT
+  ========================================================= */
 
   const unreadCount = notifications.filter(
-    (notification) =>
-      notification.read !== true
+    (notification) => notification.read !== true
   ).length;
 
-  /*
-   * =========================================================
-   * NOTIFICATION DATE
-   * =========================================================
-   */
+  /* =========================================================
+     NOTIFICATION DATE
+  ========================================================= */
 
   const formatNotificationTime = (createdAt) => {
     if (!createdAt) {
@@ -188,13 +169,9 @@ function Navbar() {
 
     let date;
 
-    if (
-      typeof createdAt?.toDate === "function"
-    ) {
+    if (typeof createdAt?.toDate === "function") {
       date = createdAt.toDate();
-    } else if (
-      createdAt instanceof Date
-    ) {
+    } else if (createdAt instanceof Date) {
       date = createdAt;
     } else {
       date = new Date(createdAt);
@@ -247,21 +224,16 @@ function Navbar() {
       } ago`;
     }
 
-    return date.toLocaleDateString(
-      undefined,
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    return date.toLocaleDateString(undefined, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
-  /*
-   * =========================================================
-   * MARK SINGLE NOTIFICATION AS READ
-   * =========================================================
-   */
+  /* =========================================================
+     MARK SINGLE NOTIFICATION AS READ
+  ========================================================= */
 
   const markNotificationAsRead = async (
     notification
@@ -292,11 +264,9 @@ function Navbar() {
     }
   };
 
-  /*
-   * =========================================================
-   * DELETE SINGLE NOTIFICATION
-   * =========================================================
-   */
+  /* =========================================================
+     DELETE SINGLE NOTIFICATION
+  ========================================================= */
 
   const deleteNotification = async (
     notificationId
@@ -321,11 +291,9 @@ function Navbar() {
     }
   };
 
-  /*
-   * =========================================================
-   * MARK ALL AS READ
-   * =========================================================
-   */
+  /* =========================================================
+     MARK ALL AS READ
+  ========================================================= */
 
   const markAllNotificationsAsRead = async () => {
     const unreadNotifications =
@@ -365,41 +333,25 @@ function Navbar() {
     }
   };
 
-  /*
-   * =========================================================
-   * NOTIFICATION CLICK
-   * =========================================================
-   */
+  /* =========================================================
+     NOTIFICATION CLICK
+  ========================================================= */
 
   const handleNotificationClick = async (
     notification
   ) => {
-    await markNotificationAsRead(
-      notification
-    );
-
-    /*
-     * Keep the notification panel open.
-     *
-     * Individual notification navigation
-     * can be added later when notification
-     * types have dedicated routes.
-     */
+    await markNotificationAsRead(notification);
   };
 
-  /*
-   * =========================================================
-   * OUTSIDE CLICK + ESCAPE
-   * =========================================================
-   */
+  /* =========================================================
+     OUTSIDE CLICK + ESCAPE
+  ========================================================= */
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
         profileRef.current &&
-        !profileRef.current.contains(
-          event.target
-        )
+        !profileRef.current.contains(event.target)
       ) {
         setProfileOpen(false);
       }
@@ -444,11 +396,9 @@ function Navbar() {
     };
   }, []);
 
-  /*
-   * =========================================================
-   * TOGGLE NOTIFICATIONS
-   * =========================================================
-   */
+  /* =========================================================
+     TOGGLE NOTIFICATIONS
+  ========================================================= */
 
   const handleNotificationToggle = () => {
     setNotificationsOpen(
@@ -458,11 +408,9 @@ function Navbar() {
     setProfileOpen(false);
   };
 
-  /*
-   * =========================================================
-   * TOGGLE PROFILE
-   * =========================================================
-   */
+  /* =========================================================
+     TOGGLE PROFILE
+  ========================================================= */
 
   const handleProfileToggle = () => {
     setProfileOpen(
@@ -472,11 +420,9 @@ function Navbar() {
     setNotificationsOpen(false);
   };
 
-  /*
-   * =========================================================
-   * LOGOUT
-   * =========================================================
-   */
+  /* =========================================================
+     LOGOUT
+  ========================================================= */
 
   const handleLogout = async () => {
     setProfileOpen(false);
@@ -496,11 +442,9 @@ function Navbar() {
     }
   };
 
-  /*
-   * =========================================================
-   * PROFILE / SETTINGS
-   * =========================================================
-   */
+  /* =========================================================
+     PROFILE / SETTINGS
+  ========================================================= */
 
   const handleProfileClick = () => {
     setProfileOpen(false);
@@ -517,9 +461,9 @@ function Navbar() {
 
   return (
     <header className="navbar">
-      {/* =========================================
+      {/* =====================================================
           LEFT SECTION
-      ========================================= */}
+      ===================================================== */}
 
       <div className="navbar-left">
         <button
@@ -554,14 +498,14 @@ function Navbar() {
         </div>
       </div>
 
-      {/* =========================================
+      {/* =====================================================
           RIGHT SECTION
-      ========================================= */}
+      ===================================================== */}
 
       <div className="navbar-right">
-        {/* =====================================
+        {/* ===================================================
             NOTIFICATIONS
-        ===================================== */}
+        =================================================== */}
 
         <div
           className="navbar-notification-wrapper"
@@ -607,9 +551,9 @@ function Navbar() {
             )}
           </button>
 
-          {/* =================================
+          {/* =================================================
               NOTIFICATION PANEL
-          ================================= */}
+          ================================================= */}
 
           {notificationsOpen && (
             <div
@@ -663,8 +607,7 @@ function Navbar() {
                       Please wait a moment.
                     </span>
                   </div>
-                ) : notifications.length ===
-                  0 ? (
+                ) : notifications.length === 0 ? (
                   <div className="notification-empty">
                     <div className="notification-empty-icon">
                       ✓
@@ -752,9 +695,9 @@ function Navbar() {
           )}
         </div>
 
-        {/* =====================================
+        {/* ===================================================
             PROFILE
-        ===================================== */}
+        =================================================== */}
 
         <div
           className="navbar-profile"
@@ -763,23 +706,21 @@ function Navbar() {
           <button
             type="button"
             className={`profile-trigger ${
-              profileOpen ? "active" : ""
+              profileOpen
+                ? "active"
+                : ""
             }`}
             onClick={handleProfileToggle}
             aria-expanded={profileOpen}
             aria-haspopup="menu"
             aria-label={`Open profile menu for ${displayName}`}
           >
-            {/* Avatar */}
-
             <span
               className="profile-avatar"
               aria-hidden="true"
             >
               {initials}
             </span>
-
-            {/* User information */}
 
             <span className="profile-details">
               <strong>
@@ -791,11 +732,11 @@ function Navbar() {
               </small>
             </span>
 
-            {/* Dropdown arrow */}
-
             <span
               className={`profile-arrow ${
-                profileOpen ? "open" : ""
+                profileOpen
+                  ? "open"
+                  : ""
               }`}
               aria-hidden="true"
             >
@@ -803,9 +744,9 @@ function Navbar() {
             </span>
           </button>
 
-          {/* ===================================
+          {/* =================================================
               PROFILE DROPDOWN
-          =================================== */}
+          ================================================= */}
 
           {profileOpen && (
             <div
@@ -813,8 +754,6 @@ function Navbar() {
               role="menu"
               aria-label="Profile menu"
             >
-              {/* Profile header */}
-
               <div className="profile-menu-header">
                 <span
                   className="profile-avatar large"
@@ -843,8 +782,6 @@ function Navbar() {
                 aria-hidden="true"
               />
 
-              {/* Profile / Settings */}
-
               <button
                 type="button"
                 className="profile-menu-item"
@@ -864,8 +801,6 @@ function Navbar() {
                   {profileLabel}
                 </span>
               </button>
-
-              {/* Logout */}
 
               <button
                 type="button"
