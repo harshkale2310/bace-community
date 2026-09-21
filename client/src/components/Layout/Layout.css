@@ -3,8 +3,10 @@
 ========================================================================== */
 
 .app-layout {
-  min-height: 100vh;
+  position: relative;
+
   width: 100%;
+  min-height: 100vh;
 
   background: var(--background);
 
@@ -16,6 +18,8 @@
 ========================================================================== */
 
 .app-main {
+  position: relative;
+
   min-width: 0;
   min-height: 100vh;
 
@@ -44,11 +48,27 @@
 .app-content {
   width: 100%;
   min-width: 0;
+  min-height: 100vh;
+
   flex: 1;
 
-  padding: 28px 30px;
+  /*
+    Navbar is fixed at approximately 72px.
+    Extra spacing keeps page headings comfortably below it.
+  */
+  padding: 100px 30px 30px;
+
+  box-sizing: border-box;
 
   overflow-x: hidden;
+}
+
+/* ==========================================================================
+   PAGE TRANSITION SUPPORT
+========================================================================== */
+
+.app-content > * {
+  min-width: 0;
 }
 
 /* ==========================================================================
@@ -57,7 +77,7 @@
 
 @media (max-width: 1100px) {
   .app-content {
-    padding: 26px 24px;
+    padding: 98px 24px 28px;
   }
 }
 
@@ -75,7 +95,7 @@
   }
 
   .app-content {
-    padding: 24px 20px;
+    padding: 96px 20px 26px;
   }
 }
 
@@ -85,7 +105,7 @@
 
 @media (max-width: 600px) {
   .app-content {
-    padding: 20px 15px;
+    padding: 92px 15px 22px;
   }
 }
 
@@ -95,7 +115,7 @@
 
 @media (max-width: 400px) {
   .app-content {
-    padding: 18px 12px;
+    padding: 90px 12px 20px;
   }
 }
 

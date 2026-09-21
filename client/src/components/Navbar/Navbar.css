@@ -1,57 +1,79 @@
-/* =========================================================
+/* ==========================================================================
    NAVBAR
-========================================================= */
+========================================================================== */
 
 .navbar {
+  --navbar-height: 72px;
+
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+
+  z-index: 1100;
+
   width: 100%;
-  height: 72px;
+  height: var(--navbar-height);
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   padding: 0 24px;
+
   background: rgba(255, 255, 255, 0.97);
+
   border-bottom: 1px solid #e8e8e8;
+
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.04);
+
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+
   box-sizing: border-box;
 }
 
-/* =========================================================
+/* ==========================================================================
    LEFT SECTION
-========================================================= */
+========================================================================== */
 
 .navbar-left {
+  min-width: 0;
+
   display: flex;
   align-items: center;
-  min-width: 0;
+
+  flex: 1;
 }
 
-/* =========================================================
+/* ==========================================================================
    SIDEBAR TOGGLE
-========================================================= */
+========================================================================== */
 
 .sidebar-toggle {
   width: 44px;
   height: 44px;
+
   flex-shrink: 0;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
   gap: 5px;
+
   margin-right: 14px;
   padding: 0;
+
   border: none;
   border-radius: 10px;
+
   background: transparent;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     transform 0.2s ease;
@@ -67,10 +89,14 @@
 
 .sidebar-toggle span {
   display: block;
+
   width: 20px;
   height: 2px;
+
   border-radius: 2px;
+
   background: #3d3d3d;
+
   transition:
     width 0.2s ease,
     transform 0.2s ease;
@@ -84,33 +110,44 @@
   width: 17px;
 }
 
-/* =========================================================
+/* ==========================================================================
    BRAND TITLE
-========================================================= */
+========================================================================== */
 
 .navbar-page-title {
+  min-width: 0;
+
   display: flex;
   align-items: center;
-  min-width: 0;
+
+  overflow: hidden;
 }
 
 .navbar-title-icon {
   width: 42px;
   height: 42px;
+
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   margin-right: 11px;
+
   border-radius: 11px;
+
   background: linear-gradient(
     135deg,
     #fff4dc,
     #f9e4b7
   );
+
   color: #a86b00;
+
   font-size: 23px;
   font-weight: 600;
+
   box-shadow:
     inset 0 0 0 1px
     rgba(168, 107, 0, 0.08);
@@ -118,70 +155,95 @@
 
 .navbar-title-text {
   min-width: 0;
+
   display: flex;
   flex-direction: column;
+
+  overflow: hidden;
 }
 
 .navbar-title-text strong {
   display: block;
+
   max-width: 270px;
+
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
   color: #252525;
+
   font-size: 17px;
   font-weight: 700;
+
   line-height: 1.2;
 }
 
 .navbar-title-text small {
   display: block;
+
   margin-top: 3px;
+
   color: #888;
+
   font-size: 11px;
   font-weight: 500;
+
   letter-spacing: 0.2px;
+
   white-space: nowrap;
 }
 
-/* =========================================================
+/* ==========================================================================
    RIGHT SECTION
-========================================================= */
+========================================================================== */
 
 .navbar-right {
   display: flex;
   align-items: center;
+
   gap: 10px;
+
   margin-left: 20px;
+
   flex-shrink: 0;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION WRAPPER
-========================================================= */
+========================================================================== */
 
 .navbar-notification-wrapper {
   position: relative;
+
   flex-shrink: 0;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION BUTTON
-========================================================= */
+========================================================================== */
 
 .navbar-notification {
   position: relative;
+
   width: 44px;
   height: 44px;
+
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   padding: 0;
+
   border: none;
   border-radius: 12px;
+
   background: transparent;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     transform 0.2s ease;
@@ -201,54 +263,77 @@
 
 .notification-icon {
   display: block;
+
   color: #555;
+
   font-size: 24px;
+
   line-height: 1;
+
   transform: rotate(-12deg);
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION COUNT
-========================================================= */
+========================================================================== */
 
 .notification-count {
   position: absolute;
+
   top: 3px;
   right: 1px;
+
   min-width: 18px;
   height: 18px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   padding: 0 4px;
+
   border-radius: 999px;
+
   background: #c2410c;
+
   border: 2px solid #fff;
+
   box-sizing: border-box;
+
   color: #fff;
+
   font-size: 9px;
   font-weight: 800;
+
   line-height: 1;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION PANEL
-========================================================= */
+========================================================================== */
 
 .notification-panel {
   position: absolute;
+
   top: calc(100% + 10px);
   right: 0;
+
   width: 380px;
   max-width: calc(100vw - 24px);
+
   overflow: hidden;
+
   background: #fff;
+
   border: 1px solid #e8e8e8;
   border-radius: 16px;
+
   box-shadow:
     0 18px 45px rgba(0, 0, 0, 0.12),
     0 4px 12px rgba(0, 0, 0, 0.04);
+
   box-sizing: border-box;
+
   animation: notificationPanelIn 0.18s ease;
 }
 
@@ -264,50 +349,66 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION HEADER
-========================================================= */
+========================================================================== */
 
 .notification-panel-header {
   min-height: 66px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   gap: 12px;
+
   padding: 12px 14px;
+
   box-sizing: border-box;
 }
 
 .notification-panel-header > div {
   min-width: 0;
+
   display: flex;
   flex-direction: column;
 }
 
 .notification-panel-header strong {
   color: #252525;
+
   font-size: 15px;
   font-weight: 700;
+
   line-height: 1.3;
 }
 
 .notification-panel-header small {
   margin-top: 3px;
+
   color: #8b8b8b;
+
   font-size: 11px;
   font-weight: 500;
 }
 
 .notification-mark-all {
   flex-shrink: 0;
+
   padding: 6px 8px;
+
   border: none;
   border-radius: 7px;
+
   background: transparent;
+
   color: #a86b00;
+
   font-family: inherit;
+
   font-size: 11px;
   font-weight: 700;
+
   cursor: pointer;
 }
 
@@ -315,24 +416,31 @@
   background: #fff7e8;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION DIVIDER
-========================================================= */
+========================================================================== */
 
 .notification-panel-divider {
   height: 1px;
+
   margin: 0 10px;
+
   background: #eeeeee;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION LIST
-========================================================= */
+========================================================================== */
 
 .notification-list {
   max-height: 430px;
+
   overflow-y: auto;
+
   overscroll-behavior: contain;
+
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
 }
 
 .notification-list::-webkit-scrollbar {
@@ -341,26 +449,38 @@
 
 .notification-list::-webkit-scrollbar-thumb {
   border-radius: 10px;
+
   background: #d9d9d9;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: #c4c4c4;
 }
 
 .notification-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION ITEM
-========================================================= */
+========================================================================== */
 
 .notification-item {
   position: relative;
+
   display: flex;
   align-items: stretch;
+
   gap: 2px;
+
   min-height: 82px;
+
   padding: 4px 7px 4px 10px;
+
   border-bottom: 1px solid #f0f0f0;
+
   background: #fff;
+
   box-sizing: border-box;
 }
 
@@ -372,22 +492,31 @@
   background: #fffaf2;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION CONTENT
-========================================================= */
+========================================================================== */
 
 .notification-content {
   min-width: 0;
+
   flex: 1;
+
   display: flex;
   align-items: flex-start;
+
   gap: 9px;
+
   padding: 10px 5px;
+
   border: none;
   border-radius: 9px;
+
   background: transparent;
+
   font-family: inherit;
+
   text-align: left;
+
   cursor: pointer;
 }
 
@@ -399,16 +528,20 @@
   background: #fff4df;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION STATUS DOT
-========================================================= */
+========================================================================== */
 
 .notification-status-dot {
   width: 7px;
   height: 7px;
+
   flex-shrink: 0;
+
   margin-top: 5px;
+
   border-radius: 50%;
+
   background: transparent;
 }
 
@@ -416,12 +549,13 @@
   background: #c47a16;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION MAIN
-========================================================= */
+========================================================================== */
 
 .notification-content-main {
   min-width: 0;
+
   display: flex;
   flex-direction: column;
 }
@@ -429,50 +563,69 @@
 .notification-content-main strong {
   overflow: hidden;
   text-overflow: ellipsis;
+
   color: #292929;
+
   font-size: 12px;
   font-weight: 700;
+
   line-height: 1.35;
 }
 
 .notification-content-main > span {
   margin-top: 3px;
+
   color: #666;
+
   font-size: 11px;
   font-weight: 500;
+
   line-height: 1.45;
 }
 
 .notification-content-main small {
   margin-top: 5px;
+
   color: #999;
+
   font-size: 10px;
   font-weight: 500;
 }
 
-/* =========================================================
+/* ==========================================================================
    NOTIFICATION DELETE BUTTON
-========================================================= */
+========================================================================== */
 
 .notification-delete {
   width: 30px;
   height: 30px;
+
   flex-shrink: 0;
   align-self: flex-start;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   margin-top: 7px;
   padding: 0;
+
   border: none;
   border-radius: 8px;
+
   background: transparent;
+
   color: #999;
+
   font-family: Arial, sans-serif;
+
   font-size: 20px;
   font-weight: 400;
+
   line-height: 1;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     color 0.2s ease,
@@ -481,6 +634,7 @@
 
 .notification-delete:hover {
   background: #fff0ee;
+
   color: #b42318;
 }
 
@@ -488,70 +642,91 @@
   transform: scale(0.92);
 }
 
-/* =========================================================
+/* ==========================================================================
    EMPTY NOTIFICATION STATE
-========================================================= */
+========================================================================== */
 
 .notification-empty {
   min-height: 190px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
   padding: 24px;
+
   text-align: center;
+
   box-sizing: border-box;
 }
 
 .notification-empty-icon {
   width: 42px;
   height: 42px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   margin-bottom: 10px;
+
   border-radius: 50%;
+
   background: #f6f6f6;
+
   color: #777;
+
   font-size: 18px;
   font-weight: 700;
 }
 
 .notification-empty strong {
   color: #333;
+
   font-size: 13px;
   font-weight: 700;
 }
 
 .notification-empty span {
   margin-top: 4px;
+
   color: #999;
+
   font-size: 11px;
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE WRAPPER
-========================================================= */
+========================================================================== */
 
 .navbar-profile {
   position: relative;
+
   flex-shrink: 0;
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE TRIGGER
-========================================================= */
+========================================================================== */
 
 .profile-trigger {
   min-height: 50px;
+
   display: flex;
   align-items: center;
+
   gap: 10px;
+
   padding: 5px 9px 5px 6px;
+
   border: 1px solid transparent;
   border-radius: 14px;
+
   background: transparent;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
@@ -560,91 +735,118 @@
 
 .profile-trigger:hover {
   background: #f8f8f8;
+
   border-color: #eeeeee;
 }
 
 .profile-trigger.active {
   background: #fafafa;
+
   border-color: #e9e9e9;
+
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE AVATAR
-========================================================= */
+========================================================================== */
 
 .profile-avatar {
   width: 40px;
   height: 40px;
+
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   border-radius: 50%;
+
   background: linear-gradient(
     135deg,
     #c47a16,
     #8f5707
   );
+
   color: #fff;
+
   font-size: 13px;
   font-weight: 700;
+
   box-shadow:
     0 3px 8px rgba(143, 87, 7, 0.2);
+
   user-select: none;
 }
 
 .profile-avatar.large {
   width: 48px;
   height: 48px;
+
   font-size: 15px;
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE DETAILS
-========================================================= */
+========================================================================== */
 
 .profile-details {
   min-width: 90px;
+
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+
   text-align: left;
 }
 
 .profile-details strong {
   display: block;
+
   max-width: 165px;
+
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
   color: #262626;
+
   font-size: 13px;
   font-weight: 700;
+
   line-height: 1.3;
 }
 
 .profile-details small {
   display: block;
+
   margin-top: 2px;
+
   color: #8b8b8b;
+
   font-size: 11px;
   font-weight: 500;
+
   line-height: 1.2;
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE ARROW
-========================================================= */
+========================================================================== */
 
 .profile-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
+
   color: #777;
+
   font-size: 16px;
+
   line-height: 1;
+
   transition:
     transform 0.2s ease,
     color 0.2s ease;
@@ -652,27 +854,36 @@
 
 .profile-arrow.open {
   color: #a86b00;
+
   transform: rotate(180deg);
 }
 
-/* =========================================================
+/* ==========================================================================
    PROFILE DROPDOWN
-========================================================= */
+========================================================================== */
 
 .profile-menu {
   position: absolute;
+
   top: calc(100% + 10px);
   right: 0;
+
   width: 310px;
   max-width: calc(100vw - 24px);
+
   padding: 8px;
+
   background: #fff;
+
   border: 1px solid #e8e8e8;
   border-radius: 16px;
+
   box-shadow:
     0 18px 45px rgba(0, 0, 0, 0.12),
     0 4px 12px rgba(0, 0, 0, 0.04);
+
   box-sizing: border-box;
+
   animation: profileMenuIn 0.18s ease;
 }
 
@@ -688,95 +899,131 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    DROPDOWN HEADER
-========================================================= */
+========================================================================== */
 
 .profile-menu-header {
   display: flex;
   align-items: center;
+
   gap: 12px;
+
   padding: 10px;
 }
 
 .profile-menu-user {
   min-width: 0;
+
   display: flex;
   flex-direction: column;
 }
 
 .profile-menu-user strong {
   display: block;
+
   max-width: 205px;
+
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
   color: #222;
+
   font-size: 14px;
   font-weight: 700;
+
   line-height: 1.3;
 }
 
 .profile-menu-user small {
   display: block;
+
   max-width: 205px;
+
   margin-top: 3px;
+
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
   color: #888;
+
   font-size: 11px;
+
   line-height: 1.3;
 }
 
-/* =========================================================
+/* ==========================================================================
    ROLE BADGE
-========================================================= */
+========================================================================== */
 
 .profile-role-badge {
   width: fit-content;
+
   margin-top: 6px;
+
   padding: 3px 8px;
+
   border-radius: 20px;
+
   background: #fff5df;
+
   color: #9a650b;
+
   font-size: 10px;
   font-weight: 700;
+
   text-transform: uppercase;
+
   letter-spacing: 0.4px;
+
   line-height: 1.2;
 }
 
-/* =========================================================
+/* ==========================================================================
    DIVIDER
-========================================================= */
+========================================================================== */
 
 .profile-menu-divider {
   height: 1px;
+
   margin: 4px 6px 7px;
+
   background: #eeeeee;
 }
 
-/* =========================================================
+/* ==========================================================================
    DROPDOWN ITEMS
-========================================================= */
+========================================================================== */
 
 .profile-menu-item {
   width: 100%;
   min-height: 46px;
+
   display: flex;
   align-items: center;
+
   gap: 11px;
+
   padding: 0 12px;
+
   border: none;
   border-radius: 10px;
+
   background: transparent;
+
   color: #404040;
+
   font-family: inherit;
+
   font-size: 13px;
   font-weight: 600;
+
   text-align: left;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     color 0.2s ease,
@@ -794,18 +1041,23 @@
 .profile-menu-icon {
   width: 28px;
   height: 28px;
+
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   border-radius: 8px;
+
   background: #f5f5f5;
+
   font-size: 15px;
 }
 
-/* =========================================================
+/* ==========================================================================
    LOGOUT
-========================================================= */
+========================================================================== */
 
 .profile-menu-item.logout-option {
   color: #b42318;
@@ -819,9 +1071,9 @@
   background: #fff0ee;
 }
 
-/* =========================================================
+/* ==========================================================================
    FOCUS ACCESSIBILITY
-========================================================= */
+========================================================================== */
 
 .profile-trigger:focus-visible,
 .profile-menu-item:focus-visible,
@@ -831,27 +1083,33 @@
 .notification-mark-all:focus-visible,
 .sidebar-toggle:focus-visible {
   outline: 2px solid #c47a16;
+
   outline-offset: 2px;
 }
 
-/* =========================================================
+/* ==========================================================================
    TABLET
-========================================================= */
+========================================================================== */
 
 @media (max-width: 900px) {
   .navbar {
-    height: 68px;
+    --navbar-height: 68px;
+
+    height: var(--navbar-height);
+
     padding: 0 16px;
   }
 
   .navbar-title-icon {
     width: 38px;
     height: 38px;
+
     font-size: 21px;
   }
 
   .navbar-title-text strong {
     max-width: 220px;
+
     font-size: 15px;
   }
 
@@ -877,41 +1135,55 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    MOBILE
-========================================================= */
+========================================================================== */
 
 @media (max-width: 600px) {
   .navbar {
-    height: 64px;
+    --navbar-height: 64px;
+
+    height: var(--navbar-height);
+
     padding: 0 10px;
   }
 
   .navbar-left {
     flex: 1;
+
     min-width: 0;
+
     overflow: hidden;
   }
 
   .navbar-page-title {
     flex: 1;
+
     min-width: 0;
+
     overflow: hidden;
   }
 
   .navbar-title-text {
     flex: 1;
+
     min-width: 0;
+
     overflow: hidden;
   }
 
   .navbar-title-text strong {
-    max-width: none;
     width: 100%;
-    font-size: 14px;
+
+    max-width: none;
+
     overflow: hidden;
+
     text-overflow: ellipsis;
+
     white-space: nowrap;
+
+    font-size: 14px;
   }
 
   .navbar-title-text small {
@@ -920,21 +1192,27 @@
 
   .navbar-right {
     gap: 3px;
+
     margin-left: 8px;
+
     flex-shrink: 0;
   }
 
   .sidebar-toggle {
     width: 42px;
     height: 42px;
+
     margin-right: 7px;
   }
 
   .navbar-title-icon {
     width: 36px;
     height: 36px;
+
     margin-right: 7px;
+
     border-radius: 9px;
+
     font-size: 19px;
   }
 
@@ -950,14 +1228,18 @@
   .notification-count {
     top: 2px;
     right: 0;
+
     min-width: 17px;
     height: 17px;
+
     font-size: 8px;
   }
 
   .profile-trigger {
     min-height: 44px;
+
     padding: 2px;
+
     border-radius: 12px;
   }
 
@@ -976,23 +1258,29 @@
 
   .notification-panel {
     position: fixed;
-    top: 74px;
+
+    top: calc(var(--navbar-height) + 10px);
     right: 10px;
+
     width: min(
       380px,
       calc(100vw - 20px)
     );
+
     max-width: none;
   }
 
   .profile-menu {
     position: fixed;
-    top: 74px;
+
+    top: calc(var(--navbar-height) + 10px);
     right: 10px;
+
     width: min(
       310px,
       calc(100vw - 20px)
     );
+
     max-width: none;
   }
 
@@ -1001,18 +1289,22 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    SMALL MOBILE
-========================================================= */
+========================================================================== */
 
 @media (max-width: 380px) {
   .navbar {
-    height: 61px;
+    --navbar-height: 61px;
+
+    height: var(--navbar-height);
+
     padding: 0 7px;
   }
 
   .navbar-left {
     flex: 1;
+
     min-width: 0;
   }
 
@@ -1022,12 +1314,15 @@
 
   .navbar-title-text {
     flex: 1;
+
     min-width: 0;
   }
 
   .navbar-title-text strong {
-    max-width: none;
     width: 100%;
+
+    max-width: none;
+
     font-size: 13px;
   }
 
@@ -1036,14 +1331,16 @@
   }
 
   .notification-panel {
-    top: 71px;
+    top: calc(var(--navbar-height) + 10px);
     right: 7px;
+
     width: calc(100vw - 14px);
   }
 
   .profile-menu {
-    top: 71px;
+    top: calc(var(--navbar-height) + 10px);
     right: 7px;
+
     width: calc(100vw - 14px);
   }
 
@@ -1057,23 +1354,27 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    VERY SMALL SCREENS
-========================================================= */
+========================================================================== */
 
 @media (max-width: 320px) {
   .navbar {
-    height: 60px;
+    --navbar-height: 60px;
+
+    height: var(--navbar-height);
   }
 
   .navbar-title-text strong {
     max-width: none;
+
     font-size: 12.5px;
   }
 
   .sidebar-toggle {
     width: 40px;
     height: 40px;
+
     margin-right: 4px;
   }
 
@@ -1083,11 +1384,11 @@
   }
 
   .notification-panel {
-    top: 70px;
+    top: calc(var(--navbar-height) + 10px);
   }
 
   .profile-menu {
-    top: 70px;
+    top: calc(var(--navbar-height) + 10px);
   }
 
   .notification-content-main > span {
@@ -1095,9 +1396,9 @@
   }
 }
 
-/* =========================================================
+/* ==========================================================================
    REDUCED MOTION
-========================================================= */
+========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
   .navbar *,
