@@ -1387,3 +1387,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Low-read admin refresh control */
+.sadhana-refresh-button {
+  min-height: 42px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .sadhana-admin-header {
+    align-items: stretch;
+  }
+
+  .sadhana-refresh-button {
+    width: 100%;
+  }
+}

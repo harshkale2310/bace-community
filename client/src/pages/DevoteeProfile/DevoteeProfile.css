@@ -180,6 +180,17 @@
   background: #888;
 }
 
+.large-status.deleted {
+  border-color: rgba(179, 58, 58, 0.18);
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.large-status.deleted > span {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(179, 58, 58, 0.08);
+}
+
 .edit-profile-button {
   min-height: 36px;
   padding: 0 13px;
@@ -203,6 +214,15 @@
   background: var(--primary-light);
   color: var(--primary-dark);
   transform: translateY(-1px);
+}
+
+.back-button:focus-visible,
+.edit-profile-button:focus-visible,
+.profile-cancel-button:focus-visible,
+.profile-save-button:focus-visible,
+.profile-access button:focus-visible {
+  outline: 3px solid rgba(139, 69, 19, 0.18);
+  outline-offset: 2px;
 }
 
 /* ============================================================
@@ -561,6 +581,10 @@
   flex-direction: column;
   gap: 3px;
   flex: 1;
+}
+
+.profile-residence-content > * {
+  max-width: 100%;
 }
 
 .profile-residence-label {

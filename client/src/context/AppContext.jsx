@@ -3,7 +3,11 @@ import { createContext, useContext, useRef, useState } from "react";
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      window.innerWidth > 900
+  );
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
 

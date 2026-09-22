@@ -1065,3 +1065,93 @@
     padding-left: 0;
   }
 }
+/* =========================================================
+   PRODUCTION ACCESSIBILITY + INTERACTION REFINEMENTS
+========================================================= */
+
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.clear-filter-button:focus-visible,
+.action-primary:focus-visible,
+.action-complete:focus-visible,
+.admin-status-actions button:focus-visible,
+.seva-error button:focus-visible {
+  outline: 3px solid rgba(139, 69, 19, 0.22);
+  outline-offset: 2px;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.clear-filter-button:disabled,
+.action-primary:disabled,
+.action-complete:disabled,
+.admin-status-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.seva-card-actions button[disabled] {
+  pointer-events: none;
+}
+
+.seva-filter-card input[type="search"] {
+  min-width: 0;
+}
+
+.seva-directory-card,
+.seva-form-card,
+.seva-filter-card,
+.seva-summary-card {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .seva-filter-card {
+    flex-wrap: wrap;
+  }
+
+  .seva-filter-card label {
+    flex: 1 1 180px;
+  }
+
+  .seva-filter-card .seva-search-field {
+    flex: 1 1 320px;
+  }
+}
+
+@media (max-width: 850px) {
+  .seva-directory-header p {
+    max-width: 100%;
+  }
+
+  .live-indicator {
+    align-self: flex-start;
+  }
+
+  .seva-card-main {
+    width: 100%;
+  }
+
+  .seva-content {
+    overflow-wrap: anywhere;
+  }
+
+  .seva-residence strong,
+  .seva-meta span {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .secondary-button,
+  .clear-filter-button,
+  .action-primary,
+  .action-complete,
+  .admin-status-actions button,
+  .seva-card {
+    transition: none;
+  }
+}

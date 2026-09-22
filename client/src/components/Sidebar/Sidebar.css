@@ -12,19 +12,20 @@
   z-index: 1000;
 
   width: 250px;
-  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
 
   display: flex;
   flex-direction: column;
 
-  padding: 20px 14px;
+  padding: 18px 13px;
 
   box-sizing: border-box;
 
   border-right: 1px solid var(--border);
 
-  background: var(--surface);
+  background: var(--surface-raised);
+  box-shadow: 8px 0 28px rgba(70, 45, 25, 0.035);
 
   overflow: hidden;
 
@@ -191,7 +192,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 
-  background: var(--surface-soft);
+  background: linear-gradient(135deg, #fbf5ec, #f7eee3);
 
   overflow: hidden;
 
@@ -290,6 +291,10 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.sidebar-navigation {
+  padding: 0 2px;
+}
+
 .sidebar-navigation::-webkit-scrollbar {
   width: 4px;
 }
@@ -349,7 +354,7 @@
 .sidebar-link {
   position: relative;
 
-  min-height: 43px;
+  min-height: 45px;
 
   display: flex;
   align-items: center;
@@ -358,7 +363,7 @@
 
   box-sizing: border-box;
 
-  border-radius: 9px;
+  border-radius: 10px;
 
   color: var(--text-light);
 
@@ -379,7 +384,7 @@
 }
 
 .sidebar-link.active {
-  background: var(--primary-light);
+  background: linear-gradient(90deg, var(--primary-light), #f8eadb);
 
   color: var(--primary);
 }
@@ -450,8 +455,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ==========================================================================
@@ -593,7 +598,9 @@
 
   border: none;
 
-  background: rgba(30, 20, 15, 0.35);
+  background: rgba(30, 20, 15, 0.44);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 
   cursor: pointer;
 
@@ -624,12 +631,13 @@
 
     width: 250px;
 
-    height: 100vh;
+    height: 100dvh;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
 
     transform: translateX(0);
 
     box-shadow:
-      12px 0 35px rgba(50, 35, 25, 0.08);
+      14px 0 40px rgba(50, 35, 25, 0.16);
 
     transition:
       transform 0.25s ease,

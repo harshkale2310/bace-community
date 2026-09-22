@@ -9,8 +9,8 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color: #2d241f;
-  background: #faf7f2;
+  color: #241c17;
+  background: #f7f4ef;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,9 +21,9 @@
      BRAND COLORS
   ----------------------------------------- */
 
-  --primary: #8b4513;
-  --primary-dark: #6d330d;
-  --primary-light: #f3dfc8;
+  --primary: #8a4316;
+  --primary-dark: #5f2a0f;
+  --primary-light: #f2dfca;
 
   --secondary: #d4a017;
   --secondary-light: #f8edc9;
@@ -32,23 +32,24 @@
      BACKGROUNDS
   ----------------------------------------- */
 
-  --background: #faf7f2;
+  --background: #f7f4ef;
   --surface: #ffffff;
-  --surface-soft: #f7f1e9;
+  --surface-soft: #f5efe7;
+  --surface-raised: #fffdfa;
 
   /* -----------------------------------------
      TEXT
   ----------------------------------------- */
 
-  --text: #2d241f;
-  --text-light: #6e6259;
-  --text-muted: #958a82;
+  --text: #241c17;
+  --text-light: #655a52;
+  --text-muted: #8d8178;
 
   /* -----------------------------------------
      BORDERS
   ----------------------------------------- */
 
-  --border: #e8ded3;
+  --border: #e5dacf;
 
   /* -----------------------------------------
      STATUS COLORS
@@ -70,9 +71,9 @@
      SHADOWS
   ----------------------------------------- */
 
-  --shadow-sm: 0 2px 8px rgba(70, 45, 25, 0.06);
-  --shadow-md: 0 6px 20px rgba(70, 45, 25, 0.09);
-  --shadow-lg: 0 12px 35px rgba(70, 45, 25, 0.12);
+  --shadow-sm: 0 2px 8px rgba(70, 45, 25, 0.05);
+  --shadow-md: 0 10px 26px rgba(70, 45, 25, 0.09);
+  --shadow-lg: 0 18px 45px rgba(70, 45, 25, 0.13);
 
   /* -----------------------------------------
      BORDER RADIUS
@@ -122,7 +123,9 @@ body {
 
   margin: 0;
 
-  background: var(--background);
+  background:
+    radial-gradient(circle at 90% -10%, rgba(212, 160, 23, 0.09), transparent 28rem),
+    var(--background);
   color: var(--text);
 
   font-family: "Inter", sans-serif;
@@ -201,6 +204,7 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {
@@ -215,6 +219,15 @@ input,
 select,
 textarea {
   color: var(--text);
+  accent-color: var(--primary);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(138, 67, 22, 0.12);
+  outline: none;
 }
 
 input::placeholder,

@@ -21,23 +21,31 @@ function Dashboard() {
   const [attendance, setAttendance] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  /*
-   * Use local date instead of toISOString().
-   * toISOString() uses UTC and can produce the previous/next date
-   * depending on the user's timezone.
-   */
   const today = useMemo(() => {
     const now = new Date();
-
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
   }, []);
 
+  const formattedToday = useMemo(
+    () =>
+      new Date(`${today}T12:00:00`).toLocaleDateString("en-IN", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
+    [today]
+  );
+
   useEffect(() => {
+    let cancelled = false;
+
     const loadDashboard = async () => {
       if (!user) {
         setLoading(false);
@@ -56,12 +64,6 @@ function Dashboard() {
             );
 
         if (isAdministrator) {
-          /*
-           * Only active devotees should appear on the administrator
-           * dashboard.
-           *
-           * Deleted and inactive devotees are intentionally excluded.
-           */
           const devoteesQuery = query(
             collection(db, "users"),
             where("role", "==", "devotee"),
@@ -83,14 +85,12 @@ function Dashboard() {
             getDocs(roomsQuery),
           ]);
 
-          /*
-           * Keep a second client-side status check as protection against
-           * stale/malformed records.
-           */
+          if (cancelled) return;
+
           const devoteeData = devoteesSnapshot.docs
-            .map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
+            .map((item) => ({
+              id: item.id,
+              ...item.data(),
             }))
             .filter(
               (devotee) =>
@@ -98,14 +98,14 @@ function Dashboard() {
                 devotee.status === "active"
             );
 
-          const attendanceData = attendanceSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+          const attendanceData = attendanceSnapshot.docs.map((item) => ({
+            id: item.id,
+            ...item.data(),
           }));
 
-          const roomData = roomsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+          const roomData = roomsSnapshot.docs.map((item) => ({
+            id: item.id,
+            ...item.data(),
           }));
 
           setDevotees(devoteeData);
@@ -124,38 +124,43 @@ function Dashboard() {
             getDocs(roomsQuery),
           ]);
 
-          const attendanceData = attendanceSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+          if (cancelled) return;
 
-          const roomData = roomsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+          setAttendance(
+            attendanceSnapshot.docs.map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }))
+          );
 
-          setAttendance(attendanceData);
-          setRooms(roomData);
+          setRooms(
+            roomsSnapshot.docs.map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }))
+          );
         }
       } catch (err) {
         console.error("Dashboard loading error:", err);
-        setError("Unable to load dashboard data.");
+
+        if (!cancelled) {
+          setError(
+            "We couldn't load the latest dashboard information. Please try again."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadDashboard();
-  }, [user, isAdministrator, isDevotee, today]);
 
-  /*
-   * --------------------------------------------------------------------------
-   * ROOM IDENTITY
-   * --------------------------------------------------------------------------
-   *
-   * Room identity always comes from the rooms collection.
-   * We do not copy room number/name into attendance or user records.
-   */
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isAdministrator, isDevotee, today, refreshKey]);
 
   const getDevoteeRooms = (devoteeId) => {
     if (!devoteeId) return [];
@@ -184,56 +189,13 @@ function Dashboard() {
     return `${floor} · ${roomNumber} · ${roomName}`;
   };
 
-  const getDevoteeRoomLabel = (devoteeId) => {
-    const devoteeRooms = getDevoteeRooms(devoteeId);
-
-    if (devoteeRooms.length === 0) {
-      return "Residence not assigned";
-    }
-
-    return devoteeRooms.map(getRoomIdentity).join(" • ");
-  };
-
-  const currentDevoteeRooms = useMemo(() => {
-    if (!isDevotee || !user?.uid) return [];
-
-    return getDevoteeRooms(user.uid);
-  }, [rooms, isDevotee, user]);
-
-  /*
-   * --------------------------------------------------------------------------
-   * ATTENDANCE STATUS
-   * --------------------------------------------------------------------------
-   *
-   * Present:
-   * morning = Present AND evening = Present
-   *
-   * Partial:
-   * one program is marked Present / other is different
-   *
-   * Absent:
-   * morning = Absent AND evening = Absent
-   *
-   * Leave:
-   * morning = Leave AND evening = Leave
-   */
-
   const getAttendanceStatus = (record) => {
     const morning = record?.morning || "Not Marked";
     const evening = record?.evening || "Not Marked";
 
-    if (morning === "Present" && evening === "Present") {
-      return "Present";
-    }
-
-    if (morning === "Absent" && evening === "Absent") {
-      return "Absent";
-    }
-
-    if (morning === "Leave" && evening === "Leave") {
-      return "Leave";
-    }
-
+    if (morning === "Present" && evening === "Present") return "Present";
+    if (morning === "Absent" && evening === "Absent") return "Absent";
+    if (morning === "Leave" && evening === "Leave") return "Leave";
     if (morning === "Not Marked" && evening === "Not Marked") {
       return "Not Marked";
     }
@@ -241,12 +203,19 @@ function Dashboard() {
     return "Partial";
   };
 
+  const currentDevoteeRooms = useMemo(() => {
+    if (!isDevotee || !user?.uid) return [];
+    return getDevoteeRooms(user.uid);
+  }, [rooms, isDevotee, user?.uid]);
+
   const todayAttendance = useMemo(() => {
     if (!isAdministrator) return [];
 
     return devotees.map((devotee) => {
       const record = attendance.find(
-        (item) => item.devoteeId === devotee.id
+        (item) =>
+          item.devoteeId === devotee.id &&
+          item.date === today
       );
 
       const devoteeRooms = getDevoteeRooms(devotee.id);
@@ -257,34 +226,28 @@ function Dashboard() {
         attendanceStatus: getAttendanceStatus(record),
         morning: record?.morning || "Not Marked",
         evening: record?.evening || "Not Marked",
-        rooms: devoteeRooms,
         roomLabel:
           devoteeRooms.length > 0
             ? devoteeRooms.map(getRoomIdentity).join(" • ")
             : "Residence not assigned",
       };
     });
-  }, [devotees, attendance, rooms, isAdministrator]);
+  }, [devotees, attendance, rooms, isAdministrator, today]);
 
   const adminStats = useMemo(() => {
-    const total = devotees.length;
-
+    const total = todayAttendance.length;
     const present = todayAttendance.filter(
       (item) => item.attendanceStatus === "Present"
     ).length;
-
     const partial = todayAttendance.filter(
       (item) => item.attendanceStatus === "Partial"
     ).length;
-
     const absent = todayAttendance.filter(
       (item) => item.attendanceStatus === "Absent"
     ).length;
-
     const leave = todayAttendance.filter(
       (item) => item.attendanceStatus === "Leave"
     ).length;
-
     const notMarked = todayAttendance.filter(
       (item) => item.attendanceStatus === "Not Marked"
     ).length;
@@ -296,13 +259,12 @@ function Dashboard() {
       absent,
       leave,
       notMarked,
+      marked: total - notMarked,
     };
-  }, [devotees, todayAttendance]);
+  }, [todayAttendance]);
 
   const devoteeTodayAttendance = useMemo(() => {
-    const record = attendance.find(
-      (item) => item.date === today
-    );
+    const record = attendance.find((item) => item.date === today);
 
     return {
       status: getAttendanceStatus(record),
@@ -311,20 +273,24 @@ function Dashboard() {
     };
   }, [attendance, today]);
 
+  const roomCount = rooms.length;
+  const occupiedRoomCount = rooms.filter(
+    (room) => Array.isArray(room.occupants) && room.occupants.length > 0
+  ).length;
+
+  const getInitial = (name, fallback = "D") =>
+    name?.trim()?.charAt(0)?.toUpperCase() || fallback;
+
   if (loading) {
     return <Loader text="Loading dashboard..." />;
   }
 
   return (
     <div className="dashboard-page">
-
-      {/* PAGE HEADER */}
-      <div className="dashboard-header">
-        <div>
+      <header className="dashboard-header">
+        <div className="dashboard-header-copy">
           <span className="dashboard-eyebrow">
-            {isAdministrator
-              ? "BACE ADMINISTRATOR PANEL"
-              : "DEVOTEE PANEL"}
+            {isAdministrator ? "BACE ADMINISTRATION" : "MY BACE"}
           </span>
 
           <h1>
@@ -337,119 +303,92 @@ function Dashboard() {
 
           <p>
             {isAdministrator
-              ? "Manage and monitor Giri Govardhan BACE activities from one place."
-              : "Here is your personal BACE activity overview."}
+              ? "A clear overview of today’s community activity, attendance and administration."
+              : "Your personal overview of today’s attendance and BACE activities."}
           </p>
         </div>
 
-        <div className="dashboard-date">
+        <div className="dashboard-date" aria-label={`Today is ${formattedToday}`}>
           <span>Today</span>
-
-          <strong>
-            {new Date().toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </strong>
+          <strong>{formattedToday}</strong>
         </div>
-      </div>
+      </header>
 
       {error && (
-        <div className="dashboard-error">
-          {error}
+        <div className="dashboard-error" role="alert">
+          <div>
+            <strong>Dashboard unavailable</strong>
+            <span>{error}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setRefreshKey((value) => value + 1)}
+            className="dashboard-retry"
+          >
+            Try again
+          </button>
         </div>
       )}
 
-      {/* ================================================================== */}
-      {/* ADMINISTRATOR DASHBOARD */}
-      {/* ================================================================== */}
-
       {isAdministrator && (
         <>
-          {/* STAT CARDS */}
-          <div className="dashboard-stats">
-
+          <section className="dashboard-stats" aria-label="Daily summary">
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon devotees">
-                ♙
-              </div>
-
+              <div className="dashboard-stat-icon devotees">D</div>
               <div>
-                <span>Total Devotees</span>
+                <span>Active Devotees</span>
                 <strong>{adminStats.total}</strong>
-                <small>Active devotees</small>
+                <small>Currently active</small>
               </div>
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon present">
-                ✓
-              </div>
-
+              <div className="dashboard-stat-icon present">✓</div>
               <div>
                 <span>Present Today</span>
                 <strong>{adminStats.present}</strong>
-                <small>Morning + Evening</small>
+                <small>Morning and evening</small>
               </div>
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon partial">
-                ◐
-              </div>
-
+              <div className="dashboard-stat-icon partial">◐</div>
               <div>
-                <span>Partial Attendance</span>
-                <strong>{adminStats.partial}</strong>
-                <small>One session marked</small>
+                <span>Needs Attention</span>
+                <strong>{adminStats.partial + adminStats.notMarked}</strong>
+                <small>Partial or not marked</small>
               </div>
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon absent">
-                ×
-              </div>
-
+              <div className="dashboard-stat-icon rooms">R</div>
               <div>
-                <span>Absent Today</span>
-                <strong>{adminStats.absent}</strong>
-                <small>Both sessions absent</small>
+                <span>Occupied Rooms</span>
+                <strong>{occupiedRoomCount}</strong>
+                <small>{roomCount} rooms recorded</small>
               </div>
             </div>
+          </section>
 
-          </div>
-
-          {/* ATTENDANCE SECTION */}
           <section className="dashboard-card dashboard-attendance-card">
-
             <div className="dashboard-card-header">
               <div>
-                <span className="dashboard-section-label">
-                  DAILY ATTENDANCE
-                </span>
-
-                <h2>Today&apos;s Attendance</h2>
-
+                <span className="dashboard-section-label">TODAY</span>
+                <h2>Attendance overview</h2>
                 <p>
-                  Attendance marking overview for all active devotees.
+                  A quick view of attendance for all active devotees.
                 </p>
               </div>
 
-              <Link
-                to="/attendance"
-                className="dashboard-view-all"
-              >
-                Mark Attendance →
+              <Link to="/attendance" className="dashboard-view-all">
+                Open Attendance →
               </Link>
             </div>
 
-            {/* ATTENDANCE SUMMARY */}
             <div className="attendance-summary">
-
               <div className="attendance-summary-item present">
-                <span className="summary-dot"></span>
-
+                <span className="summary-dot" />
                 <div>
                   <strong>{adminStats.present}</strong>
                   <small>Present</small>
@@ -457,8 +396,7 @@ function Dashboard() {
               </div>
 
               <div className="attendance-summary-item partial">
-                <span className="summary-dot"></span>
-
+                <span className="summary-dot" />
                 <div>
                   <strong>{adminStats.partial}</strong>
                   <small>Partial</small>
@@ -466,8 +404,7 @@ function Dashboard() {
               </div>
 
               <div className="attendance-summary-item absent">
-                <span className="summary-dot"></span>
-
+                <span className="summary-dot" />
                 <div>
                   <strong>{adminStats.absent}</strong>
                   <small>Absent</small>
@@ -475,8 +412,7 @@ function Dashboard() {
               </div>
 
               <div className="attendance-summary-item leave">
-                <span className="summary-dot"></span>
-
+                <span className="summary-dot" />
                 <div>
                   <strong>{adminStats.leave}</strong>
                   <small>Leave</small>
@@ -484,21 +420,16 @@ function Dashboard() {
               </div>
 
               <div className="attendance-summary-item not-marked">
-                <span className="summary-dot"></span>
-
+                <span className="summary-dot" />
                 <div>
                   <strong>{adminStats.notMarked}</strong>
-                  <small>Not Marked</small>
+                  <small>Not marked</small>
                 </div>
               </div>
-
             </div>
 
-            {/* ATTENDANCE TABLE */}
             <div className="dashboard-attendance-table-wrapper">
-
               <table className="dashboard-attendance-table">
-
                 <thead>
                   <tr>
                     <th>Devotee</th>
@@ -512,62 +443,43 @@ function Dashboard() {
                 <tbody>
                   {todayAttendance.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan="5"
-                        className="dashboard-table-empty"
-                      >
-                        No active devotees registered yet.
+                      <td colSpan="5" className="dashboard-table-empty">
+                        No active devotees are registered yet.
                       </td>
                     </tr>
                   ) : (
                     todayAttendance.map((devotee) => (
                       <tr key={devotee.id}>
-
-                        {/* DEVOTEE */}
                         <td>
                           <div className="dashboard-devotee-cell">
-
                             <div className="dashboard-devotee-avatar">
-                              {devotee.name
-                                ?.charAt(0)
-                                ?.toUpperCase() || "D"}
+                              {getInitial(devotee.name)}
                             </div>
-
                             <div>
                               <strong>
                                 {devotee.name || "Unnamed Devotee"}
                               </strong>
-
                               <span>
-                                {devotee.email || ""}
+                                {devotee.department || "Active devotee"}
                               </span>
                             </div>
-
                           </div>
                         </td>
 
-                        {/* RESIDENCE */}
                         <td>
                           <div className="dashboard-residence-cell">
-
                             <span className="dashboard-residence-icon">
-                              🏠
+                              R
                             </span>
-
                             <div>
                               <span className="dashboard-residence-label">
                                 Residence
                               </span>
-
-                              <strong>
-                                {devotee.roomLabel}
-                              </strong>
+                              <strong>{devotee.roomLabel}</strong>
                             </div>
-
                           </div>
                         </td>
 
-                        {/* MORNING */}
                         <td>
                           <span
                             className={`attendance-pill ${devotee.morning
@@ -578,7 +490,6 @@ function Dashboard() {
                           </span>
                         </td>
 
-                        {/* EVENING */}
                         <td>
                           <span
                             className={`attendance-pill ${devotee.evening
@@ -589,7 +500,6 @@ function Dashboard() {
                           </span>
                         </td>
 
-                        {/* OVERALL */}
                         <td>
                           <span
                             className={`attendance-pill overall ${devotee.attendanceStatus
@@ -599,137 +509,146 @@ function Dashboard() {
                             {devotee.attendanceStatus}
                           </span>
                         </td>
-
                       </tr>
                     ))
                   )}
                 </tbody>
-
               </table>
-
             </div>
 
+            <div className="dashboard-mobile-attendance">
+              {todayAttendance.length === 0 ? (
+                <div className="dashboard-mobile-empty">
+                  No active devotees are registered yet.
+                </div>
+              ) : (
+                todayAttendance.map((devotee) => (
+                  <article
+                    key={devotee.id}
+                    className="dashboard-attendance-mobile-card"
+                  >
+                    <div className="dashboard-mobile-person">
+                      <div className="dashboard-devotee-avatar">
+                        {getInitial(devotee.name)}
+                      </div>
+                      <div>
+                        <strong>
+                          {devotee.name || "Unnamed Devotee"}
+                        </strong>
+                        <span>{devotee.roomLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-mobile-status-grid">
+                      <div>
+                        <small>Morning</small>
+                        <span
+                          className={`attendance-pill ${devotee.morning
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`}
+                        >
+                          {devotee.morning}
+                        </span>
+                      </div>
+
+                      <div>
+                        <small>Evening</small>
+                        <span
+                          className={`attendance-pill ${devotee.evening
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`}
+                        >
+                          {devotee.evening}
+                        </span>
+                      </div>
+
+                      <div>
+                        <small>Overall</small>
+                        <span
+                          className={`attendance-pill overall ${devotee.attendanceStatus
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`}
+                        >
+                          {devotee.attendanceStatus}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
           </section>
 
-          {/* LOWER DASHBOARD CARDS */}
           <div className="dashboard-grid">
-
             <section className="dashboard-card dashboard-activity-card">
-
               <div className="dashboard-card-header">
                 <div>
                   <span className="dashboard-section-label">
-                    BACE ACTIVITIES
+                    QUICK ACCESS
                   </span>
-
-                  <h2>Giri Govardhan BACE</h2>
-
+                  <h2>Community management</h2>
                   <p>
-                    Access the main BACE activity sections.
+                    Go directly to the areas you manage most often.
                   </p>
                 </div>
               </div>
 
               <div className="dashboard-management-grid">
-
-                <Link
+                <DashboardLink
                   to="/devotees"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">♙</span>
-
-                  <div>
-                    <strong>Devotees</strong>
-                    <small>Manage devotees</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="D"
+                  title="Devotees"
+                  description="Manage active and inactive devotees"
+                />
+                <DashboardLink
+                  to="/attendance"
+                  icon="✓"
+                  title="Attendance"
+                  description="Mark and review daily attendance"
+                />
+                <DashboardLink
                   to="/sadhana"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">ॐ</span>
-
-                  <div>
-                    <strong>Sadhana</strong>
-                    <small>Track daily practice</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="S"
+                  title="Sadhana"
+                  description="Review daily practice records"
+                />
+                <DashboardLink
                   to="/seva"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">✦</span>
-
-                  <div>
-                    <strong>Seva</strong>
-                    <small>Manage seva activities</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="✦"
+                  title="Seva"
+                  description="Manage seva activities"
+                />
+                <DashboardLink
                   to="/leave"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">◷</span>
-
-                  <div>
-                    <strong>Leave</strong>
-                    <small>Review leave requests</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="L"
+                  title="Leave"
+                  description="Review pending leave requests"
+                />
+                <DashboardLink
                   to="/rooms"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">▦</span>
-
-                  <div>
-                    <strong>Community Rooms</strong>
-                    <small>Manage residence allocation</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
+                  icon="R"
+                  title="Rooms"
+                  description="Manage residence allocation"
+                />
               </div>
-
             </section>
 
             <section className="dashboard-card dashboard-profile-card">
-
               <div className="dashboard-profile-top">
-
                 <div className="dashboard-large-avatar">
-                  {user?.name?.charAt(0)?.toUpperCase() || "A"}
+                  {getInitial(user?.name, "A")}
                 </div>
 
                 <div>
-                  <span>Signed in as</span>
-
-                  <h3>
-                    {user?.name || "BACE Administrator"}
-                  </h3>
-
+                  <span>Administrator</span>
+                  <h3>{user?.name || "BACE Administrator"}</h3>
                   <p>{user?.email}</p>
                 </div>
-
               </div>
 
-              <div className="dashboard-profile-divider"></div>
+              <div className="dashboard-profile-divider" />
 
               <div className="dashboard-profile-links">
-
                 <Link to="/settings">
                   <span>⚙</span>
                   Settings
@@ -741,82 +660,55 @@ function Dashboard() {
                   Reports
                   <b>→</b>
                 </Link>
-
               </div>
-
             </section>
-
           </div>
         </>
       )}
 
-      {/* ================================================================== */}
-      {/* DEVOTEE DASHBOARD */}
-      {/* ================================================================== */}
-
       {isDevotee && (
         <>
-          <div className="dashboard-stats devotee-stats">
-
+          <section className="dashboard-stats devotee-stats">
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon present">
-                ✓
-              </div>
-
+              <div className="dashboard-stat-icon present">✓</div>
               <div>
-                <span>Today&apos;s Attendance</span>
-
+                <span>Today’s Attendance</span>
                 <strong className="stat-text">
                   {devoteeTodayAttendance.status}
                 </strong>
-
                 <small>
-                  {devoteeTodayAttendance.morning} /{" "}
+                  {devoteeTodayAttendance.morning} ·{" "}
                   {devoteeTodayAttendance.evening}
                 </small>
               </div>
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon devotees">
-                ◉
-              </div>
-
+              <div className="dashboard-stat-icon devotees">M</div>
               <div>
                 <span>Morning</span>
-
                 <strong className="stat-text">
                   {devoteeTodayAttendance.morning}
                 </strong>
-
                 <small>Morning attendance</small>
               </div>
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon partial">
-                ◐
-              </div>
-
+              <div className="dashboard-stat-icon partial">E</div>
               <div>
                 <span>Evening</span>
-
                 <strong className="stat-text">
                   {devoteeTodayAttendance.evening}
                 </strong>
-
                 <small>Evening attendance</small>
               </div>
             </div>
 
             <div className="dashboard-stat-card dashboard-residence-stat">
-              <div className="dashboard-stat-icon absent">
-                🏠
-              </div>
-
+              <div className="dashboard-stat-icon rooms">R</div>
               <div>
                 <span>My Residence</span>
-
                 <strong className="stat-text">
                   {currentDevoteeRooms.length > 0
                     ? currentDevoteeRooms.length === 1
@@ -826,7 +718,6 @@ function Dashboard() {
                       : `${currentDevoteeRooms.length} Rooms`
                     : "Not Assigned"}
                 </strong>
-
                 <small>
                   {currentDevoteeRooms.length > 0
                     ? currentDevoteeRooms
@@ -836,196 +727,117 @@ function Dashboard() {
                 </small>
               </div>
             </div>
+          </section>
 
-          </div>
-
-          {/* DEVOTEE RESIDENCE */}
           {currentDevoteeRooms.length > 0 && (
             <section className="dashboard-card dashboard-residence-card">
-
               <div className="dashboard-card-header">
                 <div>
                   <span className="dashboard-section-label">
                     MY RESIDENCE
                   </span>
-
-                  <h2>Community Residence</h2>
-
+                  <h2>Current room assignment</h2>
                   <p>
-                    Your current room assignment from the BACE residence records.
+                    Your current residence information from BACE records.
                   </p>
                 </div>
 
-                <Link
-                  to="/my-room"
-                  className="dashboard-view-all"
-                >
+                <Link to="/my-room" className="dashboard-view-all">
                   View My Room →
                 </Link>
               </div>
 
               <div className="dashboard-residence-list">
-
                 {currentDevoteeRooms.map((room) => (
                   <div
                     key={room.id}
                     className="dashboard-residence-item"
                   >
                     <div className="dashboard-residence-item-icon">
-                      🏠
+                      R
                     </div>
 
                     <div>
                       <span>RESIDENCE</span>
-
-                      <strong>
-                        {room.roomName || "Unnamed Room"}
-                      </strong>
-
-                      <p>
-                        {getRoomIdentity(room)}
-                      </p>
+                      <strong>{room.roomName || "Unnamed Room"}</strong>
+                      <p>{getRoomIdentity(room)}</p>
                     </div>
                   </div>
                 ))}
-
               </div>
-
             </section>
           )}
 
           <div className="dashboard-grid devotee-dashboard-grid">
-
             <section className="dashboard-card dashboard-activity-card">
-
               <div className="dashboard-card-header">
                 <div>
                   <span className="dashboard-section-label">
-                    MY BACE ACTIVITY
+                    MY BACE
                   </span>
-
-                  <h2>Personal Dashboard</h2>
-
+                  <h2>Personal activity</h2>
                   <p>
-                    Manage your personal BACE activities.
+                    Keep your daily BACE activities in one place.
                   </p>
                 </div>
               </div>
 
               <div className="dashboard-management-grid">
-
-                <Link
+                <DashboardLink
                   to="/devotee-profile"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">♙</span>
-
-                  <div>
-                    <strong>My Profile</strong>
-                    <small>View your profile</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="D"
+                  title="My Profile"
+                  description="View and update your profile"
+                />
+                <DashboardLink
                   to="/attendance"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">✓</span>
-
-                  <div>
-                    <strong>Attendance</strong>
-                    <small>View your attendance</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="✓"
+                  title="Attendance"
+                  description="View your attendance"
+                />
+                <DashboardLink
                   to="/sadhana"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">ॐ</span>
-
-                  <div>
-                    <strong>Sadhana</strong>
-                    <small>Track your sadhana</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="S"
+                  title="Sadhana"
+                  description="Complete your daily practice"
+                />
+                <DashboardLink
                   to="/seva"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">✦</span>
-
-                  <div>
-                    <strong>My Seva</strong>
-                    <small>View assigned seva</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="✦"
+                  title="My Seva"
+                  description="View your seva activities"
+                />
+                <DashboardLink
                   to="/leave"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">◷</span>
-
-                  <div>
-                    <strong>Leave</strong>
-                    <small>Manage your leave</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
-                <Link
+                  icon="L"
+                  title="Leave"
+                  description="Submit and manage leave"
+                />
+                <DashboardLink
                   to="/my-room"
-                  className="dashboard-management-item"
-                >
-                  <span className="management-icon">▦</span>
-
-                  <div>
-                    <strong>My Room</strong>
-                    <small>View room information</small>
-                  </div>
-
-                  <span className="management-arrow">→</span>
-                </Link>
-
+                  icon="R"
+                  title="My Room"
+                  description="View residence information"
+                />
               </div>
-
             </section>
 
             <section className="dashboard-card dashboard-profile-card">
-
               <div className="dashboard-profile-top">
-
                 <div className="dashboard-large-avatar">
-                  {user?.name?.charAt(0)?.toUpperCase() || "D"}
+                  {getInitial(user?.name, "D")}
                 </div>
 
                 <div>
-                  <span>Signed in as</span>
-
-                  <h3>
-                    {user?.name || "Devotee"}
-                  </h3>
-
+                  <span>Devotee account</span>
+                  <h3>{user?.name || "Devotee"}</h3>
                   <p>{user?.email}</p>
                 </div>
-
               </div>
 
-              <div className="dashboard-profile-divider"></div>
+              <div className="dashboard-profile-divider" />
 
               <div className="dashboard-profile-links">
-
                 <Link to="/devotee-profile">
                   <span>♙</span>
                   My Profile
@@ -1037,16 +849,27 @@ function Dashboard() {
                   My Reports
                   <b>→</b>
                 </Link>
-
               </div>
-
             </section>
-
           </div>
         </>
       )}
-
     </div>
+  );
+}
+
+function DashboardLink({ to, icon, title, description }) {
+  return (
+    <Link to={to} className="dashboard-management-item">
+      <span className="management-icon">{icon}</span>
+
+      <div>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </div>
+
+      <span className="management-arrow">→</span>
+    </Link>
   );
 }
 

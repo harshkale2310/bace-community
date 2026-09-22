@@ -1,29 +1,24 @@
 import { useEffect, useState } from "react";
-
-import {
-  Link,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
-
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
-
-import {
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 import { useAuth } from "../../context/AuthContext";
-
 import { auth, db } from "../../services/firebase";
-
 import krishnaImage from "../../assets/krishna.png";
 
 import "./Login.css";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const DEFAULT_ROLE = "administrator";
+
+const ROLE_ADMINISTRATOR = "administrator";
+const ROLE_DEVOTEE = "devotee";
 
 function Login() {
   const navigate = useNavigate();
@@ -32,17 +27,20 @@ function Login() {
   const { isAuthenticated } = useAuth();
 
   /*
-   * Public registration always creates a devotee account.
+   * ---------------------------------------------------------
+   * INITIAL ROLE
+   * ---------------------------------------------------------
    *
-   * Therefore, when the user has just registered,
-   * automatically select Devotee.
+   * Registration always creates a devotee account.
+   * Therefore, after registration we automatically select
+   * Devotee.
    *
    * Normal login defaults to Administrator.
    */
   const [role, setRole] = useState(
     location.state?.registered
-      ? "devotee"
-      : "administrator"
+      ? ROLE_DEVOTEE
+      : DEFAULT_ROLE
   );
 
   const [formData, setFormData] = useState({
@@ -50,20 +48,15 @@ function Login() {
     password: "",
   });
 
-  const [showPassword, setShowPassword] =
-    useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-
-  const [resetMessage, setResetMessage] =
-    useState("");
-
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /*
-   * If the user is already authenticated,
-   * do not keep them on Login.
+   * ---------------------------------------------------------
+   * AUTHENTICATED USER REDIRECT
+   * ---------------------------------------------------------
    */
   useEffect(() => {
     if (isAuthenticated) {
@@ -71,13 +64,12 @@ function Login() {
         replace: true,
       });
     }
-  }, [
-    isAuthenticated,
-    navigate,
-  ]);
+  }, [isAuthenticated, navigate]);
 
   /*
-   * Show registration success message.
+   * ---------------------------------------------------------
+   * REGISTRATION SUCCESS MESSAGE
+   * ---------------------------------------------------------
    */
   useEffect(() => {
     if (location.state?.registered) {
@@ -92,14 +84,9 @@ function Login() {
    * ROLE CHANGE
    * ---------------------------------------------------------
    */
-
-  const handleRoleChange = (
-    selectedRole
-  ) => {
+  const handleRoleChange = (selectedRole) => {
     setRole(selectedRole);
-
     setError("");
-
     setResetMessage("");
 
     setFormData((previous) => ({
@@ -113,12 +100,8 @@ function Login() {
    * INPUT CHANGE
    * ---------------------------------------------------------
    */
-
   const handleChange = (event) => {
-    const {
-      name,
-      value,
-    } = event.target;
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -136,24 +119,26 @@ function Login() {
 
   /*
    * ---------------------------------------------------------
+   * EMAIL VALIDATION
+   * ---------------------------------------------------------
+   */
+  const isValidEmail = (email) => {
+    return EMAIL_REGEX.test(email);
+  };
+
+  /*
+   * ---------------------------------------------------------
    * FORM VALIDATION
    * ---------------------------------------------------------
    */
-
   const validateForm = () => {
-    const email =
-      formData.email.trim();
+    const email = formData.email.trim();
 
     if (!email) {
       return "Please enter your email address.";
     }
 
-    /*
-     * Correct email validation.
-     */
-    if (
-      !/^\S+@\S+\.\S+$/.test(email)
-    ) {
+    if (!isValidEmail(email)) {
       return "Please enter a valid email address.";
     }
 
@@ -169,10 +154,7 @@ function Login() {
    * FIREBASE ERROR MESSAGE
    * ---------------------------------------------------------
    */
-
-  const getFirebaseErrorMessage = (
-    firebaseError
-  ) => {
+  const getFirebaseErrorMessage = (firebaseError) => {
     switch (firebaseError.code) {
       case "auth/invalid-credential":
       case "auth/invalid-login-credentials":
@@ -205,12 +187,10 @@ function Login() {
    * LOGIN
    * ---------------------------------------------------------
    */
-
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const validationError =
-      validateForm();
+    const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
@@ -222,48 +202,39 @@ function Login() {
     setResetMessage("");
 
     try {
-      const email =
-        formData.email
-          .trim()
-          .toLowerCase();
-
       /*
        * -----------------------------------------------------
        * 1. FIREBASE AUTHENTICATION
        * -----------------------------------------------------
        */
+      const email = formData.email.trim().toLowerCase();
 
-      const credential =
-        await signInWithEmailAndPassword(
-          auth,
-          email,
-          formData.password
-        );
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        formData.password
+      );
 
-      const firebaseUser =
-        credential.user;
+      const firebaseUser = credential.user;
 
       /*
        * -----------------------------------------------------
        * 2. LOAD FIRESTORE PROFILE
        * -----------------------------------------------------
        */
-
       const userRef = doc(
         db,
         "users",
         firebaseUser.uid
       );
 
-      const userSnapshot =
-        await getDoc(userRef);
+      const userSnapshot = await getDoc(userRef);
 
       /*
        * -----------------------------------------------------
        * 3. PROFILE MUST EXIST
        * -----------------------------------------------------
        */
-
       if (!userSnapshot.exists()) {
         await signOut(auth);
 
@@ -274,33 +245,29 @@ function Login() {
         return;
       }
 
-      const profile =
-        userSnapshot.data();
+      const profile = userSnapshot.data();
 
       /*
        * -----------------------------------------------------
        * 4. NORMALIZE ROLE
        * -----------------------------------------------------
        */
-
-      const profileRole =
-        String(
-          profile.role || ""
-        )
-          .trim()
-          .toLowerCase();
+      const profileRole = String(
+        profile.role || ""
+      )
+        .trim()
+        .toLowerCase();
 
       /*
        * -----------------------------------------------------
        * 5. VALIDATE ROLE
        * -----------------------------------------------------
        */
+      const isValidRole =
+        profileRole === ROLE_ADMINISTRATOR ||
+        profileRole === ROLE_DEVOTEE;
 
-      if (
-        profileRole !==
-          "administrator" &&
-        profileRole !== "devotee"
-      ) {
+      if (!isValidRole) {
         await signOut(auth);
 
         setError(
@@ -315,15 +282,11 @@ function Login() {
        * 6. CHECK SELECTED LOGIN TYPE
        * -----------------------------------------------------
        */
-
-      if (
-        profileRole !== role
-      ) {
+      if (profileRole !== role) {
         await signOut(auth);
 
         const accountType =
-          profileRole ===
-          "administrator"
+          profileRole === ROLE_ADMINISTRATOR
             ? "Administrator"
             : "Devotee";
 
@@ -339,26 +302,18 @@ function Login() {
        * 7. CHECK ACCOUNT STATUS
        * -----------------------------------------------------
        *
-       * Only active users can enter.
+       * Missing status defaults to active.
        */
+      const accountStatus = String(
+        profile.status || "active"
+      )
+        .trim()
+        .toLowerCase();
 
-      const accountStatus =
-        String(
-          profile.status ||
-            "active"
-        )
-          .trim()
-          .toLowerCase();
-
-      if (
-        accountStatus !== "active"
-      ) {
+      if (accountStatus !== "active") {
         await signOut(auth);
 
-        if (
-          accountStatus ===
-          "deleted"
-        ) {
+        if (accountStatus === "deleted") {
           setError(
             "This account has been deleted. Please contact the administrator."
           );
@@ -376,30 +331,22 @@ function Login() {
        * 8. SUCCESS
        * -----------------------------------------------------
        *
-       * AuthContext will receive the Firebase auth state,
-       * load the Firestore profile and populate user state.
+       * AuthContext receives the Firebase authentication
+       * state and loads the user's Firestore profile.
        */
-
       const requestedPath =
-        location.state?.from
-          ?.pathname ||
+        location.state?.from?.pathname ||
         "/dashboard";
 
-      navigate(
-        requestedPath,
-        {
-          replace: true,
-        }
-      );
+      navigate(requestedPath, {
+        replace: true,
+      });
     } catch (submitError) {
-      console.error(
-        "Login error:",
-        submitError
-      );
+      console.error("Login error:", submitError);
 
       /*
-       * Make sure a failed profile validation
-       * cannot leave the Firebase account signed in.
+       * Make sure failed profile/role/status validation
+       * cannot leave the Firebase user authenticated.
        */
       if (auth.currentUser) {
         try {
@@ -413,9 +360,7 @@ function Login() {
       }
 
       setError(
-        getFirebaseErrorMessage(
-          submitError
-        )
+        getFirebaseErrorMessage(submitError)
       );
     } finally {
       setIsSubmitting(false);
@@ -427,98 +372,84 @@ function Login() {
    * FORGOT PASSWORD
    * ---------------------------------------------------------
    */
+  const handleForgotPassword = async () => {
+    setError("");
+    setResetMessage("");
 
-  const handleForgotPassword =
-    async () => {
-      setError("");
-      setResetMessage("");
+    const email = formData.email.trim().toLowerCase();
 
-      const email =
-        formData.email
-          .trim()
-          .toLowerCase();
+    if (!email) {
+      setError(
+        "Enter your email address first to reset your password."
+      );
+      return;
+    }
 
-      if (!email) {
-        setError(
-          "Enter your email address first to reset your password."
-        );
-        return;
+    if (!isValidEmail(email)) {
+      setError(
+        "Please enter a valid email address."
+      );
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+
+      setResetMessage(
+        "Password reset instructions have been sent to your email."
+      );
+    } catch (resetError) {
+      console.error(
+        "Password reset error:",
+        resetError
+      );
+
+      switch (resetError.code) {
+        case "auth/user-not-found":
+          setError(
+            "No account was found with this email address."
+          );
+          break;
+
+        case "auth/invalid-email":
+          setError(
+            "Please enter a valid email address."
+          );
+          break;
+
+        case "auth/too-many-requests":
+          setError(
+            "Too many requests. Please wait a moment and try again."
+          );
+          break;
+
+        case "auth/network-request-failed":
+          setError(
+            "Network error. Please check your internet connection."
+          );
+          break;
+
+        default:
+          setError(
+            "Unable to send the password reset email. Please try again."
+          );
       }
-
-      if (
-        !/^\S+@\S+\.\S+$/.test(
-          email
-        )
-      ) {
-        setError(
-          "Please enter a valid email address."
-        );
-        return;
-      }
-
-      try {
-        await sendPasswordResetEmail(
-          auth,
-          email
-        );
-
-        setResetMessage(
-          "Password reset instructions have been sent to your email."
-        );
-      } catch (resetError) {
-        console.error(
-          "Password reset error:",
-          resetError
-        );
-
-        switch (
-          resetError.code
-        ) {
-          case "auth/user-not-found":
-            setError(
-              "No account was found with this email address."
-            );
-            break;
-
-          case "auth/invalid-email":
-            setError(
-              "Please enter a valid email address."
-            );
-            break;
-
-          case "auth/too-many-requests":
-            setError(
-              "Too many requests. Please wait a moment and try again."
-            );
-            break;
-
-          case "auth/network-request-failed":
-            setError(
-              "Network error. Please check your internet connection."
-            );
-            break;
-
-          default:
-            setError(
-              "Unable to send the password reset email. Please try again."
-            );
-        }
-      }
-    };
+    }
+  };
 
   return (
     <main className="login-page">
-
       {/* TOP NAVIGATION */}
-
       <nav className="auth-top-navigation">
-
         <Link
           to="/"
           className="auth-nav-brand"
           aria-label="Giri Govardhan BACE Home"
         >
-          <span className="auth-nav-brand-icon">
+          <span
+            className="auth-nav-brand-icon"
+            aria-hidden="true"
+          >
             ॐ
           </span>
 
@@ -528,7 +459,6 @@ function Login() {
         </Link>
 
         <div className="auth-nav-links">
-
           <Link
             to="/"
             className="auth-nav-link"
@@ -549,32 +479,27 @@ function Login() {
           >
             Register
           </Link>
-
         </div>
       </nav>
 
       {/* LOGIN SHELL */}
-
       <section className="login-shell">
-
         {/* LEFT VISUAL */}
-
         <div className="login-visual">
-
           <div className="login-visual-image">
-
             <img
               src={krishnaImage}
               alt="Lord Krishna"
             />
 
             <div className="login-image-overlay" />
-
           </div>
 
           <div className="login-visual-content">
-
-            <div className="login-om">
+            <div
+              className="login-om"
+              aria-hidden="true"
+            >
               ॐ
             </div>
 
@@ -583,7 +508,6 @@ function Login() {
             </p>
 
             <h1>
-
               <span className="brand-main">
                 Giri Govardhan
               </span>
@@ -591,19 +515,17 @@ function Login() {
               <span className="brand-accent">
                 BACE
               </span>
-
             </h1>
 
             <div className="login-hero-divider">
-
               <span />
-
-              <span className="divider-symbol">
+              <span
+                className="divider-symbol"
+                aria-hidden="true"
+              >
                 ❈
               </span>
-
               <span />
-
             </div>
 
             <p className="login-visual-description">
@@ -611,20 +533,14 @@ function Login() {
               devotee activities, attendance, sadhana,
               seva, rooms, leave and daily routines.
             </p>
-
           </div>
         </div>
 
         {/* RIGHT LOGIN PANEL */}
-
         <div className="login-panel">
-
           <div className="login-card">
-
             {/* HEADER */}
-
             <div className="login-header">
-
               <Link
                 to="/"
                 className="login-back-link"
@@ -632,11 +548,13 @@ function Login() {
                 <span aria-hidden="true">
                   ←
                 </span>
-
                 Back to Home
               </Link>
 
-              <div className="login-brand-mark">
+              <div
+                className="login-brand-mark"
+                aria-hidden="true"
+              >
                 ॐ
               </div>
 
@@ -652,37 +570,35 @@ function Login() {
                 Choose your account type and enter
                 your credentials to continue.
               </p>
-
             </div>
 
             {/* ROLE SELECTOR */}
-
-            <div className="role-selector">
-
+            <div
+              className="role-selector"
+              aria-label="Account type"
+            >
               <button
                 type="button"
                 className={
-                  role ===
-                  "administrator"
+                  role === ROLE_ADMINISTRATOR
                     ? "role-option active"
                     : "role-option"
                 }
                 onClick={() =>
                   handleRoleChange(
-                    "administrator"
+                    ROLE_ADMINISTRATOR
                   )
                 }
-                disabled={
-                  isSubmitting
-                }
+                disabled={isSubmitting}
               >
-
-                <span className="role-icon">
+                <span
+                  className="role-icon"
+                  aria-hidden="true"
+                >
                   ♙
                 </span>
 
                 <span className="role-text">
-
                   <strong>
                     Administrator
                   </strong>
@@ -690,34 +606,31 @@ function Login() {
                   <small>
                     Manage devotees and operations
                   </small>
-
                 </span>
-
               </button>
 
               <button
                 type="button"
                 className={
-                  role === "devotee"
+                  role === ROLE_DEVOTEE
                     ? "role-option active"
                     : "role-option"
                 }
                 onClick={() =>
                   handleRoleChange(
-                    "devotee"
+                    ROLE_DEVOTEE
                   )
                 }
-                disabled={
-                  isSubmitting
-                }
+                disabled={isSubmitting}
               >
-
-                <span className="role-icon">
+                <span
+                  className="role-icon"
+                  aria-hidden="true"
+                >
                   ॐ
                 </span>
 
                 <span className="role-text">
-
                   <strong>
                     Devotee
                   </strong>
@@ -725,31 +638,23 @@ function Login() {
                   <small>
                     Access your personal area
                   </small>
-
                 </span>
-
               </button>
-
             </div>
 
             {/* LOGIN FORM */}
-
             <form
               className="login-form"
               onSubmit={handleSubmit}
               noValidate
             >
-
               {/* EMAIL */}
-
               <div className="form-group">
-
                 <label htmlFor="email">
                   Email address
                 </label>
 
                 <div className="input-wrapper">
-
                   <span
                     className="input-icon"
                     aria-hidden="true"
@@ -761,29 +666,18 @@ function Login() {
                     id="email"
                     name="email"
                     type="email"
-                    value={
-                      formData.email
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={formData.email}
+                    onChange={handleChange}
                     placeholder="Enter your email"
                     autoComplete="email"
-                    disabled={
-                      isSubmitting
-                    }
+                    disabled={isSubmitting}
                   />
-
                 </div>
-
               </div>
 
               {/* PASSWORD */}
-
               <div className="form-group">
-
                 <div className="password-label-row">
-
                   <label htmlFor="password">
                     Password
                   </label>
@@ -791,20 +685,14 @@ function Login() {
                   <button
                     type="button"
                     className="forgot-password"
-                    onClick={
-                      handleForgotPassword
-                    }
-                    disabled={
-                      isSubmitting
-                    }
+                    onClick={handleForgotPassword}
+                    disabled={isSubmitting}
                   >
                     Forgot password?
                   </button>
-
                 </div>
 
                 <div className="input-wrapper">
-
                   <span
                     className="input-icon password-icon"
                     aria-hidden="true"
@@ -820,17 +708,11 @@ function Login() {
                         ? "text"
                         : "password"
                     }
-                    value={
-                      formData.password
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={formData.password}
+                    onChange={handleChange}
                     placeholder="Enter your password"
                     autoComplete="current-password"
-                    disabled={
-                      isSubmitting
-                    }
+                    disabled={isSubmitting}
                   />
 
                   <button
@@ -842,9 +724,7 @@ function Login() {
                           !previous
                       )
                     }
-                    disabled={
-                      isSubmitting
-                    }
+                    disabled={isSubmitting}
                     aria-label={
                       showPassword
                         ? "Hide password"
@@ -855,19 +735,15 @@ function Login() {
                       ? "Hide"
                       : "Show"}
                   </button>
-
                 </div>
-
               </div>
 
               {/* ERROR */}
-
               {error && (
                 <div
                   className="login-error"
                   role="alert"
                 >
-
                   <span
                     className="error-icon"
                     aria-hidden="true"
@@ -875,21 +751,16 @@ function Login() {
                     !
                   </span>
 
-                  <span>
-                    {error}
-                  </span>
-
+                  <span>{error}</span>
                 </div>
               )}
 
               {/* SUCCESS */}
-
               {resetMessage && (
                 <div
                   className="login-success"
                   role="status"
                 >
-
                   <span
                     className="success-icon"
                     aria-hidden="true"
@@ -900,44 +771,36 @@ function Login() {
                   <span>
                     {resetMessage}
                   </span>
-
                 </div>
               )}
 
               {/* SUBMIT */}
-
               <button
                 type="submit"
                 className="login-submit"
-                disabled={
-                  isSubmitting
-                }
+                disabled={isSubmitting}
               >
-
                 {isSubmitting ? (
                   <>
-                    <span className="login-spinner" />
-
+                    <span
+                      className="login-spinner"
+                      aria-hidden="true"
+                    />
                     Signing in...
                   </>
                 ) : (
                   <>
                     Sign in
-
                     <span aria-hidden="true">
                       →
                     </span>
                   </>
                 )}
-
               </button>
-
             </form>
 
             {/* REGISTER PROMPT */}
-
             <div className="login-register-prompt">
-
               <span>
                 Don't have an account?
               </span>
@@ -945,27 +808,25 @@ function Login() {
               <Link to="/register">
                 Create a devotee account
               </Link>
-
             </div>
 
             {/* FOOTER */}
-
             <div className="login-footer">
-
               <span>
                 Giri Govardhan BACE
               </span>
 
-              <span className="footer-dot">
+              <span
+                className="footer-dot"
+                aria-hidden="true"
+              >
                 •
               </span>
 
               <span>
                 Hare Krishna
               </span>
-
             </div>
-
           </div>
         </div>
       </section>

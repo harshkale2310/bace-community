@@ -1,25 +1,30 @@
 /* ============================================================
    REGISTER PAGE
-============================================================ */
+   ============================================================ */
 
 .register-page {
   min-height: 100vh;
   width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
   background: var(--background);
   color: var(--text);
-  box-sizing: border-box;
-  overflow-x: hidden;
 }
+
+.register-page *,
+.register-page *::before,
+.register-page *::after {
+  box-sizing: border-box;
+}
+
 
 /* ============================================================
    TOP NAVIGATION
-============================================================ */
+   ============================================================ */
 
 .auth-top-navigation {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  inset: 0 0 auto;
   z-index: 100;
   height: 68px;
 
@@ -28,7 +33,6 @@
   justify-content: space-between;
 
   padding: 0 34px;
-  box-sizing: border-box;
 
   background: rgba(255, 253, 249, 0.96);
   border-bottom: 1px solid rgba(120, 92, 55, 0.12);
@@ -39,14 +43,16 @@
   box-shadow: 0 4px 20px rgba(45, 34, 20, 0.04);
 }
 
+
 /* ============================================================
    BRAND
-============================================================ */
+   ============================================================ */
 
 .auth-nav-brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+
   min-width: 0;
 
   color: var(--text);
@@ -85,9 +91,10 @@
   white-space: nowrap;
 }
 
+
 /* ============================================================
    NAVIGATION LINKS
-============================================================ */
+   ============================================================ */
 
 .auth-nav-links {
   display: flex;
@@ -109,7 +116,6 @@
   color: #6d7075;
   font-size: 12px;
   font-weight: 600;
-
   text-decoration: none;
 
   transition:
@@ -129,30 +135,28 @@
   background: #fff1d8;
 }
 
+
 /* ============================================================
    REGISTER SHELL
-============================================================ */
+   ============================================================ */
 
 .register-shell {
   min-height: 100vh;
   padding-top: 68px;
 
   display: grid;
-
   grid-template-columns:
     minmax(0, 1fr)
     minmax(440px, 0.92fr);
-
-  box-sizing: border-box;
 }
+
 
 /* ============================================================
    LEFT VISUAL PANEL
-============================================================ */
+   ============================================================ */
 
 .register-visual {
   position: relative;
-
   min-height: calc(100vh - 68px);
 
   overflow: hidden;
@@ -167,10 +171,10 @@
 }
 
 .register-visual-image img {
+  display: block;
+
   width: 100%;
   height: 100%;
-
-  display: block;
 
   object-fit: cover;
   object-position: center;
@@ -191,16 +195,14 @@
     );
 }
 
+
 /* ============================================================
    VISUAL CONTENT
-============================================================ */
+   ============================================================ */
 
 .register-visual-content {
   position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: auto 0 0;
 
   z-index: 2;
 
@@ -231,16 +233,17 @@
 .register-visual-label {
   margin: 0 0 12px;
 
+  color: rgba(255, 255, 255, 0.9);
+
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 4px;
-
-  color: rgba(255, 255, 255, 0.9);
 }
+
 
 /* ============================================================
    BEGIN YOUR JOURNEY
-============================================================ */
+   ============================================================ */
 
 .register-visual-title {
   margin: 0 0 18px;
@@ -248,51 +251,41 @@
   color: #ffffff;
 
   font-family: "Playfair Display", serif;
-
   font-size: clamp(42px, 4vw, 64px);
-
   font-weight: 600;
-
   line-height: 1.08;
 
   letter-spacing: -1px;
 }
 
-.register-title-main {
+.register-title-main,
+.register-title-accent {
   display: block;
+}
 
-  color: #ffffff !important;
-
-  opacity: 1 !important;
-  visibility: visible !important;
+.register-title-main {
+  color: #ffffff;
 }
 
 .register-title-accent {
-  display: block;
-
   margin-top: 7px;
-
-  color: #f4ce83 !important;
-
-  opacity: 1 !important;
-  visibility: visible !important;
+  color: #f4ce83;
 }
 
 .register-visual-description {
   max-width: 500px;
-
   margin: 0;
 
   color: rgba(255, 255, 255, 0.88);
 
   font-size: 15px;
-
   line-height: 1.75;
 }
 
+
 /* ============================================================
    RIGHT REGISTER PANEL
-============================================================ */
+   ============================================================ */
 
 .register-panel {
   min-height: calc(100vh - 68px);
@@ -302,8 +295,6 @@
   justify-content: center;
 
   padding: 45px 50px;
-
-  box-sizing: border-box;
 
   overflow-y: auto;
 
@@ -316,20 +307,21 @@
     var(--surface);
 }
 
+
 /* ============================================================
    REGISTER CARD
-============================================================ */
+   ============================================================ */
 
 .register-card {
   width: 100%;
   max-width: 480px;
-
   margin: 0 auto;
 }
 
+
 /* ============================================================
    HEADER
-============================================================ */
+   ============================================================ */
 
 .register-header {
   text-align: center;
@@ -343,10 +335,8 @@
   margin-bottom: 24px;
 
   color: var(--text-muted);
-
   font-size: 11px;
   font-weight: 600;
-
   text-decoration: none;
 
   transition:
@@ -398,7 +388,6 @@
 
   font-size: 10px;
   font-weight: 700;
-
   letter-spacing: 3px;
 }
 
@@ -408,42 +397,35 @@
   color: var(--text);
 
   font-family: "Playfair Display", serif;
-
   font-size: clamp(28px, 3vw, 36px);
-
   font-weight: 600;
-
   line-height: 1.2;
 }
 
 .register-description {
   max-width: 390px;
-
   margin: 0 auto;
 
   color: var(--text-light);
 
   font-size: 12px;
-
   line-height: 1.65;
 }
 
+
 /* ============================================================
    ACCOUNT TYPE
-============================================================ */
+   ============================================================ */
 
 .register-account-type {
   min-height: 58px;
 
   display: flex;
   align-items: center;
-
   gap: 11px;
 
   margin: 24px 0 21px;
   padding: 9px 12px;
-
-  box-sizing: border-box;
 
   border: 1px solid #e3d1af;
   border-radius: 11px;
@@ -458,7 +440,6 @@
 .register-account-icon {
   width: 35px;
   height: 35px;
-
   flex-shrink: 0;
 
   display: flex;
@@ -468,11 +449,9 @@
   border-radius: 9px;
 
   background: #f1d59e;
-
   color: var(--primary);
 
   font-family: "Playfair Display", serif;
-
   font-size: 18px;
 }
 
@@ -481,7 +460,6 @@
 
   display: flex;
   flex-direction: column;
-
   gap: 3px;
 }
 
@@ -494,7 +472,6 @@
 
 .register-account-type span:not(.register-account-check) {
   color: var(--text-muted);
-
   font-size: 9px;
 }
 
@@ -503,7 +480,6 @@
   height: 19px;
 
   margin-left: auto;
-
   flex-shrink: 0;
 
   display: flex;
@@ -513,28 +489,26 @@
   border-radius: 50%;
 
   background: #c79745;
-
   color: #ffffff;
 
   font-size: 10px;
   font-weight: 700;
 }
 
+
 /* ============================================================
    FORM
-============================================================ */
+   ============================================================ */
 
 .register-form {
   display: flex;
   flex-direction: column;
-
   gap: 15px;
 }
 
 .register-form-group {
   display: flex;
   flex-direction: column;
-
   gap: 7px;
 }
 
@@ -545,21 +519,19 @@
   font-weight: 700;
 }
 
+
 /* ============================================================
    INPUT
-============================================================ */
+   ============================================================ */
 
 .register-input-wrapper {
   position: relative;
-
   width: 100%;
 }
 
 .register-input-wrapper input {
   width: 100%;
   height: 47px;
-
-  box-sizing: border-box;
 
   padding: 0 47px 0 43px;
 
@@ -602,13 +574,13 @@
   cursor: not-allowed;
 }
 
+
 /* ============================================================
    INPUT ICON
-============================================================ */
+   ============================================================ */
 
 .register-input-icon {
   position: absolute;
-
   top: 50%;
   left: 15px;
 
@@ -629,13 +601,13 @@
   letter-spacing: -2px;
 }
 
+
 /* ============================================================
    PASSWORD TOGGLE
-============================================================ */
+   ============================================================ */
 
 .register-password-toggle {
   position: absolute;
-
   top: 50%;
   right: 12px;
 
@@ -644,7 +616,6 @@
   padding: 5px;
 
   border: 0;
-
   background: transparent;
 
   color: var(--primary);
@@ -664,14 +635,28 @@
   cursor: not-allowed;
 }
 
+
+/* ============================================================
+   PASSWORD HINT
+   ============================================================ */
+
+.register-field-hint {
+  margin: 0;
+
+  color: var(--text-muted);
+
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+
 /* ============================================================
    ERROR
-============================================================ */
+   ============================================================ */
 
 .register-error {
   display: flex;
   align-items: flex-start;
-
   gap: 9px;
 
   padding: 11px 12px;
@@ -680,18 +665,15 @@
   border-radius: 9px;
 
   background: #fff5f5;
-
   color: #a33b3b;
 
   font-size: 9px;
-
   line-height: 1.5;
 }
 
 .register-error-icon {
   width: 18px;
   height: 18px;
-
   flex-shrink: 0;
 
   display: flex;
@@ -701,16 +683,16 @@
   border-radius: 50%;
 
   background: #c85a5a;
-
   color: #ffffff;
 
   font-size: 10px;
   font-weight: 700;
 }
 
+
 /* ============================================================
    SUBMIT BUTTON
-============================================================ */
+   ============================================================ */
 
 .register-submit {
   width: 100%;
@@ -721,7 +703,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   gap: 11px;
 
   border: 0;
@@ -736,7 +717,6 @@
   color: #ffffff;
 
   font-family: inherit;
-
   font-size: 12px;
   font-weight: 700;
 
@@ -767,9 +747,10 @@
   cursor: not-allowed;
 }
 
+
 /* ============================================================
    SPINNER
-============================================================ */
+   ============================================================ */
 
 .register-spinner {
   width: 14px;
@@ -777,7 +758,6 @@
 
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #ffffff;
-
   border-radius: 50%;
 
   animation: register-spin 0.7s linear infinite;
@@ -789,15 +769,15 @@
   }
 }
 
+
 /* ============================================================
    LOGIN PROMPT
-============================================================ */
+   ============================================================ */
 
 .register-login-prompt {
   display: flex;
   align-items: center;
   justify-content: center;
-
   gap: 5px;
 
   margin-top: 18px;
@@ -805,15 +785,12 @@
   color: var(--text-muted);
 
   font-size: 9px;
-
   text-align: center;
 }
 
 .register-login-prompt a {
   color: var(--primary);
-
   font-weight: 700;
-
   text-decoration: none;
 }
 
@@ -821,14 +798,14 @@
   text-decoration: underline;
 }
 
+
 /* ============================================================
    INFORMATION NOTE
-============================================================ */
+   ============================================================ */
 
 .register-note {
   display: flex;
   align-items: flex-start;
-
   gap: 9px;
 
   margin-top: 19px;
@@ -843,7 +820,6 @@
 .register-note-icon {
   width: 17px;
   height: 17px;
-
   flex-shrink: 0;
 
   display: flex;
@@ -853,11 +829,9 @@
   border-radius: 50%;
 
   background: #ead9b8;
-
   color: #896323;
 
   font-family: serif;
-
   font-size: 10px;
   font-weight: 700;
 }
@@ -868,19 +842,18 @@
   color: var(--text-muted);
 
   font-size: 8px;
-
   line-height: 1.55;
 }
 
+
 /* ============================================================
    FOOTER
-============================================================ */
+   ============================================================ */
 
 .register-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-
   gap: 9px;
 
   margin-top: 20px;
@@ -889,7 +862,6 @@
   border-top: 1px solid var(--border);
 
   color: var(--text-muted);
-
   font-size: 8px;
 }
 
@@ -897,9 +869,10 @@
   color: #c99b54;
 }
 
+
 /* ============================================================
    LARGE TABLET
-============================================================ */
+   ============================================================ */
 
 @media (max-width: 1100px) {
   .register-shell {
@@ -917,9 +890,10 @@
   }
 }
 
+
 /* ============================================================
-   TABLET
-============================================================ */
+   TABLET / SINGLE COLUMN
+   ============================================================ */
 
 @media (max-width: 1000px) {
   .register-shell {
@@ -932,7 +906,6 @@
 
   .register-panel {
     min-height: auto;
-
     padding: 60px 30px;
   }
 
@@ -949,14 +922,14 @@
   }
 }
 
+
 /* ============================================================
    MOBILE
-============================================================ */
+   ============================================================ */
 
 @media (max-width: 600px) {
   .auth-top-navigation {
     height: 60px;
-
     padding: 0 15px;
   }
 
@@ -975,9 +948,7 @@
 
   .auth-nav-link {
     min-height: 36px;
-
     padding: 0 10px;
-
     font-size: 10px;
   }
 
@@ -985,12 +956,6 @@
     padding-top: 60px;
   }
 
-  /*
-    Krishna remains on the LEFT/VISUAL section.
-    On small screens the visual section appears above
-    the registration form because the layout becomes
-    one column.
-  */
   .register-visual {
     min-height: 470px;
   }
@@ -1012,40 +977,29 @@
     margin-bottom: 9px;
 
     font-size: 9px;
-
     letter-spacing: 3px;
   }
 
-  /*
-    Keep BOTH lines visible.
-  */
   .register-visual-title {
     margin-bottom: 14px;
 
     font-size: 42px;
-
     line-height: 1.08;
   }
 
-  .register-title-main {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-
+  .register-title-main,
   .register-title-accent {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    display: block;
+    visibility: visible;
+    opacity: 1;
   }
 
   .register-visual-description {
-    display: block !important;
+    display: block;
 
     max-width: 100%;
 
     font-size: 12px;
-
     line-height: 1.6;
   }
 
@@ -1072,7 +1026,6 @@
 
   .register-eyebrow {
     font-size: 9px;
-
     letter-spacing: 2.5px;
   }
 
@@ -1095,7 +1048,6 @@
 
   .register-footer {
     flex-direction: column;
-
     gap: 4px;
   }
 
@@ -1104,9 +1056,10 @@
   }
 }
 
+
 /* ============================================================
    SMALL MOBILE
-============================================================ */
+   ============================================================ */
 
 @media (max-width: 390px) {
   .auth-top-navigation {
@@ -1115,7 +1068,6 @@
 
   .auth-nav-link {
     padding: 0 8px;
-
     font-size: 9px;
   }
 
@@ -1127,21 +1079,14 @@
     padding: 25px 18px 32px;
   }
 
-  /*
-    Do NOT hide the description.
-    Keep all important words visible.
-  */
   .register-visual-title {
     font-size: 35px;
-
     line-height: 1.08;
   }
 
   .register-visual-description {
-    display: block !important;
-
+    display: block;
     font-size: 11px;
-
     line-height: 1.55;
   }
 
@@ -1150,9 +1095,10 @@
   }
 }
 
+
 /* ============================================================
    VERY SMALL MOBILE
-============================================================ */
+   ============================================================ */
 
 @media (max-width: 340px) {
   .auth-nav-links {
@@ -1161,7 +1107,6 @@
 
   .auth-nav-link {
     padding: 0 6px;
-
     font-size: 8px;
   }
 
@@ -1176,15 +1121,12 @@
   .register-visual-description {
     font-size: 10px;
   }
-
-  .register-card {
-    width: 100%;
-  }
 }
+
 
 /* ============================================================
    REDUCED MOTION
-============================================================ */
+   ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   .auth-nav-link,

@@ -60,7 +60,7 @@ function Devotees() {
     password: "",
     confirmPassword: "",
     phone: "",
-    department: "Temple",
+    department: "Giri Govardhan BACE",
   });
 
   /*
@@ -312,7 +312,7 @@ function Devotees() {
       .filter(Boolean);
 
     return Array.from(
-      new Set(["Temple", ...values])
+      new Set(["Giri Govardhan BACE", ...values])
     ).sort((a, b) =>
       a.localeCompare(b, undefined, {
         sensitivity: "base",
@@ -452,7 +452,7 @@ function Devotees() {
       password: "",
       confirmPassword: "",
       phone: "",
-      department: "Temple",
+      department: "Giri Govardhan BACE",
     });
 
     setRegisterError("");
@@ -557,7 +557,7 @@ function Devotees() {
           email,
           phone,
           department:
-            form.department || "Temple",
+            form.department || "Giri Govardhan BACE",
 
           room: "",
           bed: "",
@@ -1177,7 +1177,7 @@ function Devotees() {
                         <td>
                           <span className="table-primary-text">
                             {devotee.department ||
-                              "Temple"}
+                              "Giri Govardhan BACE"}
                           </span>
                         </td>
 

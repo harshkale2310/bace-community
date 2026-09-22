@@ -1,12 +1,12 @@
 /* ==========================================================================
-   DASHBOARD
-========================================================================== */
+   BACE DASHBOARD
+   ========================================================================== */
 
 .dashboard-page {
   width: 100%;
   min-width: 0;
   padding: 30px 32px 44px;
-  animation: dashboardFadeIn 0.35s ease both;
+  animation: dashboardFadeIn 0.3s ease both;
 }
 
 .dashboard-page *,
@@ -15,30 +15,29 @@
   box-sizing: border-box;
 }
 
-/* ==========================================================================
-   HEADER
-========================================================================== */
+/* Header */
 
 .dashboard-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 28px;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
-.dashboard-header > div:first-child {
+.dashboard-header-copy {
   min-width: 0;
 }
 
 .dashboard-eyebrow {
   display: inline-flex;
   align-items: center;
+  gap: 9px;
   margin-bottom: 8px;
   color: var(--primary);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 1.9px;
+  letter-spacing: 1.8px;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -47,7 +46,6 @@
   content: "";
   width: 22px;
   height: 1px;
-  margin-right: 9px;
   background: var(--secondary);
 }
 
@@ -69,33 +67,22 @@
   line-height: 1.65;
 }
 
-/* ==========================================================================
-   DATE CARD
-========================================================================== */
-
 .dashboard-date {
   position: relative;
-  flex-shrink: 0;
-  min-width: 165px;
-  padding: 14px 18px 15px;
+  flex: 0 0 185px;
+  min-width: 185px;
+  padding: 14px 17px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(247, 241, 233, 0.92)
-    );
+  background: var(--surface);
   box-shadow: var(--shadow-sm);
-  text-align: right;
   overflow: hidden;
 }
 
 .dashboard-date::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0 auto auto 0;
   width: 100%;
   height: 3px;
   background: var(--secondary);
@@ -106,88 +93,99 @@
   margin-bottom: 4px;
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .dashboard-date strong {
+  display: block;
   color: var(--primary-dark);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.45;
 }
 
-/* ==========================================================================
-   ERROR
-========================================================================== */
+/* Error */
 
 .dashboard-error {
   display: flex;
   align-items: center;
-  min-height: 48px;
+  justify-content: space-between;
+  gap: 18px;
   margin-bottom: 22px;
-  padding: 12px 16px;
+  padding: 12px 15px;
   border: 1px solid rgba(179, 58, 58, 0.18);
   border-left: 4px solid var(--danger);
   border-radius: var(--radius-md);
   background: var(--danger-light);
   color: var(--danger);
-  font-size: 12px;
-  line-height: 1.5;
   box-shadow: var(--shadow-sm);
 }
 
-/* ==========================================================================
-   STAT CARDS
-========================================================================== */
+.dashboard-error > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dashboard-error strong {
+  font-size: 11px;
+}
+
+.dashboard-error span {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.dashboard-retry {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 7px 13px;
+  border: 1px solid rgba(179, 58, 58, 0.2);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-retry:hover {
+  background: rgba(179, 58, 58, 0.05);
+}
+
+/* Stats */
 
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 25px;
+  gap: 15px;
+  margin-bottom: 24px;
 }
 
 .dashboard-stat-card {
   position: relative;
-  min-width: 0;
-  min-height: 118px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
+  gap: 14px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 19px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
-}
-
-.dashboard-stat-card::after {
-  content: "";
-  position: absolute;
-  right: -24px;
-  bottom: -30px;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: rgba(212, 160, 23, 0.045);
-  pointer-events: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dashboard-stat-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(139, 69, 19, 0.18);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .dashboard-stat-card > div:last-child {
-  position: relative;
-  z-index: 1;
   min-width: 0;
   flex: 1;
 }
@@ -196,8 +194,8 @@
   display: block;
   overflow: hidden;
   color: var(--text-light);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 650;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -207,78 +205,60 @@
   display: block;
   margin-top: 5px;
   color: var(--text);
-  font-size: 28px;
+  font-size: 27px;
   font-weight: 800;
-  letter-spacing: -0.5px;
   line-height: 1.05;
 }
 
 .dashboard-stat-card strong.stat-text {
   margin-top: 7px;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0;
 }
 
 .dashboard-stat-card small {
   display: block;
   margin-top: 6px;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 9px;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-/* ==========================================================================
-   STAT ICON
-========================================================================== */
 
 .dashboard-stat-icon {
-  position: relative;
-  z-index: 1;
   display: grid;
-  flex: 0 0 50px;
-  width: 50px;
-  height: 50px;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  font-size: 20px;
-  font-weight: 700;
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease;
-}
-
-.dashboard-stat-card:hover .dashboard-stat-icon {
-  transform: scale(1.04);
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .dashboard-stat-icon.devotees {
-  border-color: rgba(139, 69, 19, 0.08);
   background: var(--primary-light);
   color: var(--primary);
 }
 
 .dashboard-stat-icon.present {
-  border-color: rgba(63, 125, 74, 0.1);
   background: var(--success-light);
   color: var(--success);
 }
 
 .dashboard-stat-icon.partial {
-  border-color: rgba(183, 121, 31, 0.1);
   background: var(--warning-light);
   color: var(--warning);
 }
 
-.dashboard-stat-icon.absent {
-  border-color: rgba(179, 58, 58, 0.1);
-  background: var(--danger-light);
-  color: var(--danger);
+.dashboard-stat-icon.rooms {
+  background: rgba(80, 107, 135, 0.09);
+  color: #506b87;
 }
 
-/* ==========================================================================
-   COMMON CARD
-========================================================================== */
+/* Cards */
 
 .dashboard-card {
   min-width: 0;
@@ -293,15 +273,14 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  padding: 23px 24px 20px;
+  gap: 18px;
+  padding: 22px 23px 19px;
   border-bottom: 1px solid var(--border);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(250, 247, 242, 0.42),
-      rgba(255, 255, 255, 0)
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(250, 247, 242, 0.48),
+    rgba(255, 255, 255, 0)
+  );
 }
 
 .dashboard-section-label {
@@ -310,7 +289,7 @@
   color: var(--primary);
   font-size: 9px;
   font-weight: 800;
-  letter-spacing: 1.6px;
+  letter-spacing: 1.5px;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -331,10 +310,6 @@
   line-height: 1.55;
 }
 
-/* ==========================================================================
-   VIEW ALL
-========================================================================== */
-
 .dashboard-view-all {
   display: inline-flex;
   align-items: center;
@@ -349,37 +324,26 @@
   font-size: 10px;
   font-weight: 700;
   text-decoration: none;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .dashboard-view-all:hover {
-  border-color: rgba(139, 69, 19, 0.28);
   background: var(--primary-light);
-  color: var(--primary-dark);
   transform: translateY(-1px);
 }
 
-.dashboard-view-all:focus-visible {
+.dashboard-view-all:focus-visible,
+.dashboard-management-item:focus-visible,
+.dashboard-profile-links a:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-/* ==========================================================================
-   ATTENDANCE CARD
-========================================================================== */
+/* Attendance */
 
 .dashboard-attendance-card {
-  margin-bottom: 25px;
-  overflow: hidden;
+  margin-bottom: 24px;
 }
-
-/* ==========================================================================
-   ATTENDANCE SUMMARY
-========================================================================== */
 
 .attendance-summary {
   display: grid;
@@ -389,12 +353,11 @@
 }
 
 .attendance-summary-item {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   min-width: 0;
-  padding: 15px 17px;
+  padding: 14px 16px;
   border-right: 1px solid var(--border);
 }
 
@@ -407,7 +370,6 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.025);
 }
 
 .attendance-summary-item.present .summary-dot {
@@ -427,7 +389,7 @@
 }
 
 .attendance-summary-item.not-marked .summary-dot {
-  background: #a7a7a7;
+  background: #999;
 }
 
 .attendance-summary-item strong {
@@ -443,43 +405,26 @@
   margin-top: 4px;
   color: var(--text-muted);
   font-size: 9px;
-  line-height: 1.25;
 }
 
-/* ==========================================================================
-   ATTENDANCE TABLE
-========================================================================== */
+/* Desktop attendance table */
 
 .dashboard-attendance-table-wrapper {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-.dashboard-attendance-table-wrapper::-webkit-scrollbar {
-  height: 5px;
-}
-
-.dashboard-attendance-table-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dashboard-attendance-table-wrapper::-webkit-scrollbar-thumb {
-  border-radius: 10px;
-  background: var(--border);
 }
 
 .dashboard-attendance-table {
   width: 100%;
-  min-width: 890px;
+  min-width: 820px;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .dashboard-attendance-table th {
-  padding: 12px 20px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--border);
   background: rgba(247, 241, 233, 0.48);
   color: var(--text-muted);
@@ -492,15 +437,11 @@
 }
 
 .dashboard-attendance-table td {
-  padding: 13px 20px;
+  padding: 13px 18px;
   border-bottom: 1px solid rgba(232, 222, 211, 0.72);
   color: var(--text);
   font-size: 11px;
   vertical-align: middle;
-}
-
-.dashboard-attendance-table tbody tr {
-  transition: background 0.16s ease;
 }
 
 .dashboard-attendance-table tbody tr:last-child td {
@@ -511,15 +452,11 @@
   background: rgba(139, 69, 19, 0.025);
 }
 
-/* ==========================================================================
-   DEVOTEE TABLE CELL
-========================================================================== */
-
 .dashboard-devotee-cell {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 210px;
 }
 
 .dashboard-devotee-avatar {
@@ -536,17 +473,23 @@
   font-weight: 800;
 }
 
+.dashboard-devotee-cell > div:last-child {
+  min-width: 0;
+}
+
 .dashboard-devotee-cell strong {
   display: block;
+  overflow: hidden;
   color: var(--text);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-devotee-cell span {
   display: block;
-  max-width: 230px;
   margin-top: 3px;
   overflow: hidden;
   color: var(--text-muted);
@@ -556,28 +499,26 @@
   white-space: nowrap;
 }
 
-/* ==========================================================================
-   RESIDENCE
-========================================================================== */
-
 .dashboard-residence-cell {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-width: 250px;
-  max-width: 330px;
+  min-width: 230px;
+  max-width: 310px;
 }
 
-.dashboard-residence-icon {
+.dashboard-residence-icon,
+.dashboard-residence-item-icon {
   display: grid;
   flex: 0 0 32px;
   width: 32px;
   height: 32px;
   place-items: center;
-  border: 1px solid rgba(139, 69, 19, 0.08);
   border-radius: 9px;
   background: var(--primary-light);
-  font-size: 14px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .dashboard-residence-cell > div {
@@ -590,7 +531,7 @@
   color: var(--text-muted);
   font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.9px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 
@@ -602,11 +543,8 @@
   font-weight: 600;
   line-height: 1.4;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-/* ==========================================================================
-   ATTENDANCE PILLS
-========================================================================== */
 
 .attendance-pill {
   display: inline-flex;
@@ -656,107 +594,25 @@
   min-width: 88px;
 }
 
-/* ==========================================================================
-   EMPTY TABLE
-========================================================================== */
-
-.dashboard-table-empty {
+.dashboard-table-empty,
+.dashboard-mobile-empty {
   padding: 38px 20px !important;
   color: var(--text-muted) !important;
   font-size: 11px !important;
   text-align: center;
 }
 
-/* ==========================================================================
-   RESIDENCE CARD
-========================================================================== */
-
-.dashboard-residence-card {
-  margin-bottom: 25px;
+.dashboard-mobile-attendance {
+  display: none;
 }
 
-.dashboard-residence-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 18px;
-}
-
-.dashboard-residence-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.dashboard-residence-item-icon {
-  display: grid;
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 11px;
-  background: var(--primary-light);
-  font-size: 17px;
-}
-
-.dashboard-residence-item > div:last-child {
-  min-width: 0;
-}
-
-.dashboard-residence-item span {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--primary);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 1px;
-}
-
-.dashboard-residence-item strong {
-  display: block;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dashboard-residence-item p {
-  margin: 4px 0 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 9px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ==========================================================================
-   LOWER GRID
-========================================================================== */
+/* Lower grid */
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1.55fr)
-    minmax(290px, 0.8fr);
-  gap: 25px;
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.8fr);
+  gap: 24px;
 }
-
-.dashboard-activity-card {
-  overflow: hidden;
-}
-
-/* ==========================================================================
-   MANAGEMENT GRID
-========================================================================== */
 
 .dashboard-management-grid {
   display: grid;
@@ -766,14 +622,13 @@
 }
 
 .dashboard-management-item {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 11px;
   min-width: 0;
-  padding: 14px;
+  padding: 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 11px;
   background: var(--surface);
   color: var(--text);
   text-decoration: none;
@@ -791,22 +646,17 @@
   box-shadow: var(--shadow-sm);
 }
 
-.dashboard-management-item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
 .management-icon {
   display: grid;
   flex: 0 0 37px;
   width: 37px;
   height: 37px;
   place-items: center;
-  border: 1px solid rgba(139, 69, 19, 0.07);
   border-radius: 10px;
   background: var(--primary-light);
   color: var(--primary);
-  font-size: 15px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .dashboard-management-item > div {
@@ -840,9 +690,7 @@
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 13px;
-  transition:
-    transform 0.2s ease,
-    color 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .dashboard-management-item:hover .management-arrow {
@@ -850,36 +698,33 @@
   color: var(--primary);
 }
 
-/* ==========================================================================
-   PROFILE CARD
-========================================================================== */
+/* Profile */
 
 .dashboard-profile-card {
-  padding: 22px;
+  padding: 21px;
 }
 
 .dashboard-profile-top {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
 }
 
 .dashboard-large-avatar {
   display: grid;
-  flex: 0 0 58px;
-  width: 58px;
-  height: 58px;
+  flex: 0 0 57px;
+  width: 57px;
+  height: 57px;
   place-items: center;
   border: 1px solid rgba(139, 69, 19, 0.08);
-  border-radius: 17px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(139, 69, 19, 0.13),
-      rgba(212, 160, 23, 0.08)
-    );
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 69, 19, 0.13),
+    rgba(212, 160, 23, 0.08)
+  );
   color: var(--primary-dark);
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 800;
 }
 
@@ -917,7 +762,7 @@
 
 .dashboard-profile-divider {
   height: 1px;
-  margin: 20px 0 10px;
+  margin: 19px 0 9px;
   background: var(--border);
 }
 
@@ -936,27 +781,16 @@
   font-size: 11px;
   font-weight: 500;
   text-decoration: none;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
 }
 
 .dashboard-profile-links a:hover {
   background: rgba(139, 69, 19, 0.05);
   color: var(--primary-dark);
-  transform: translateX(2px);
-}
-
-.dashboard-profile-links a:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
 }
 
 .dashboard-profile-links a span {
   width: 22px;
   color: var(--primary);
-  font-size: 13px;
   text-align: center;
 }
 
@@ -967,49 +801,76 @@
   font-weight: 500;
 }
 
-/* ==========================================================================
-   DEVOTEE DASHBOARD
-========================================================================== */
+/* Residence */
 
-.devotee-dashboard-grid {
-  margin-top: 0;
+.dashboard-residence-card {
+  margin-bottom: 24px;
 }
 
-.devotee-stats .dashboard-stat-card {
-  min-height: 115px;
+.dashboard-residence-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px;
 }
 
-.dashboard-residence-stat small {
-  max-width: 190px;
+.dashboard-residence-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+
+.dashboard-residence-item-icon {
+  flex-basis: 42px;
+  width: 42px;
+  height: 42px;
+  font-size: 12px;
+}
+
+.dashboard-residence-item > div:last-child {
+  min-width: 0;
+}
+
+.dashboard-residence-item span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.dashboard-residence-item strong {
+  display: block;
   overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ==========================================================================
-   ANIMATION
-========================================================================== */
-
-@keyframes dashboardFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(7px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.dashboard-residence-item p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ==========================================================================
-   LARGE TABLET
-========================================================================== */
+/* Responsive */
 
 @media (max-width: 1200px) {
   .dashboard-page {
-    padding-left: 26px;
-    padding-right: 26px;
+    padding-left: 25px;
+    padding-right: 25px;
   }
 
   .dashboard-stats {
@@ -1029,17 +890,9 @@
   }
 }
 
-/* ==========================================================================
-   TABLET
-========================================================================== */
-
 @media (max-width: 1050px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
-  }
-
-  .dashboard-profile-card {
-    min-height: auto;
   }
 
   .dashboard-residence-list {
@@ -1047,24 +900,20 @@
   }
 }
 
-/* ==========================================================================
-   MOBILE / TABLET
-========================================================================== */
-
 @media (max-width: 760px) {
   .dashboard-page {
-    padding: 24px 18px 34px;
+    padding: 22px 17px 30px;
   }
 
   .dashboard-header {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 15px;
+    margin-bottom: 22px;
   }
 
   .dashboard-header h1 {
-    font-size: 30px;
+    font-size: 29px;
   }
 
   .dashboard-header p {
@@ -1073,131 +922,36 @@
 
   .dashboard-date {
     width: 100%;
-    text-align: left;
-  }
-
-  .dashboard-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .dashboard-stat-card {
-    min-height: 102px;
-    padding: 16px;
-  }
-
-  .dashboard-stat-icon {
-    flex-basis: 44px;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    font-size: 18px;
-  }
-
-  .dashboard-stat-card strong {
-    font-size: 24px;
-  }
-
-  .dashboard-card-header {
-    flex-direction: column;
-    gap: 13px;
-    padding: 20px;
-  }
-
-  .dashboard-view-all {
-    width: 100%;
-  }
-
-  .attendance-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .attendance-summary-item {
-    border-right: 1px solid var(--border);
-  }
-
-  .attendance-summary-item:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .attendance-summary-item:nth-child(n + 3) {
-    border-top: 1px solid var(--border);
-  }
-
-  .dashboard-management-grid {
-    grid-template-columns: 1fr;
-    padding: 14px;
-  }
-
-  .dashboard-residence-list {
-    grid-template-columns: 1fr;
-    padding: 14px;
-  }
-}
-
-/* ==========================================================================
-   MOBILE
-========================================================================== */
-
-@media (max-width: 520px) {
-  .dashboard-page {
-    padding: 20px 13px 30px;
-  }
-
-  .dashboard-eyebrow {
-    font-size: 9px;
-  }
-
-  .dashboard-header {
-    margin-bottom: 21px;
-  }
-
-  .dashboard-header h1 {
-    font-size: 27px;
-  }
-
-  .dashboard-header p {
-    margin-top: 8px;
-    font-size: 11px;
-  }
-
-  .dashboard-date {
     min-width: 0;
-    padding: 13px 15px;
   }
 
   .dashboard-stats {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
   }
 
   .dashboard-stat-card {
-    min-height: 88px;
-    padding: 14px 15px;
-    border-radius: 13px;
+    min-height: 104px;
+    padding: 15px;
+    gap: 10px;
   }
 
   .dashboard-stat-icon {
-    flex-basis: 42px;
-    width: 42px;
-    height: 42px;
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
   }
 
   .dashboard-stat-card strong {
     font-size: 23px;
   }
 
-  .dashboard-card {
-    border-radius: 15px;
+  .dashboard-stat-card strong.stat-text {
+    font-size: 13px;
   }
 
   .dashboard-card-header {
-    padding: 17px 15px;
-  }
-
-  .dashboard-section-label {
-    font-size: 8px;
+    padding: 19px 17px 16px;
   }
 
   .dashboard-card-header h2 {
@@ -1208,147 +962,202 @@
     font-size: 10px;
   }
 
+  .dashboard-view-all {
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
   .attendance-summary {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .attendance-summary-item {
-    min-height: 62px;
+    padding: 12px 13px;
+    border-right: 1px solid var(--border);
+  }
+
+  .attendance-summary-item:nth-child(even) {
+    border-right: 0;
+  }
+
+  .attendance-summary-item:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+
+  .dashboard-attendance-table-wrapper {
+    display: none;
+  }
+
+  .dashboard-mobile-attendance {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
     padding: 12px;
+    background: rgba(250, 247, 242, 0.35);
   }
 
-  .attendance-summary-item strong {
-    font-size: 15px;
+  .dashboard-attendance-mobile-card {
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface);
   }
 
-  .attendance-summary-item small {
+  .dashboard-mobile-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .dashboard-mobile-person > div:last-child {
+    min-width: 0;
+  }
+
+  .dashboard-mobile-person strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-mobile-person span {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-mobile-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 11px;
+  }
+
+  .dashboard-mobile-status-grid > div {
+    min-width: 0;
+    padding: 8px;
+    border-radius: 8px;
+    background: rgba(247, 241, 233, 0.58);
+  }
+
+  .dashboard-mobile-status-grid small {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-muted);
     font-size: 8px;
+    font-weight: 700;
   }
 
-  .dashboard-profile-card {
-    padding: 17px;
-  }
-
-  .dashboard-profile-top {
-    gap: 11px;
-  }
-
-  .dashboard-large-avatar {
-    flex-basis: 50px;
-    width: 50px;
-    height: 50px;
-    border-radius: 14px;
-    font-size: 19px;
-  }
-
-  .dashboard-profile-top h3 {
-    font-size: 16px;
+  .dashboard-mobile-status-grid .attendance-pill {
+    width: 100%;
+    min-width: 0;
   }
 
   .dashboard-management-grid {
-    gap: 8px;
-    padding: 12px;
+    grid-template-columns: 1fr;
+    padding: 13px;
   }
 
   .dashboard-management-item {
-    padding: 13px;
+    padding: 12px;
   }
 
-  .dashboard-residence-item {
-    padding: 13px;
-  }
-
-  .dashboard-residence-item-icon {
-    flex-basis: 38px;
-    width: 38px;
-    height: 38px;
-  }
-
-  .dashboard-residence-item strong {
-    font-size: 11px;
-  }
-
-  .dashboard-residence-item p {
-    font-size: 8px;
+  .dashboard-profile-card {
+    padding: 18px;
   }
 }
 
-/* ==========================================================================
-   VERY SMALL MOBILE
-========================================================================== */
-
-@media (max-width: 380px) {
+@media (max-width: 480px) {
   .dashboard-page {
-    padding-left: 11px;
-    padding-right: 11px;
+    padding: 18px 12px 25px;
   }
 
   .dashboard-header h1 {
     font-size: 25px;
   }
 
+  .dashboard-eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.4px;
+  }
+
+  .dashboard-stats {
+    gap: 9px;
+  }
+
   .dashboard-stat-card {
-    gap: 12px;
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: 128px;
     padding: 13px;
   }
 
   .dashboard-stat-icon {
-    flex-basis: 40px;
-    width: 40px;
-    height: 40px;
-    font-size: 17px;
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .dashboard-stat-card > div:last-child {
+    width: 100%;
+  }
+
+  .dashboard-stat-card strong {
+    font-size: 21px;
+  }
+
+  .dashboard-stat-card small {
+    white-space: normal;
   }
 
   .dashboard-card-header {
-    padding-left: 14px;
-    padding-right: 14px;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .attendance-summary-item {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-}
-
-/* ==========================================================================
-   TOUCH DEVICES
-========================================================================== */
-
-@media (hover: none) {
-  .dashboard-stat-card:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
+  .dashboard-view-all {
+    width: 100%;
   }
 
-  .dashboard-management-item:hover {
-    transform: none;
-    box-shadow: none;
+  .attendance-summary-item strong {
+    font-size: 15px;
   }
 
-  .dashboard-profile-links a:hover {
-    transform: none;
+  .dashboard-mobile-status-grid {
+    grid-template-columns: 1fr;
   }
 
-  .dashboard-view-all:hover {
-    transform: none;
+  .dashboard-residence-list {
+    padding: 12px;
   }
 }
-
-/* ==========================================================================
-   REDUCED MOTION
-========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-page {
+  .dashboard-page,
+  .dashboard-stat-card,
+  .dashboard-management-item,
+  .dashboard-view-all {
     animation: none;
+    transition: none;
+  }
+}
+
+@keyframes dashboardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
   }
 
-  .dashboard-stat-card,
-  .dashboard-stat-icon,
-  .dashboard-management-item,
-  .dashboard-view-all,
-  .management-arrow,
-  .dashboard-profile-links a {
-    transition: none;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

@@ -6,8 +6,10 @@ import {
   collection,
   doc,
   onSnapshot,
+  query,
   serverTimestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 
 import { db } from "../../services/firebase";
@@ -89,6 +91,7 @@ function DevoteeProfile() {
 
     setLoading(true);
     setError("");
+    setDevotee(null);
 
     const userRef = doc(
       db,
@@ -164,28 +167,23 @@ function DevoteeProfile() {
       return undefined;
     }
 
+    setRooms([]);
     setRoomsLoading(true);
     setRoomError("");
 
-    const roomsRef = collection(db, "rooms");
+    const roomsQuery = query(
+      collection(db, "rooms"),
+      where("occupants", "array-contains", requestedUid)
+    );
 
     const unsubscribe = onSnapshot(
-      roomsRef,
+      roomsQuery,
       (snapshot) => {
         const roomRecords = snapshot.docs
           .map((roomDoc) => ({
             id: roomDoc.id,
             ...roomDoc.data(),
           }))
-          .filter((room) => {
-            const occupants = Array.isArray(
-              room.occupants
-            )
-              ? room.occupants
-              : [];
-
-            return occupants.includes(requestedUid);
-          })
           .sort((a, b) => {
             const floorA = Number(a.floor || 0);
             const floorB = Number(b.floor || 0);
@@ -194,13 +192,8 @@ function DevoteeProfile() {
               return floorA - floorB;
             }
 
-            const numberA = String(
-              a.roomNumber || ""
-            );
-
-            const numberB = String(
-              b.roomNumber || ""
-            );
+            const numberA = String(a.roomNumber || "");
+            const numberB = String(b.roomNumber || "");
 
             return numberA.localeCompare(
               numberB,
@@ -224,9 +217,19 @@ function DevoteeProfile() {
         setRooms([]);
         setRoomsLoading(false);
 
-        setRoomError(
-          "Unable to load current residence information."
-        );
+        if (snapshotError?.code === "permission-denied") {
+          setRoomError(
+            "You do not have permission to view residence information."
+          );
+        } else if (snapshotError?.code === "unavailable") {
+          setRoomError(
+            "Residence information is temporarily unavailable. Please try again."
+          );
+        } else {
+          setRoomError(
+            "Unable to load current residence information."
+          );
+        }
       }
     );
 
@@ -1120,9 +1123,15 @@ function getStatus(devotee) {
     .trim()
     .toLowerCase();
 
-  return value === "inactive"
-    ? "Inactive"
-    : "Active";
+  if (value === "deleted") {
+    return "Deleted";
+  }
+
+  if (value === "inactive") {
+    return "Inactive";
+  }
+
+  return "Active";
 }
 
 /*
@@ -1176,20 +1185,24 @@ function formatDate(value) {
       });
   }
 
+  const dateValue =
+    value instanceof Date
+      ? value
+      : typeof value === "number"
+        ? new Date(value)
+        : typeof value === "string"
+          ? new Date(value)
+          : null;
+
+  if (dateValue && !Number.isNaN(dateValue.getTime())) {
+    return dateValue.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
   if (typeof value === "string") {
-    const parsedDate = new Date(value);
-
-    if (!Number.isNaN(parsedDate.getTime())) {
-      return parsedDate.toLocaleDateString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }
-      );
-    }
-
     return value;
   }
 

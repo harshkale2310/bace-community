@@ -49,6 +49,74 @@ function getToday() {
 }
 
 /* ---------------------------------------------------------
+   NOTIFICATIONS
+
+   Notifications are helpful, but they must never block a
+   successful seva operation. A notification failure is logged
+   and intentionally ignored by the calling action.
+--------------------------------------------------------- */
+
+async function createNotification({
+  recipientId,
+  type,
+  title,
+  message,
+  metadata = {},
+}) {
+  if (!recipientId) {
+    return;
+  }
+
+  try {
+    await addDoc(
+      collection(db, "notifications"),
+      {
+        recipientId,
+        type,
+        title,
+        message,
+        read: false,
+        createdAt: serverTimestamp(),
+        ...metadata,
+      }
+    );
+  } catch (notificationError) {
+    console.error(
+      "Failed to create seva notification:",
+      notificationError
+    );
+  }
+}
+
+function formatDisplayDate(dateString) {
+  if (!dateString) {
+    return "Date not set";
+  }
+
+  const [year, month, day] = String(dateString).split("-");
+
+  if (!year || !month || !day) {
+    return dateString;
+  }
+
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day)
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return dateString;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/* ---------------------------------------------------------
    ROOM IDENTITY
 --------------------------------------------------------- */
 
@@ -88,6 +156,9 @@ function Seva() {
   const [rooms, setRooms] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
+  const [creating, setCreating] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
 
   const [devoteesLoading, setDevoteesLoading] =
     useState(false);
@@ -327,9 +398,18 @@ function Seva() {
 
     setRoomsLoading(true);
 
-    const roomsQuery = query(
-      collection(db, "rooms")
-    );
+    /*
+     * Administrators need the complete room directory because
+     * they can search assignments by residence. Devotees only
+     * need rooms containing their own UID, so their view avoids
+     * reading the entire rooms collection.
+     */
+    const roomsQuery = isAdministrator
+      ? query(collection(db, "rooms"))
+      : query(
+          collection(db, "rooms"),
+          where("occupants", "array-contains", user.uid)
+        );
 
     const unsubscribe = onSnapshot(
       roomsQuery,
@@ -357,7 +437,7 @@ function Seva() {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [user?.uid, isAdministrator]);
 
   /* ---------------------------------------------------------
      DEVOTEE LOOKUP
@@ -774,7 +854,9 @@ function Seva() {
     }
 
     try {
-      await addDoc(
+      setCreating(true);
+
+      const createdSeva = await addDoc(
         collection(
           db,
           "seva"
@@ -823,6 +905,17 @@ function Seva() {
         }
       );
 
+      await createNotification({
+        recipientId: selectedDevotee.id,
+        type: "seva_assigned",
+        title: "New Seva Assignment",
+        message: `You have been assigned the seva “${title}” for ${formatDisplayDate(form.date)}.`,
+        metadata: {
+          sevaId: createdSeva.id,
+          date: form.date,
+        },
+      });
+
       resetForm();
       setShowForm(false);
       setError("");
@@ -835,6 +928,8 @@ function Seva() {
       setError(
         "Unable to create seva assignment. Please check your Firebase permissions."
       );
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -909,6 +1004,8 @@ function Seva() {
     }
 
     try {
+      setUpdatingId(assignment.id);
+
       await updateSevaDocument(
         assignment.id,
         {
@@ -927,6 +1024,27 @@ function Seva() {
             "",
         }
       );
+
+      if (isAdministrator) {
+        const statusMessage =
+          nextStatus === "Cancelled"
+            ? `Your seva assignment “${assignment.title}” has been cancelled.`
+            : `Your seva assignment “${assignment.title}” is now ${nextStatus}.`;
+
+        await createNotification({
+          recipientId: assignment.devoteeId,
+          type: "seva_status_updated",
+          title: nextStatus === "Cancelled"
+            ? "Seva Cancelled"
+            : "Seva Status Updated",
+          message: statusMessage,
+          metadata: {
+            sevaId: assignment.id,
+            status: nextStatus,
+            date: assignment.date || "",
+          },
+        });
+      }
     } catch (statusError) {
       console.error(
         "Failed to update seva status:",
@@ -936,6 +1054,8 @@ function Seva() {
       setError(
         "Unable to update seva status. Please check your Firebase permissions."
       );
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -1212,13 +1332,16 @@ function Seva() {
                   type="submit"
                   className="primary-button"
                   disabled={
+                    creating ||
                     devoteesLoading ||
                     !devoteesLoaded ||
                     devotees.length ===
                       0
                   }
                 >
-                  Create Assignment
+                  {creating
+                    ? "Creating..."
+                    : "Create Assignment"}
                 </button>
 
               </div>
@@ -1487,6 +1610,9 @@ function Seva() {
                     onStatusChange={
                       updateStatus
                     }
+                    updatingId={
+                      updatingId
+                    }
                   />
                 );
               }
@@ -1590,6 +1716,7 @@ function SevaCard({
   isDevotee,
   roomsLoading,
   onStatusChange,
+  updatingId,
 }) {
   const statusClass =
     assignment.status
@@ -1737,8 +1864,9 @@ function SevaCard({
             <span>
               <b>📅</b>
 
-              {assignment.date ||
-                "Date not set"}
+              {formatDisplayDate(
+                assignment.date
+              )}
             </span>
 
             <span>
@@ -1782,6 +1910,7 @@ function SevaCard({
             <button
               type="button"
               className="action-primary"
+              disabled={updatingId === assignment.id}
               onClick={() =>
                 onStatusChange(
                   assignment,
@@ -1798,6 +1927,7 @@ function SevaCard({
             <button
               type="button"
               className="action-primary"
+              disabled={updatingId === assignment.id}
               onClick={() =>
                 onStatusChange(
                   assignment,
@@ -1814,6 +1944,7 @@ function SevaCard({
             <button
               type="button"
               className="action-complete"
+              disabled={updatingId === assignment.id}
               onClick={() =>
                 onStatusChange(
                   assignment,
@@ -1846,6 +1977,7 @@ function SevaCard({
                 "Cancelled" && (
                 <button
                   type="button"
+                  disabled={updatingId === assignment.id}
                   onClick={() =>
                     onStatusChange(
                       assignment,
@@ -1865,6 +1997,7 @@ function SevaCard({
                 "Cancelled" && (
                 <button
                   type="button"
+                  disabled={updatingId === assignment.id}
                   onClick={() =>
                     onStatusChange(
                       assignment,
