@@ -1,952 +1,1389 @@
-/* =========================================================
-   SADHANA PAGE
-   ========================================================= */
-
 .sadhana-page {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
-  box-sizing: border-box;
-  animation: sadhana-page-enter 0.25s ease-out;
+  color: var(--text-primary, #1f2937);
 }
-
-/* =========================================================
-   HEADER
-   ========================================================= */
 
 .sadhana-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 26px;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
-.sadhana-eyebrow {
-  display: block;
+.sadhana-eyebrow,
+.sadhana-card-eyebrow {
+  display: inline-block;
   margin-bottom: 7px;
-  color: var(--primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  line-height: 1.4;
   text-transform: uppercase;
+  color: #6b7280;
 }
 
 .sadhana-header h1 {
   margin: 0;
-  color: var(--text);
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(29px, 3vw, 35px);
-  font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: -0.02em;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.05;
 }
 
-.sadhana-header p {
-  margin: 9px 0 0;
-  color: var(--text-muted);
-  font-size: 13px;
+.sadhana-header p,
+.sadhana-card-header p,
+.sadhana-info-card p,
+.sadhana-empty p {
+  margin: 8px 0 0;
+  color: #6b7280;
   line-height: 1.6;
 }
 
-/* =========================================================
-   COMMON CARD
-   ========================================================= */
+.sadhana-error,
+.sadhana-success,
+.sadhana-readonly-notice {
+  border-radius: 12px;
+  padding: 12px 15px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sadhana-error {
+  background: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+}
+.sadhana-success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.sadhana-readonly-notice {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.sadhana-card,
+.sadhana-stat,
+.sadhana-info-card,
+.sadhana-toolbar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+}
 
 .sadhana-card {
-  width: 100%;
+  padding: 22px;
   margin-bottom: 20px;
-  overflow: hidden;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 17px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
 }
 
 .sadhana-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  padding: 22px 24px;
-  border-bottom: 1px solid var(--border);
+  gap: 18px;
+  margin-bottom: 20px;
 }
 
 .sadhana-card-header h2 {
   margin: 0;
-  color: var(--text);
-  font-size: 19px;
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 22px;
 }
-
-.sadhana-card-header p {
-  margin: 6px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.sadhana-card-eyebrow {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--primary);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.11em;
-  line-height: 1.4;
-  text-transform: uppercase;
-}
-
 .sadhana-date-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  flex-shrink: 0;
-  padding: 0 10px;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 750;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
-
-/* =========================================================
-   ALERTS
-   ========================================================= */
-
-.sadhana-error,
-.sadhana-success {
-  display: flex;
-  align-items: flex-start;
-  min-height: 45px;
-  margin-bottom: 18px;
-  padding: 12px 15px;
-  box-sizing: border-box;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.sadhana-error {
-  border: 1px solid rgba(179, 58, 58, 0.18);
-  background: var(--danger-light);
-  color: var(--danger);
-}
-
-.sadhana-success {
-  border: 1px solid rgba(48, 128, 77, 0.18);
-  background: var(--success-light);
-  color: var(--success);
-}
-
-/* =========================================================
-   ADMIN STATISTICS
-   ========================================================= */
 
 .sadhana-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
   margin-bottom: 20px;
 }
 
 .sadhana-stat {
-  position: relative;
-  min-width: 0;
-  min-height: 120px;
-  padding: 20px;
-  box-sizing: border-box;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
+  padding: 18px;
 }
-
-.sadhana-stat::after {
-  position: absolute;
-  right: -34px;
-  bottom: -42px;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: var(--primary-light);
-  opacity: 0.18;
-  content: "";
-  pointer-events: none;
-}
-
-.sadhana-stat:hover {
-  transform: translateY(-2px);
-  border-color: rgba(139, 69, 19, 0.14);
-  box-shadow: var(--shadow-md);
-}
-
-.sadhana-stat span,
-.sadhana-stat strong,
-.sadhana-stat small {
-  position: relative;
-  z-index: 1;
-  display: block;
-}
-
 .sadhana-stat span {
-  color: var(--text-muted);
-  font-size: 11px;
+  display: block;
+  font-size: 13px;
+  color: #64748b;
   font-weight: 700;
 }
-
 .sadhana-stat strong {
+  display: block;
   margin-top: 8px;
-  color: var(--text);
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 30px;
   line-height: 1;
 }
-
 .sadhana-stat small {
+  display: block;
   margin-top: 8px;
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.4;
+  color: #94a3b8;
 }
-
-/* =========================================================
-   ADMIN TOOLBAR
-   ========================================================= */
 
 .sadhana-toolbar {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 220px minmax(240px, 1fr);
+  gap: 16px;
+  padding: 16px;
   margin-bottom: 20px;
-  padding: 17px;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
 }
 
-.sadhana-toolbar label {
+.sadhana-toolbar label,
+.sadhana-date-selector label,
+.sadhana-extra-grid label {
   display: flex;
-  min-width: 190px;
   flex-direction: column;
   gap: 7px;
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 750;
 }
 
-.sadhana-toolbar .sadhana-search {
-  flex: 1;
-  max-width: 430px;
-}
-
-.sadhana-toolbar input {
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
+.sadhana-toolbar label > span,
+.sadhana-date-selector label > span,
+.sadhana-extra-grid label > span {
   font-size: 12px;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
+  font-weight: 800;
+  color: #475569;
 }
 
-.sadhana-toolbar input:hover {
-  border-color: #d8cabb;
-}
-
-.sadhana-toolbar input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
-  background: #fffdfb;
-}
-
-.sadhana-toolbar input::placeholder {
-  color: var(--text-muted);
-}
-
-/* =========================================================
-   DEVOTEE DATE SELECTOR
-   ========================================================= */
-
-.sadhana-date-selector {
-  padding: 20px 24px 0;
-}
-
-.sadhana-date-selector label {
-  display: flex;
-  width: 200px;
-  flex-direction: column;
-  gap: 7px;
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.sadhana-date-selector input {
+.sadhana-toolbar input,
+.sadhana-date-selector input,
+.sadhana-extra-grid input,
+.sadhana-extra-grid textarea {
   width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
   box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 12px;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.sadhana-date-selector input:hover {
-  border-color: #d8cabb;
-}
-
-.sadhana-date-selector input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
-}
-
-/* =========================================================
-   READ ONLY NOTICE
-   ========================================================= */
-
-.sadhana-readonly-notice {
-  margin: 18px 24px 0;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid #dbe1e8;
   border-radius: 10px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  background: #fff;
+  color: #111827;
+  padding: 10px 11px;
+  outline: none;
+  font: inherit;
+}
+
+.sadhana-toolbar input:focus,
+.sadhana-date-selector input:focus,
+.sadhana-extra-grid input:focus,
+.sadhana-extra-grid textarea:focus,
+.sadhana-sheet-table input:focus,
+.sadhana-sheet-table select:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18);
+}
+
+.sadhana-devotee-guide {
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.sadhana-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+
+.sadhana-guide-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sadhana-guide-heading strong {
+  display: block;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.sadhana-guide-heading p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 12px;
   line-height: 1.5;
 }
 
-/* =========================================================
-   DEVOTEE FORM
-   ========================================================= */
-
-.sadhana-form {
-  padding: 24px;
-}
-
-.sadhana-form-grid {
+.sadhana-guide-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.sadhana-form-grid label {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
   gap: 8px;
 }
 
-.sadhana-form-grid label > span {
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.sadhana-form-grid input {
-  width: 100%;
-  min-height: 57px;
-  padding: 10px 13px;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 800;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
-}
-
-.sadhana-form-grid input:hover:not(:disabled) {
-  border-color: #d8cabb;
-}
-
-.sadhana-form-grid input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
-  background: #fffdfb;
-}
-
-.sadhana-form-grid input:disabled {
-  cursor: not-allowed;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  opacity: 0.75;
-}
-
-/* =========================================================
-   NOTES
-   ========================================================= */
-
-.sadhana-notes-field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-top: 18px;
-}
-
-.sadhana-notes-field > span {
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.sadhana-notes-field textarea {
-  width: 100%;
-  min-height: 120px;
-  padding: 12px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 1.55;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
-}
-
-.sadhana-notes-field textarea:hover:not(:disabled) {
-  border-color: #d8cabb;
-}
-
-.sadhana-notes-field textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.08);
-  background: #fffdfb;
-}
-
-.sadhana-notes-field textarea:disabled {
-  cursor: not-allowed;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  opacity: 0.75;
-}
-
-.sadhana-notes-field textarea::placeholder {
-  color: var(--text-muted);
-}
-
-/* =========================================================
-   FORM ACTIONS
-   ========================================================= */
-
-.sadhana-form-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-
-.sadhana-primary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 43px;
-  padding: 0 18px;
-  border: 1px solid var(--primary);
-  border-radius: 9px;
-  background: var(--primary);
-  color: #fff;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 5px 14px rgba(70, 45, 25, 0.1);
-  transition:
-    transform 0.18s ease,
-    background 0.18s ease,
-    box-shadow 0.18s ease,
-    opacity 0.18s ease;
-}
-
-.sadhana-primary-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: var(--primary-dark);
-  background: var(--primary-dark);
-  box-shadow: 0 8px 20px rgba(70, 45, 25, 0.14);
-}
-
-.sadhana-primary-button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.sadhana-primary-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* =========================================================
-   HISTORY
-   ========================================================= */
-
-.sadhana-history-list {
-  padding: 7px 0;
-}
-
-.sadhana-history-item {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 1.4fr 0.8fr 0.8fr;
-  align-items: center;
-  gap: 15px;
-  padding: 15px 24px;
-  box-sizing: border-box;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.18s ease;
-}
-
-.sadhana-history-item:last-child {
-  border-bottom: 0;
-}
-
-.sadhana-history-item:hover,
-.sadhana-history-item.selected {
-  background: #fdfaf7;
-}
-
-.sadhana-history-item > div {
+.sadhana-guide-grid > div {
   min-width: 0;
+  padding: 11px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+  background: #fff;
 }
 
-.sadhana-history-item strong,
-.sadhana-history-item span {
+.sadhana-guide-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.sadhana-guide-grid strong,
+.sadhana-guide-grid small {
   display: block;
 }
 
-.sadhana-history-item strong {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 750;
+.sadhana-guide-grid strong {
+  color: #334155;
+  font-size: 12px;
 }
 
-.sadhana-history-item span {
+.sadhana-guide-grid small {
   margin-top: 3px;
-  color: var(--text-muted);
+  color: #94a3b8;
   font-size: 10px;
   line-height: 1.4;
 }
 
-/* =========================================================
-   TABLE
-   ========================================================= */
-
-.sadhana-table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.sadhana-card-sheet {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 10px;
 }
 
-.sadhana-table {
-  width: 100%;
-  min-width: 900px;
-  border-collapse: collapse;
+.sadhana-sheet-heading,
+.sadhana-verse,
+.sadhana-motto {
+  border-bottom: 1px solid #1f2937;
+  text-align: center;
+  padding: 8px 12px;
 }
 
-.sadhana-table th {
-  padding: 13px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  text-align: left;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
-  text-transform: uppercase;
-  white-space: nowrap;
+.sadhana-sheet-heading {
+  font-size: 15px;
+  font-weight: 700;
 }
-
-.sadhana-table td {
-  padding: 15px 20px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  font-size: 12px;
-  vertical-align: middle;
-}
-
-.sadhana-table tbody tr {
-  transition: background 0.16s ease;
-}
-
-.sadhana-table tbody tr:hover {
-  background: #fdfaf7;
-}
-
-.sadhana-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-/* =========================================================
-   DEVOTEE TABLE PERSON
-   ========================================================= */
-
-.sadhana-devotee {
+.sadhana-sheet-heading > div {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-width: 220px;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
 }
-
-.sadhana-avatar {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  place-items: center;
-  border: 1px solid rgba(139, 69, 19, 0.08);
-  border-radius: 50%;
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 12px;
+.sadhana-sheet-heading span {
+  font-style: italic;
+  font-weight: 500;
+}
+.sadhana-sheet-heading small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 500;
+}
+.sadhana-verse {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sadhana-verse span {
+  margin-left: 14px;
+  white-space: nowrap;
+}
+.sadhana-motto {
+  font-size: 13px;
   font-weight: 800;
 }
 
-.sadhana-devotee strong,
-.sadhana-devotee small {
-  display: block;
+.sadhana-identity-row {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  border-bottom: 1px solid #1f2937;
 }
 
-.sadhana-devotee strong {
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 750;
+.sadhana-identity-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 10px;
 }
 
-.sadhana-devotee small {
-  max-width: 220px;
-  margin-top: 3px;
+.sadhana-identity-row label + label {
+  border-left: 1px solid #1f2937;
+}
+.sadhana-identity-row span {
+  font-weight: 800;
+  font-size: 13px;
+}
+.sadhana-identity-row strong {
+  font-size: 13px;
+  font-weight: 600;
   overflow: hidden;
-  color: var(--text-muted);
-  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* =========================================================
-   ROUNDS
-   ========================================================= */
-
-.sadhana-rounds {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 38px;
-  min-height: 31px;
-  padding: 0 8px;
-  box-sizing: border-box;
-  border: 1px solid rgba(139, 69, 19, 0.06);
-  border-radius: 8px;
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 750;
+.sadhana-sheet-scroll {
+  overflow-x: auto;
 }
-
-/* =========================================================
-   EMPTY STATE
-   ========================================================= */
-
-.sadhana-empty {
-  padding: 65px 25px;
+.sadhana-sheet-table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+.sadhana-sheet-table thead tr:first-child th {
+  background: #eef2f7;
+  color: #334155;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.sadhana-sheet-table thead tr:nth-child(2) th {
+  background: #f8fafc;
+  color: #475569;
+}
+.sadhana-sheet-table th,
+.sadhana-sheet-table td {
+  border-right: 1px solid #1f2937;
+  border-bottom: 1px solid #1f2937;
+  padding: 5px;
+  vertical-align: middle;
+}
+.sadhana-sheet-table th:last-child,
+.sadhana-sheet-table td:last-child {
+  border-right: 0;
+}
+.sadhana-sheet-table th {
+  background: #fafafa;
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.sadhana-sheet-table td {
+  height: 94px;
+  text-align: center;
+  background: #fff;
+}
+.sadhana-sheet-table tbody tr:hover td {
+  background: #f8fafc;
+}
+.sadhana-sheet-table th:first-child,
+.sadhana-sheet-table td:first-child {
+  position: sticky;
+  left: 0;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  z-index: 5;
+  background: #f8fafc;
+  box-shadow: 7px 0 0 -6px #cbd5e1, 10px 0 14px -14px rgba(15, 23, 42, 0.5);
+}
+.sadhana-sheet-table thead th:first-child {
+  z-index: 8;
+}
+.sadhana-sheet-table tbody td:first-child {
+  font-weight: 800;
+  color: #334155;
+}
+.sadhana-sheet-table th:nth-child(2),
+.sadhana-sheet-table td:nth-child(2) {
+  border-left: 2px solid #94a3b8;
+}
+.sadhana-sheet-table thead th:nth-child(2) {
+  border-left: 2px solid #94a3b8;
+}
+.sadhana-sheet-table input,
+.sadhana-sheet-table select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #d5d9df;
+  border-radius: 4px;
+  padding: 6px 3px;
+  font-size: 10px;
+  background: #fff;
+  color: #111827;
+}
+.sadhana-sheet-table input[type="text"] {
+  min-width: 72px;
+}
+.sadhana-sheet-table input[type="number"] {
   text-align: center;
 }
+.sadhana-sheet-table input:disabled,
+.sadhana-sheet-table select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
 
+.sadhana-sheet-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sadhana-extra-card {
+  padding-top: 20px;
+}
+.sadhana-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.sadhana-full-field {
+  grid-column: 1 / -1;
+}
+.sadhana-extra-grid textarea {
+  resize: vertical;
+}
+.sadhana-date-selector {
+  margin-top: 16px;
+  max-width: 220px;
+}
+.sadhana-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.sadhana-primary-button {
+  border: 0;
+  border-radius: 10px;
+  background: #111827;
+  color: #fff;
+  padding: 11px 17px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sadhana-primary-button:hover {
+  background: #273244;
+}
+.sadhana-primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sadhana-history-list {
+  display: grid;
+  gap: 8px;
+}
+.sadhana-history-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 12px;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 12px;
+  padding: 13px;
+  cursor: pointer;
+}
+.sadhana-history-item:hover,
+.sadhana-history-item.selected {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.sadhana-history-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sadhana-history-item span {
+  color: #64748b;
+  font-size: 12px;
+}
+.sadhana-history-item strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.sadhana-empty {
+  padding: 34px 10px;
+  text-align: center;
+}
 .sadhana-empty h3 {
   margin: 0;
-  color: var(--text);
-  font-size: 16px;
+  font-size: 18px;
+}
+
+.sadhana-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+.sadhana-table {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: collapse;
+}
+.sadhana-table th,
+.sadhana-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #edf0f3;
+  text-align: left;
+  vertical-align: middle;
+}
+.sadhana-table th {
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f8fafc;
+}
+.sadhana-table td {
+  font-size: 13px;
+  color: #334155;
+}
+.sadhana-table tbody tr:hover {
+  background: #fafafa;
+}
+.sadhana-devotee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 170px;
+}
+.sadhana-devotee > div:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sadhana-devotee strong {
+  color: #111827;
+}
+.sadhana-devotee small {
+  color: #94a3b8;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+.sadhana-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
   font-weight: 800;
 }
-
-.sadhana-empty p {
-  max-width: 430px;
-  margin: 7px auto 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.55;
+.sadhana-rounds {
+  display: inline-flex;
+  min-width: 34px;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-weight: 800;
+  color: #334155;
 }
-
-/* =========================================================
-   ADMIN INFORMATION
-   ========================================================= */
 
 .sadhana-info-card {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-top: 18px;
-  padding: 15px 17px;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+  margin-bottom: 20px;
 }
-
 .sadhana-info-icon {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   display: grid;
-  width: 23px;
-  height: 23px;
-  flex-shrink: 0;
   place-items: center;
   border-radius: 50%;
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 11px;
+  background: #f1f5f9;
   font-weight: 800;
+  color: #475569;
 }
-
 .sadhana-info-card strong {
-  display: block;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 750;
+  font-size: 14px;
 }
-
-.sadhana-info-card p {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-/* =========================================================
-   RESPONSIVE — LARGE TABLET
-   ========================================================= */
 
 @media (max-width: 1100px) {
   .sadhana-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .sadhana-form-grid {
+@media (max-width: 1100px) {
+  .sadhana-guide-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .sadhana-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+  .sadhana-devotee-guide {
+    padding: 15px;
+  }
+  .sadhana-guide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-/* =========================================================
-   RESPONSIVE — TABLET
-   ========================================================= */
-
-@media (max-width: 800px) {
   .sadhana-toolbar {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
-
-  .sadhana-toolbar label,
-  .sadhana-toolbar .sadhana-search {
-    width: 100%;
-    max-width: none;
+  .sadhana-extra-grid {
+    grid-template-columns: 1fr;
   }
-
-  .sadhana-card-header {
-    gap: 14px;
+  .sadhana-full-field {
+    grid-column: auto;
   }
-
-  .sadhana-date-selector label {
-    width: 100%;
+  .sadhana-identity-row {
+    grid-template-columns: 1fr;
   }
-
+  .sadhana-identity-row label + label {
+    border-left: 0;
+    border-top: 1px solid #1f2937;
+  }
   .sadhana-history-item {
-    grid-template-columns: 1.2fr 0.8fr 0.8fr;
+    grid-template-columns: 1fr 1fr;
+  }
+  .sadhana-history-item div:last-child {
+    grid-column: 1 / -1;
   }
 }
 
-/* =========================================================
-   RESPONSIVE — MOBILE
-   ========================================================= */
-
-@media (max-width: 650px) {
-  .sadhana-header h1 {
-    font-size: 28px;
+@media (max-width: 520px) {
+  .sadhana-guide-grid {
+    grid-template-columns: 1fr;
   }
-
-  .sadhana-header p {
-    font-size: 12px;
+  .sadhana-guide-grid > div {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: 8px;
   }
-
+  .sadhana-guide-grid span {
+    grid-row: 1 / span 2;
+  }
+  .sadhana-guide-grid small {
+    grid-column: 2;
+  }
   .sadhana-stats {
     grid-template-columns: 1fr;
   }
-
+  .sadhana-header h1 {
+    font-size: 30px;
+  }
   .sadhana-card-header {
     flex-direction: column;
-    align-items: flex-start;
   }
-
-  .sadhana-date-badge {
-    width: fit-content;
+  .sadhana-verse span {
+    display: block;
+    margin: 5px 0 0;
   }
-
-  .sadhana-form {
-    padding: 18px;
+  .sadhana-sheet-heading {
+    font-size: 13px;
   }
+  .sadhana-motto {
+    font-size: 11px;
+  }
+  .sadhana-history-item {
+    grid-template-columns: 1fr;
+  }
+  .sadhana-history-item div:last-child {
+    grid-column: auto;
+  }
+}
 
-  .sadhana-form-grid {
+
+/* =========================================================
+   Improved usability: devotee mobile form + admin reports
+   ========================================================= */
+
+.sadhana-mobile-note {
+  display: none;
+}
+
+.sadhana-mobile-fields {
+  display: none;
+}
+
+.sadhana-mobile-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 15px;
+}
+
+.sadhana-mobile-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.sadhana-mobile-section-heading strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.sadhana-mobile-section-heading span {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.sadhana-mobile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sadhana-mobile-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sadhana-mobile-field > span {
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 800;
+  color: #334155;
+}
+
+.sadhana-mobile-field > small {
+  min-height: 15px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+
+.sadhana-mobile-field input,
+.sadhana-mobile-field select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #d8dee7;
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  outline: none;
+}
+
+.sadhana-mobile-field input:focus,
+.sadhana-mobile-field select:focus {
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.13);
+}
+
+.sadhana-mobile-field input:disabled,
+.sadhana-mobile-field select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.sadhana-extra-grid label small,
+.sadhana-date-selector label small,
+.sadhana-toolbar label small {
+  display: block;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.sadhana-report-card {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+}
+
+.sadhana-report-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.sadhana-report-heading h2 {
+  margin: 0;
+  font-size: 21px;
+  color: #111827;
+}
+
+.sadhana-report-heading p {
+  margin: 7px 0 0;
+  color: #64748b;
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.sadhana-complete-badge,
+.sadhana-progress-badge {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sadhana-complete-badge {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.sadhana-progress-badge {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+.sadhana-report-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  align-items: end;
+  gap: 16px;
+}
+
+.sadhana-report-controls > label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sadhana-report-controls > label > span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.sadhana-report-controls > label > small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.sadhana-report-controls input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #dbe1e8;
+  border-radius: 10px;
+  padding: 9px 11px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+}
+
+.sadhana-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sadhana-secondary-button {
+  min-height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sadhana-secondary-button:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.sadhana-secondary-button:disabled,
+.sadhana-report-actions .sadhana-primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sadhana-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.sadhana-report-metrics > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.sadhana-report-metrics span,
+.sadhana-admin-summary span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sadhana-report-metrics strong,
+.sadhana-admin-summary strong {
+  display: block;
+  margin-top: 5px;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.sadhana-report-note {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.sadhana-report-note strong {
+  color: #334155;
+}
+
+.sadhana-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 15px;
+}
+
+.sadhana-admin-summary > div {
+  padding: 11px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.sadhana-submission-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sadhana-submission-status.submitted {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.sadhana-submission-status.missing {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+
+.sadhana-admin-mobile-list {
+  display: none;
+}
+
+.sadhana-admin-table-card .sadhana-card-header {
+  margin-bottom: 13px;
+}
+
+.sadhana-admin-table-card .sadhana-table {
+  min-width: 1180px;
+}
+
+.sadhana-admin-toolbar {
+  align-items: end;
+}
+
+.sadhana-admin-header {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .sadhana-report-controls {
     grid-template-columns: 1fr;
   }
 
-  .sadhana-form-actions {
-    align-items: stretch;
+  .sadhana-report-actions {
+    justify-content: stretch;
   }
 
-  .sadhana-primary-button {
-    width: 100%;
+  .sadhana-report-actions button {
+    flex: 1 1 220px;
   }
 
-  .sadhana-history-item {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 14px 16px;
-  }
-
-  .sadhana-history-item > div:first-child {
-    grid-column: 1 / -1;
-  }
-
-  .sadhana-info-card {
-    padding: 14px;
+  .sadhana-report-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* =========================================================
-   RESPONSIVE — SMALL MOBILE
-   ========================================================= */
-
-@media (max-width: 420px) {
-  .sadhana-page {
-    width: 100%;
+@media (max-width: 760px) {
+  .sadhana-sheet-scroll {
+    display: none;
   }
 
-  .sadhana-header h1 {
-    font-size: 25px;
+  .sadhana-mobile-note {
+    display: block;
+    margin: 12px 12px 0;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.5;
   }
 
-  .sadhana-stat {
-    min-height: 112px;
-    padding: 17px;
+  .sadhana-mobile-fields {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
   }
 
-  .sadhana-toolbar {
+  .sadhana-sheet-footer {
+    justify-content: flex-start;
+  }
+
+  .sadhana-report-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sadhana-report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sadhana-admin-desktop-table {
+    display: none;
+  }
+
+  .sadhana-admin-mobile-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .sadhana-admin-mobile-card {
+    padding: 13px;
+    border: 1px solid #e5e7eb;
+    border-radius: 13px;
+    background: #fff;
+  }
+
+  .sadhana-admin-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .sadhana-admin-person > div:last-child {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .sadhana-admin-person strong {
+    color: #111827;
+    font-size: 14px;
+  }
+
+  .sadhana-admin-person small {
+    margin-top: 2px;
+    color: #94a3b8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sadhana-admin-mobile-card .sadhana-submission-status {
+    margin: 11px 0;
+  }
+
+  .sadhana-admin-mobile-values {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .sadhana-admin-mobile-values > div {
+    min-width: 0;
+    padding: 9px;
+    border-radius: 9px;
+    background: #f8fafc;
+  }
+
+  .sadhana-admin-mobile-values span {
+    display: block;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .sadhana-admin-mobile-values strong {
+    display: block;
+    margin-top: 4px;
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 520px) {
+  .sadhana-mobile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sadhana-report-card {
     padding: 15px;
   }
 
-  .sadhana-card-header {
-    padding: 18px;
+  .sadhana-report-actions {
+    flex-direction: column;
   }
 
-  .sadhana-date-selector {
-    padding: 18px 18px 0;
+  .sadhana-report-actions button {
+    width: 100%;
+    flex: 1 1 auto;
   }
 
-  .sadhana-readonly-notice {
-    margin-left: 18px;
-    margin-right: 18px;
+  .sadhana-report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .sadhana-form {
-    padding: 18px;
+  .sadhana-admin-summary {
+    grid-template-columns: 1fr;
   }
 
-  .sadhana-card-header h2 {
+  .sadhana-admin-mobile-values {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sadhana-report-note {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .sadhana-mobile-fields {
+    padding: 9px;
+  }
+
+  .sadhana-mobile-section {
+    padding: 12px;
+  }
+
+  .sadhana-report-metrics strong {
     font-size: 17px;
   }
+}
 
-  .sadhana-history-item {
-    padding-left: 13px;
-    padding-right: 13px;
-  }
+/* Final usability refinements */
+.sadhana-sheet-scroll {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  isolation: isolate;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
 
-  .sadhana-devotee {
-    min-width: 190px;
+.sadhana-sheet-table {
+  min-width: 1480px;
+}
+
+/* Keep the date and the complete sleep section together while the rest of the
+   original card scrolls. This prevents To Bed from sliding underneath Date. */
+.sadhana-sheet-table thead th:first-child,
+.sadhana-sheet-table tbody td:first-child {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  background: #f8fafc;
+  background-clip: padding-box;
+  box-shadow: 1px 0 0 #1f2937;
+}
+
+.sadhana-sheet-table thead tr:first-child th:nth-child(2) {
+  position: sticky;
+  left: 96px;
+  z-index: 7;
+  background: #eef2f7;
+  box-shadow: 1px 0 0 #1f2937, 8px 0 12px rgba(15, 23, 42, 0.07);
+}
+
+.sadhana-sheet-table thead tr:nth-child(2) th:nth-child(1),
+.sadhana-sheet-table tbody td:nth-child(2) {
+  position: sticky;
+  left: 96px;
+  z-index: 7;
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  background: #f8fafc;
+}
+
+.sadhana-sheet-table thead tr:nth-child(2) th:nth-child(2),
+.sadhana-sheet-table tbody td:nth-child(3) {
+  position: sticky;
+  left: 172px;
+  z-index: 7;
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  background: #f8fafc;
+}
+
+.sadhana-sheet-table thead tr:nth-child(2) th:nth-child(3),
+.sadhana-sheet-table tbody td:nth-child(4) {
+  position: sticky;
+  left: 248px;
+  z-index: 7;
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  background: #f8fafc;
+  box-shadow: 8px 0 12px rgba(15, 23, 42, 0.07);
+}
+
+.sadhana-sheet-table thead tr:nth-child(2) th:nth-child(-n + 3) {
+  border-right-color: #1f2937;
+}
+
+.sadhana-sheet-table thead th:first-child {
+  background: #eef2f7;
+}
+
+.sadhana-sheet-table tbody td:first-child {
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.sadhana-sheet-table tbody td:nth-child(2),
+.sadhana-sheet-table tbody td:nth-child(3),
+.sadhana-sheet-table tbody td:nth-child(4) {
+  background: #fff;
+}
+
+.sadhana-report-start {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.sadhana-report-start span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sadhana-report-start strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.sadhana-report-start small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.sadhana-admin-table-card .sadhana-card-header p {
+  max-width: 780px;
+}
+
+@media (max-width: 760px) {
+  .sadhana-sheet-scroll {
+    display: none;
   }
 }
 
-/* =========================================================
-   PAGE ANIMATION
-   ========================================================= */
+/* Final Sadhana usability refinements */
+.sadhana-report-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
-@keyframes sadhana-page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
+.sadhana-report-controls input[type="month"]:disabled,
+.sadhana-admin-toolbar input[type="date"]:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+.sadhana-admin-table-card .sadhana-card-header p {
+  margin-top: 5px;
+  color: #64748b;
+}
+
+.sadhana-admin-mobile-values {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .sadhana-admin-mobile-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* =========================================================
-   REDUCED MOTION
-   ========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-  .sadhana-page,
-  .sadhana-stat,
-  .sadhana-toolbar input,
-  .sadhana-date-selector input,
-  .sadhana-form-grid input,
-  .sadhana-notes-field textarea,
-  .sadhana-primary-button,
-  .sadhana-history-item,
-  .sadhana-table tbody tr {
-    animation: none;
-    transition: none;
-  }
-
-  .sadhana-stat:hover,
-  .sadhana-primary-button:hover:not(:disabled) {
-    transform: none;
+@media (max-width: 420px) {
+  .sadhana-admin-mobile-values {
+    grid-template-columns: 1fr;
   }
 }
