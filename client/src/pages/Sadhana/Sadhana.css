@@ -650,7 +650,9 @@
   cursor: not-allowed;
 }
 
-/* Date sticky column */
+/* =========================================================
+   DATE STICKY COLUMN
+   ========================================================= */
 
 .sadhana-sheet-table th:first-child,
 .sadhana-sheet-table td:first-child {
@@ -1721,7 +1723,6 @@
 
 /* =========================================================
    RESPONSIVE — 1200px
-   Matches Attendance breakpoint
    ========================================================= */
 
 @media (max-width: 1200px) {
@@ -1736,7 +1737,6 @@
 
 /* =========================================================
    RESPONSIVE — 950px
-   Matches Attendance breakpoint
    ========================================================= */
 
 @media (max-width: 950px) {
@@ -1747,10 +1747,6 @@
   .sadhana-card,
   .sadhana-report-card {
     border-radius: var(--radius-md);
-  }
-
-  .sadhana-card,
-  .sadhana-report-card {
     padding: 20px;
   }
 
@@ -1791,12 +1787,16 @@
 
 /* =========================================================
    RESPONSIVE — 700px
-   Matches Attendance breakpoint
+   IMPORTANT:
+   KEEP TABLES VISIBLE ON MOBILE
    ========================================================= */
 
 @media (max-width: 700px) {
   .sadhana-page {
+    width: 100%;
+    max-width: 100%;
     padding: 4px 0 30px;
+    overflow-x: hidden;
   }
 
   .sadhana-header,
@@ -1829,6 +1829,10 @@
     flex-basis: auto;
   }
 
+  /* -----------------------------------------
+     SHEET HEADER
+     ----------------------------------------- */
+
   .sadhana-sheet-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1846,8 +1850,51 @@
     padding: 15px 17px;
   }
 
+  /* -----------------------------------------
+     MAIN SADHANA TABLE
+
+     NEVER HIDE IT ON MOBILE
+     ----------------------------------------- */
+
   .sadhana-sheet-scroll {
-    display: none;
+    display: block !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
+
+  .sadhana-sheet-table {
+    display: table !important;
+    width: 100%;
+    min-width: 1480px !important;
+  }
+
+  .sadhana-sheet-table thead {
+    display: table-header-group !important;
+  }
+
+  .sadhana-sheet-table tbody {
+    display: table-row-group !important;
+  }
+
+  .sadhana-sheet-table tr {
+    display: table-row !important;
+  }
+
+  .sadhana-sheet-table th,
+  .sadhana-sheet-table td {
+    display: table-cell !important;
+  }
+
+  /* Keep the mobile alternative OFF.
+     The actual table contains every field. */
+
+  .sadhana-mobile-fields {
+    display: none !important;
   }
 
   .sadhana-mobile-note {
@@ -1862,11 +1909,6 @@
     line-height: 1.5;
   }
 
-  .sadhana-mobile-fields {
-    display: block;
-    padding: 17px;
-  }
-
   .sadhana-sheet-footer {
     padding: 13px 17px;
   }
@@ -1875,17 +1917,94 @@
     white-space: normal;
   }
 
+  /* -----------------------------------------
+     MONTHLY PERFORMANCE TABLE
+     ----------------------------------------- */
+
   .sadhana-performance-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
     border-radius: var(--radius-md);
   }
 
-  .sadhana-admin-desktop-table {
-    display: none;
+  .sadhana-performance-table {
+    display: table !important;
+    width: 100%;
+    min-width: 1080px !important;
   }
 
-  .sadhana-admin-mobile-list {
-    display: block;
+  .sadhana-performance-table thead {
+    display: table-header-group !important;
   }
+
+  .sadhana-performance-table tbody {
+    display: table-row-group !important;
+  }
+
+  .sadhana-performance-table tr {
+    display: table-row !important;
+  }
+
+  .sadhana-performance-table th,
+  .sadhana-performance-table td {
+    display: table-cell !important;
+  }
+
+  /* -----------------------------------------
+     DAILY ADMIN TABLE
+
+     NEVER HIDE IT ON MOBILE
+     ----------------------------------------- */
+
+  .sadhana-admin-desktop-table {
+    display: block !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
+
+  .sadhana-admin-desktop-table .sadhana-table {
+    display: table !important;
+    width: 100%;
+    min-width: 1180px !important;
+  }
+
+  .sadhana-admin-desktop-table .sadhana-table thead {
+    display: table-header-group !important;
+  }
+
+  .sadhana-admin-desktop-table .sadhana-table tbody {
+    display: table-row-group !important;
+  }
+
+  .sadhana-admin-desktop-table .sadhana-table tr {
+    display: table-row !important;
+  }
+
+  .sadhana-admin-desktop-table .sadhana-table th,
+  .sadhana-admin-desktop-table .sadhana-table td {
+    display: table-cell !important;
+  }
+
+  /* Don't replace the complete admin table with
+     a possibly incomplete mobile-card JSX. */
+
+  .sadhana-admin-mobile-list {
+    display: none !important;
+  }
+
+  /* -----------------------------------------
+     OTHER MOBILE ELEMENTS
+     ----------------------------------------- */
 
   .sadhana-admin-summary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1903,7 +2022,6 @@
 
 /* =========================================================
    RESPONSIVE — 480px
-   Matches Attendance breakpoint
    ========================================================= */
 
 @media (max-width: 480px) {

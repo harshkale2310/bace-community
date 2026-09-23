@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   doc,
@@ -124,24 +124,39 @@ function getDaysInMonth(monthKey) {
 
 function getReportDays(monthKey, trackingStartDate = "") {
   const allDays = getDaysInMonth(monthKey);
+  const today = getToday();
   const currentMonth = getCurrentMonthKey();
 
   if (!monthKey || !allDays.length) return [];
 
-  if (monthKey < currentMonth) {
-    return allDays;
+  /*
+   * ONE GLOBAL TRACKING RULE
+   *
+   * The trackingStartDate comes from settings/general and is shared by
+   * Monthly reports.
+   *
+   * Therefore:
+   * - dates before trackingStartDate are never reportable;
+   * - completed months after the tracking start use the full calendar month;
+   * - the current month uses trackingStartDate -> today;
+   * - future months have no reportable dates.
+   */
+  if (monthKey > currentMonth) {
+    return [];
   }
 
-  if (monthKey === currentMonth) {
-    const today = getToday();
-    const startDate = trackingStartDate || today;
+  return allDays.filter((date) => {
+    if (date > today) return false;
 
-    return allDays.filter(
-      (date) => date >= startDate && date <= today
-    );
-  }
+    if (
+      trackingStartDate &&
+      date < trackingStartDate
+    ) {
+      return false;
+    }
 
-  return [];
+    return true;
+  });
 }
 
 function normalizeStatus(value) {
@@ -772,6 +787,12 @@ function exportMonthlyExcel({
     trackingStartDate
   );
 
+  if (!monthDates.length) {
+    throw new Error(
+      "No reportable dates are available for this month. The selected month may be before the tracking start date or in the future."
+    );
+  }
+
   const calendarDays =
     getDaysInMonth(monthKey);
 
@@ -808,7 +829,8 @@ function exportMonthlyExcel({
   const overviewRows = [
     {
       Field: "Report",
-      Value: "BACE Monthly Sadhana Report",
+      Value:
+        "BACE Monthly Sadhana Report",
     },
     {
       Field: "Month",
@@ -841,6 +863,12 @@ function exportMonthlyExcel({
         : "Not set",
     },
     {
+      Field: "Tracking Start Date",
+      Value: trackingStartDate
+        ? formatDate(trackingStartDate)
+        : "Not set",
+    },
+    {
       Field: "Days Covered by Report",
       Value: monthDates.length,
     },
@@ -852,6 +880,22 @@ function exportMonthlyExcel({
           ? calendarDays.length -
             monthDates.length
           : 0,
+    },
+    {
+      Field: "Overall Attendance %",
+      Value: (() => {
+        const attendanceRecords = reportDevotees.flatMap((devotee) =>
+          monthDates
+            .map((date) =>
+              recordMap.get(`${devotee.uid}_${date}`)
+            )
+            .filter(Boolean)
+        );
+
+        return calculateCombinedAttendanceStats(
+          attendanceRecords
+        ).percentage;
+      })(),
     },
     {
       Field: "Attendance Rule",
@@ -981,6 +1025,229 @@ function exportMonthlyExcel({
   );
 }
 
+
+/*
+ * MONTHLY ATTENDANCE EXPORT
+ *
+ * Attendance is exported separately from the Monthly Sadhana report.
+ * One row = one devotee with the complete month attendance calculation.
+ * A second sheet keeps the day-by-day attendance status so the admin can
+ * audit exactly how each monthly total was calculated.
+ */
+function exportMonthlyAttendanceExcel({
+  monthKey,
+  reportDevotees,
+  records,
+  trackingStartDate,
+}) {
+  const monthDates = getReportDays(
+    monthKey,
+    trackingStartDate
+  );
+
+  if (!monthDates.length) {
+    throw new Error(
+      "No reportable dates are available for attendance export."
+    );
+  }
+
+  /*
+   * ATTENDANCE EXPORT
+   *
+   * The export uses the exact same live report date range and records
+   * used by Monthly Performance.
+   *
+   * Current month:
+   *   tracking start date -> today
+   * Completed month:
+   *   first day -> last day of that calendar month
+   *
+   * The first Excel sheet is intentionally ONLY the attendance table
+   * requested by the admin. No Overview sheet is placed before it.
+   */
+  const reportDateSet = new Set(monthDates);
+
+  const monthRecords = records.filter((record) =>
+    reportDateSet.has(String(record.date || ""))
+  );
+
+  // One live record per devotee/date so duplicate documents cannot
+  // inflate the monthly attendance numbers.
+  const recordMap = new Map();
+
+  monthRecords.forEach((record) => {
+    const devoteeId = String(record.devoteeId || "");
+    const date = String(record.date || "");
+
+    if (!devoteeId || !reportDateSet.has(date)) {
+      return;
+    }
+
+    recordMap.set(`${devoteeId}_${date}`, record);
+  });
+
+  /*
+   * THIS IS THE MAIN ATTENDANCE EXPORT TABLE.
+   *
+   * Keep these columns exactly as requested by the admin.
+   */
+  const attendanceRows = reportDevotees.map((devotee) => {
+    const devoteeRecords = monthDates
+      .map((date) =>
+        recordMap.get(`${devotee.uid}_${date}`)
+      )
+      .filter(Boolean);
+
+    const mangalArti = calculateAttendanceStats(
+      devoteeRecords,
+      "mangalArti"
+    );
+
+    const morningClass = calculateAttendanceStats(
+      devoteeRecords,
+      "morningClass"
+    );
+
+    const overall = calculateCombinedAttendanceStats(
+      devoteeRecords
+    );
+
+    const submission = calculateSubmissionStats(
+      monthDates,
+      devoteeRecords
+    );
+
+    return {
+      "Devotee Name": getDisplayName(devotee),
+      "Days Covered": monthDates.length,
+      "Sadhana Submitted": submission.submitted,
+      "Sadhana Missed": submission.notSubmitted,
+      "M.A. Present": mangalArti.present,
+      "M.A. Late": mangalArti.late,
+      "M.A. Absent": mangalArti.absent,
+      "M.A. %": `${mangalArti.percentage}%`,
+      "M. Class Present": morningClass.present,
+      "M. Class Late": morningClass.late,
+      "M. Class Absent": morningClass.absent,
+      "M. Class %": `${morningClass.percentage}%`,
+      "Overall %": `${overall.percentage}%`,
+    };
+  });
+
+  /*
+   * SECOND SHEET: DAY-BY-DAY ATTENDANCE
+   *
+   * This is only for verification. It contains every reportable date
+   * through today for the current month, or every date for a completed
+   * month, and one row per devotee/date.
+   */
+  const dailyAttendanceRows = [];
+
+  for (const date of monthDates) {
+    for (const devotee of reportDevotees) {
+      const record = recordMap.get(
+        `${devotee.uid}_${date}`
+      );
+
+      dailyAttendanceRows.push({
+        Date: formatDate(date),
+        "Date (ISO)": date,
+        "Devotee Name": getDisplayName(devotee),
+        "Sadhana Submitted": record ? "Yes" : "No",
+        "M.A.": record
+          ? statusShort(record.mangalArti)
+          : "—",
+        "M. Class": record
+          ? statusShort(record.morningClass)
+          : "—",
+      });
+    }
+  }
+
+  const workbook = XLSX.utils.book_new();
+
+  // FIRST SHEET = the exact attendance summary requested by admin.
+  const attendanceSheet = XLSX.utils.json_to_sheet(
+    attendanceRows,
+    {
+      header: [
+        "Devotee Name",
+        "Days Covered",
+        "Sadhana Submitted",
+        "Sadhana Missed",
+        "M.A. Present",
+        "M.A. Late",
+        "M.A. Absent",
+        "M.A. %",
+        "M. Class Present",
+        "M. Class Late",
+        "M. Class Absent",
+        "M. Class %",
+        "Overall %",
+      ],
+    }
+  );
+
+  const dailySheet = XLSX.utils.json_to_sheet(
+    dailyAttendanceRows,
+    {
+      header: [
+        "Date",
+        "Date (ISO)",
+        "Devotee Name",
+        "Sadhana Submitted",
+        "M.A.",
+        "M. Class",
+      ],
+    }
+  );
+
+  attendanceSheet["!cols"] = [
+    { wch: 24 },
+    { wch: 14 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 14 },
+  ];
+
+  dailySheet["!cols"] = [
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 20 },
+    { wch: 12 },
+    { wch: 16 },
+  ];
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    attendanceSheet,
+    "Attendance"
+  );
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    dailySheet,
+    "Daily Attendance"
+  );
+
+  downloadWorkbook(
+    workbook,
+    createDownloadName(
+      "BACE-Attendance",
+      monthKey
+    )
+  );
+}
+
 function Sadhana() {
   const {
     user,
@@ -994,11 +1261,61 @@ function Sadhana() {
   const [reportRecords, setReportRecords] =
     useState([]);
 
+  /*
+   * Existing `records` powers the current daily
+   * admin screen and devotee screen.
+   */
   const [selectedDate, setSelectedDate] =
     useState(getToday());
 
   const [reportMonth, setReportMonth] =
     useState(getMonthKey(getToday()));
+
+
+  const lastAutomaticMonth = useRef(
+    getCurrentMonthKey()
+  );
+
+  // When the calendar moves into a new month, automatically move the
+  // report selector to that new current month if the admin was viewing
+  // the previous current month. Manually selected past months stay
+  // selectable/exportable and are never overwritten.
+  useEffect(() => {
+    const syncCurrentMonth = () => {
+      const currentMonth = getCurrentMonthKey();
+
+      if (
+        currentMonth ===
+        lastAutomaticMonth.current
+      ) {
+        return;
+      }
+
+      setReportMonth((previousMonth) => {
+        if (
+          previousMonth ===
+          lastAutomaticMonth.current
+        ) {
+          return currentMonth;
+        }
+
+        return previousMonth;
+      });
+
+      lastAutomaticMonth.current =
+        currentMonth;
+    };
+
+    syncCurrentMonth();
+
+    const intervalId = window.setInterval(
+      syncCurrentMonth,
+      60 * 1000
+    );
+
+    return () =>
+      window.clearInterval(intervalId);
+  }, []);
 
   const [ownRecord, setOwnRecord] =
     useState(null);
@@ -2028,8 +2345,49 @@ function Sadhana() {
       }
     };
 
+
+  const handleMonthlyAttendanceExport =
+    () => {
+      try {
+        setExporting(true);
+
+        exportMonthlyAttendanceExcel({
+          monthKey: reportMonth,
+          reportDevotees,
+          records: reportRecords,
+          trackingStartDate,
+        });
+
+        setSuccess(
+          `${formatMonthYear(
+            `${reportMonth}-01`
+          )} attendance Excel report downloaded.`
+        );
+      } catch (exportError) {
+        console.error(
+          "Failed to export monthly attendance report:",
+          exportError
+        );
+
+        setError(
+          "Unable to create the monthly attendance Excel report. Please try again."
+        );
+      } finally {
+        setExporting(false);
+      }
+    };
+
   const handleMonthlyExport =
     () => {
+      if (!completedMonth) {
+        setError(
+          reportIsFutureMonth
+            ? "Monthly export is available only for completed months."
+            : "Monthly export becomes available after the selected month is complete."
+        );
+        return;
+      }
+
       try {
         setExporting(true);
 
@@ -3504,19 +3862,24 @@ function Sadhana() {
               </h2>
 
               <p>
-                Reports include only
-                dates from the community
-                tracking start date.
+                Monthly attendance and Sadhana
+                reports follow the community
+                tracking start date. The current
+                month updates through today, and
+                completed past months remain
+                available for export.
               </p>
             </div>
 
-            {completedMonth ? (
+            {completedMonth && reportDays.length ? (
               <span className="sadhana-complete-badge">
                 Month completed
               </span>
-            ) : reportIsFutureMonth ? (
+            ) : reportIsFutureMonth || !reportDays.length ? (
               <span className="sadhana-progress-badge">
-                Future month
+                {reportIsFutureMonth
+                  ? "Future month"
+                  : "Before tracking start"}
               </span>
             ) : (
               <span className="sadhana-progress-badge">
@@ -3532,9 +3895,12 @@ function Sadhana() {
               </span>
 
               <small>
-                {
-                  selectedMonthLabel
-                }
+                {selectedMonthLabel}
+                {completedMonth
+                  ? " · Completed month"
+                  : reportIsFutureMonth
+                    ? " · Future month"
+                    : " · Current month (through today)"}
               </small>
 
               <input
@@ -3572,6 +3938,29 @@ function Sadhana() {
 
               <button
                 type="button"
+                className="sadhana-secondary-button"
+                onClick={
+                  handleMonthlyAttendanceExport
+                }
+                disabled={
+                  exporting ||
+                  reportLoading ||
+                  !reportMonth ||
+                  reportIsFutureMonth ||
+                  !reportDays.length
+                }
+              >
+                {exporting
+                  ? "Preparing..."
+                  : reportLoading
+                    ? "Loading attendance..."
+                    : reportIsFutureMonth
+                      ? "No Attendance Report"
+                      : "Export Attendance Excel"}
+              </button>
+
+              <button
+                type="button"
                 className="sadhana-primary-button"
                 onClick={
                   handleMonthlyExport
@@ -3580,18 +3969,19 @@ function Sadhana() {
                   exporting ||
                   reportLoading ||
                   !reportMonth ||
-                  reportIsFutureMonth
+                  !completedMonth ||
+                  !reportDays.length
                 }
               >
                 {exporting
                   ? "Preparing..."
                   : reportLoading
                     ? "Loading report data..."
-                    : reportIsFutureMonth
-                      ? "No Future Report"
-                      : completedMonth
-                        ? "Generate Completed Month"
-                        : "Export Monthly Excel"}
+                    : !completedMonth
+                      ? reportIsFutureMonth
+                        ? "No Future Report"
+                        : "Complete Month to Export"
+                      : "Export Monthly Excel"}
               </button>
             </div>
           </div>
@@ -3608,9 +3998,12 @@ function Sadhana() {
             </strong>
 
             <small>
-              Earlier dates are not
-              included in completion
-              totals.
+              This date controls Monthly
+              reporting. Dates before the
+              tracking start are excluded.
+              The current month updates through
+              today; completed past months
+              remain available for export.
             </small>
           </div>
 
@@ -3893,7 +4286,7 @@ function MonthlyPerformanceTable({
           </span>
 
           <h2>
-            Student Attendance
+            Devotee Attendance
             Performance
           </h2>
 
@@ -3952,7 +4345,7 @@ function MonthlyPerformanceTable({
             <thead>
               <tr>
                 <th>
-                  Student
+                  Devotee Name
                 </th>
 
                 <th>
