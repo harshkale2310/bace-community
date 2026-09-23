@@ -1,22 +1,31 @@
+
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
+
 import { doc, getDoc } from "firebase/firestore";
 
 import { useAuth } from "../../context/AuthContext";
 import { auth, db } from "../../services/firebase";
+
 import krishnaImage from "../../assets/krishna.png";
+import iskconLogo from "../../assets/iskcon-logo.png";
 
 import "./Login.css";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const DEFAULT_ROLE = "administrator";
-
 const ROLE_ADMINISTRATOR = "administrator";
 const ROLE_DEVOTEE = "devotee";
 
@@ -209,11 +218,12 @@ function Login() {
        */
       const email = formData.email.trim().toLowerCase();
 
-      const credential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        formData.password
-      );
+      const credential =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          formData.password
+        );
 
       const firebaseUser = credential.user;
 
@@ -330,9 +340,6 @@ function Login() {
        * -----------------------------------------------------
        * 8. SUCCESS
        * -----------------------------------------------------
-       *
-       * AuthContext receives the Firebase authentication
-       * state and loads the user's Firestore profile.
        */
       const requestedPath =
         location.state?.from?.pathname ||
@@ -439,26 +446,38 @@ function Login() {
 
   return (
     <main className="login-page">
-      {/* TOP NAVIGATION */}
+
+      {/* ============================================================
+          TOP NAVIGATION
+      ============================================================ */}
       <nav className="auth-top-navigation">
+
         <Link
           to="/"
           className="auth-nav-brand"
           aria-label="Giri Govardhan BACE Home"
         >
+
+          {/* ISKCON LOGO INSTEAD OF OM */}
           <span
-            className="auth-nav-brand-icon"
+            className="auth-nav-brand-icon auth-nav-brand-iskcon"
             aria-hidden="true"
           >
-            ॐ
+            <img
+              src={iskconLogo}
+              alt=""
+            />
           </span>
 
           <span className="auth-nav-brand-text">
             Giri Govardhan BACE
           </span>
+
         </Link>
 
+
         <div className="auth-nav-links">
+
           <Link
             to="/"
             className="auth-nav-link"
@@ -479,35 +498,55 @@ function Login() {
           >
             Register
           </Link>
+
         </div>
+
       </nav>
 
-      {/* LOGIN SHELL */}
+
+      {/* ============================================================
+          LOGIN SHELL
+      ============================================================ */}
       <section className="login-shell">
-        {/* LEFT VISUAL */}
+
+        {/* ==========================================================
+            LEFT VISUAL
+        =========================================================== */}
         <div className="login-visual">
+
           <div className="login-visual-image">
+
             <img
               src={krishnaImage}
               alt="Lord Krishna"
             />
 
             <div className="login-image-overlay" />
+
           </div>
 
+
           <div className="login-visual-content">
+
+            {/* ISKCON LOGO INSTEAD OF OM */}
             <div
-              className="login-om"
+              className="login-om login-iskcon-logo"
               aria-hidden="true"
             >
-              ॐ
+              <img
+                src={iskconLogo}
+                alt=""
+              />
             </div>
+
 
             <p className="login-visual-label">
               HARE KRISHNA
             </p>
 
+
             <h1>
+
               <span className="brand-main">
                 Giri Govardhan
               </span>
@@ -515,32 +554,47 @@ function Login() {
               <span className="brand-accent">
                 BACE
               </span>
+
             </h1>
 
+
             <div className="login-hero-divider">
+
               <span />
+
               <span
                 className="divider-symbol"
                 aria-hidden="true"
               >
                 ❈
               </span>
+
               <span />
+
             </div>
+
 
             <p className="login-visual-description">
               A simple and organized platform for
               devotee activities, attendance, sadhana,
               seva, rooms, leave and daily routines.
             </p>
+
           </div>
+
         </div>
 
-        {/* RIGHT LOGIN PANEL */}
+
+        {/* ==========================================================
+            RIGHT LOGIN PANEL
+        =========================================================== */}
         <div className="login-panel">
+
           <div className="login-card">
+
             {/* HEADER */}
             <div className="login-header">
+
               <Link
                 to="/"
                 className="login-back-link"
@@ -548,35 +602,50 @@ function Login() {
                 <span aria-hidden="true">
                   ←
                 </span>
+
                 Back to Home
               </Link>
 
+
+              {/* ISKCON LOGO INSTEAD OF OM */}
               <div
-                className="login-brand-mark"
+                className="login-brand-mark login-brand-iskcon"
                 aria-hidden="true"
               >
-                ॐ
+                <img
+                  src={iskconLogo}
+                  alt=""
+                />
               </div>
+
 
               <p className="login-eyebrow">
                 WELCOME BACK
               </p>
 
+
               <h2>
                 Sign in to your account
               </h2>
+
 
               <p className="login-description">
                 Choose your account type and enter
                 your credentials to continue.
               </p>
+
             </div>
 
-            {/* ROLE SELECTOR */}
+
+            {/* ======================================================
+                ROLE SELECTOR
+            ======================================================= */}
             <div
               className="role-selector"
               aria-label="Account type"
             >
+
+              {/* ADMINISTRATOR */}
               <button
                 type="button"
                 className={
@@ -591,14 +660,21 @@ function Login() {
                 }
                 disabled={isSubmitting}
               >
+
+                {/* ISKCON LOGO INSTEAD OF OM */}
                 <span
-                  className="role-icon"
+                  className="role-icon role-iskcon-icon"
                   aria-hidden="true"
                 >
-                  ♙
+                  <img
+                    src={iskconLogo}
+                    alt=""
+                  />
                 </span>
 
+
                 <span className="role-text">
+
                   <strong>
                     Administrator
                   </strong>
@@ -606,9 +682,13 @@ function Login() {
                   <small>
                     Manage devotees and operations
                   </small>
+
                 </span>
+
               </button>
 
+
+              {/* DEVOTEE */}
               <button
                 type="button"
                 className={
@@ -623,14 +703,21 @@ function Login() {
                 }
                 disabled={isSubmitting}
               >
+
+                {/* ISKCON LOGO INSTEAD OF OM */}
                 <span
-                  className="role-icon"
+                  className="role-icon role-iskcon-icon"
                   aria-hidden="true"
                 >
-                  ॐ
+                  <img
+                    src={iskconLogo}
+                    alt=""
+                  />
                 </span>
 
+
                 <span className="role-text">
+
                   <strong>
                     Devotee
                   </strong>
@@ -638,23 +725,32 @@ function Login() {
                   <small>
                     Access your personal area
                   </small>
+
                 </span>
+
               </button>
+
             </div>
 
-            {/* LOGIN FORM */}
+
+            {/* ======================================================
+                LOGIN FORM
+            ======================================================= */}
             <form
               className="login-form"
               onSubmit={handleSubmit}
               noValidate
             >
+
               {/* EMAIL */}
               <div className="form-group">
+
                 <label htmlFor="email">
                   Email address
                 </label>
 
                 <div className="input-wrapper">
+
                   <span
                     className="input-icon"
                     aria-hidden="true"
@@ -672,12 +768,17 @@ function Login() {
                     autoComplete="email"
                     disabled={isSubmitting}
                   />
+
                 </div>
+
               </div>
+
 
               {/* PASSWORD */}
               <div className="form-group">
+
                 <div className="password-label-row">
+
                   <label htmlFor="password">
                     Password
                   </label>
@@ -690,9 +791,12 @@ function Login() {
                   >
                     Forgot password?
                   </button>
+
                 </div>
 
+
                 <div className="input-wrapper">
+
                   <span
                     className="input-icon password-icon"
                     aria-hidden="true"
@@ -715,6 +819,7 @@ function Login() {
                     disabled={isSubmitting}
                   />
 
+
                   <button
                     type="button"
                     className="password-toggle"
@@ -735,8 +840,11 @@ function Login() {
                       ? "Hide"
                       : "Show"}
                   </button>
+
                 </div>
+
               </div>
+
 
               {/* ERROR */}
               {error && (
@@ -744,6 +852,7 @@ function Login() {
                   className="login-error"
                   role="alert"
                 >
+
                   <span
                     className="error-icon"
                     aria-hidden="true"
@@ -751,9 +860,13 @@ function Login() {
                     !
                   </span>
 
-                  <span>{error}</span>
+                  <span>
+                    {error}
+                  </span>
+
                 </div>
               )}
+
 
               {/* SUCCESS */}
               {resetMessage && (
@@ -761,6 +874,7 @@ function Login() {
                   className="login-success"
                   role="status"
                 >
+
                   <span
                     className="success-icon"
                     aria-hidden="true"
@@ -771,8 +885,10 @@ function Login() {
                   <span>
                     {resetMessage}
                   </span>
+
                 </div>
               )}
+
 
               {/* SUBMIT */}
               <button
@@ -780,27 +896,34 @@ function Login() {
                 className="login-submit"
                 disabled={isSubmitting}
               >
+
                 {isSubmitting ? (
                   <>
                     <span
                       className="login-spinner"
                       aria-hidden="true"
                     />
+
                     Signing in...
                   </>
                 ) : (
                   <>
                     Sign in
+
                     <span aria-hidden="true">
                       →
                     </span>
                   </>
                 )}
+
               </button>
+
             </form>
+
 
             {/* REGISTER PROMPT */}
             <div className="login-register-prompt">
+
               <span>
                 Don't have an account?
               </span>
@@ -808,10 +931,13 @@ function Login() {
               <Link to="/register">
                 Create a devotee account
               </Link>
+
             </div>
+
 
             {/* FOOTER */}
             <div className="login-footer">
+
               <span>
                 Giri Govardhan BACE
               </span>
@@ -826,10 +952,15 @@ function Login() {
               <span>
                 Hare Krishna
               </span>
+
             </div>
+
           </div>
+
         </div>
+
       </section>
+
     </main>
   );
 }

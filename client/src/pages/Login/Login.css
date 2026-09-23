@@ -1,3 +1,4 @@
+
 /* ============================================================
    LOGIN PAGE
 ============================================================ */
@@ -26,22 +27,16 @@
   position: fixed;
   inset: 0 0 auto;
   z-index: 100;
-
   height: 68px;
   width: 100%;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   padding: 0 clamp(16px, 3vw, 34px);
-
   background: rgba(255, 253, 249, 0.96);
   border-bottom: 1px solid rgba(120, 92, 55, 0.12);
-
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-
   box-shadow: 0 4px 20px rgba(45, 34, 20, 0.04);
 }
 
@@ -50,11 +45,9 @@
 
 .auth-nav-brand {
   min-width: 0;
-
   display: inline-flex;
   align-items: center;
   gap: 10px;
-
   color: var(--text);
   text-decoration: none;
 }
@@ -63,34 +56,28 @@
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
+  overflow: hidden;
   border-radius: 50%;
-
-  background: linear-gradient(
-    135deg,
-    #f0d08e,
-    #b8771b
-  );
-
-  color: #fff;
-
-  font-family: "Playfair Display", serif;
-  font-size: 20px;
-
+  background: #fff8eb;
+  border: 1px solid #dfc28b;
   box-shadow: 0 5px 15px rgba(181, 119, 27, 0.18);
+}
+
+.auth-nav-brand-iskcon img {
+  width: 29px;
+  height: 29px;
+  display: block;
+  object-fit: contain;
 }
 
 .auth-nav-brand-text {
   min-width: 0;
-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
   font-family: "Playfair Display", serif;
   font-size: 18px;
   font-weight: 600;
@@ -107,21 +94,15 @@
 
 .auth-nav-link {
   min-height: 40px;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   padding: 0 16px;
-
   border-radius: 9px;
-
   color: #6d7075;
   font-size: 12px;
   font-weight: 600;
-
   text-decoration: none;
-
   transition:
     color 0.2s ease,
     background 0.2s ease,
@@ -147,9 +128,7 @@
 .login-shell {
   min-height: 100vh;
   padding-top: 68px;
-
   display: grid;
-
   grid-template-columns:
     minmax(0, 1.08fr)
     minmax(440px, 0.92fr);
@@ -162,30 +141,23 @@
 
 .login-visual {
   position: relative;
-
   min-height: calc(100vh - 68px);
-
   overflow: hidden;
-
   background: #332318;
 }
 
 .login-visual-image {
   position: absolute;
   inset: 0;
-
   overflow: hidden;
 }
 
 .login-visual-image img {
   width: 100%;
   height: 100%;
-
   display: block;
-
   object-fit: cover;
   object-position: center center;
-
   transform: scale(1.015);
 }
 
@@ -197,7 +169,6 @@
 .login-image-overlay {
   position: absolute;
   inset: 0;
-
   background:
     linear-gradient(
       180deg,
@@ -222,77 +193,71 @@
 .login-visual-content {
   position: absolute;
   inset: auto 0 0;
-
   z-index: 2;
-
   padding:
     45px
     clamp(32px, 6vw, 78px)
     58px;
-
   color: #fff;
-
   text-shadow:
     0 2px 8px rgba(0, 0, 0, 0.55),
     0 4px 18px rgba(0, 0, 0, 0.32);
 }
 
 
-/* Om */
+/* ============================================================
+   ISKCON LOGO
+============================================================ */
 
 .login-om {
   width: 54px;
   height: 54px;
-
   margin-bottom: 17px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 50%;
-
   background: rgba(0, 0, 0, 0.12);
-
-  color: #fff;
-
-  font-family: "Playfair Display", serif;
-  font-size: 29px;
-
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
 }
 
+.login-iskcon-logo img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+}
 
-/* Label */
+
+/* ============================================================
+   LABEL
+============================================================ */
 
 .login-visual-label {
   margin: 0 0 11px;
-
   color: rgba(255, 255, 255, 0.95);
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 4px;
 }
 
 
-/* Hero */
+/* ============================================================
+   HERO
+============================================================ */
 
 .login-visual-content h1 {
   margin: 0;
-
   display: flex;
   flex-direction: column;
-
   color: #fff !important;
-
   font-family: "Playfair Display", serif;
   font-size: clamp(42px, 4.1vw, 68px);
   font-weight: 600;
   line-height: 0.98;
   letter-spacing: -1.5px;
-
   text-shadow:
     0 3px 12px rgba(0, 0, 0, 0.75),
     0 7px 25px rgba(0, 0, 0, 0.45);
@@ -300,18 +265,12 @@
 
 .login-visual-content h1 .brand-main {
   width: fit-content;
-
   display: block;
-
   margin-left: -10px;
   padding: 3px 10px 5px;
-
   border-radius: 8px;
-
   background: rgba(15, 9, 4, 0.16);
-
   color: #fff !important;
-
   text-shadow:
     0 3px 10px rgba(0, 0, 0, 0.85),
     0 5px 22px rgba(0, 0, 0, 0.55);
@@ -319,14 +278,10 @@
 
 .login-visual-content h1 .brand-accent {
   display: block;
-
   margin-top: 9px;
-
   color: #f5d184 !important;
-
   font-size: 0.82em;
   letter-spacing: 1px;
-
   text-shadow:
     0 3px 10px rgba(0, 0, 0, 0.9),
     0 5px 24px rgba(0, 0, 0, 0.55);
@@ -339,12 +294,9 @@
 
 .login-hero-divider {
   width: min(520px, 100%);
-
   display: flex;
   align-items: center;
-
   gap: 16px;
-
   margin: 22px 0 16px;
 }
 
@@ -352,7 +304,6 @@
 .login-hero-divider > span:last-child {
   height: 1px;
   flex: 1;
-
   background: linear-gradient(
     90deg,
     rgba(245, 209, 132, 0.75),
@@ -370,10 +321,8 @@
 
 .divider-symbol {
   flex: 0 0 auto;
-
   color: #f5d184;
   font-size: 20px;
-
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
@@ -382,14 +331,10 @@
 
 .login-visual-description {
   max-width: 560px;
-
   margin: 0;
-
   color: rgba(255, 255, 255, 0.94);
-
   font-size: 15px;
   line-height: 1.75;
-
   text-shadow:
     0 2px 8px rgba(0, 0, 0, 0.72),
     0 4px 15px rgba(0, 0, 0, 0.4);
@@ -402,15 +347,11 @@
 
 .login-panel {
   min-height: calc(100vh - 68px);
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 55px clamp(24px, 4vw, 50px);
-
   overflow-y: auto;
-
   background:
     radial-gradient(
       circle at top right,
@@ -428,7 +369,6 @@
 .login-card {
   width: 100%;
   max-width: 480px;
-
   margin: 0 auto;
 }
 
@@ -445,16 +385,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-
   margin-bottom: 30px;
-
   color: var(--text-muted);
-
   font-size: 11px;
   font-weight: 600;
-
   text-decoration: none;
-
   transition:
     color 0.2s ease,
     transform 0.2s ease;
@@ -469,39 +404,41 @@
   font-size: 16px;
 }
 
+
+/* ============================================================
+   ISKCON BRAND MARK
+============================================================ */
+
 .login-brand-mark {
   width: 58px;
   height: 58px;
-
   margin: 0 auto 20px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
+  overflow: hidden;
   border: 1px solid #dfc28b;
   border-radius: 50%;
-
   background: linear-gradient(
     145deg,
     #fffaf0,
     #f8ead1
   );
-
   color: var(--primary);
-
-  font-family: "Playfair Display", serif;
-  font-size: 29px;
-
   box-shadow:
     0 8px 25px rgba(159, 108, 31, 0.08);
 }
 
+.login-brand-iskcon img {
+  width: 43px;
+  height: 43px;
+  display: block;
+  object-fit: contain;
+}
+
 .login-eyebrow {
   margin: 0 0 10px;
-
   color: var(--primary);
-
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 3px;
@@ -509,9 +446,7 @@
 
 .login-header h2 {
   margin: 0 0 12px;
-
   color: var(--text);
-
   font-family: "Playfair Display", serif;
   font-size: clamp(28px, 3vw, 36px);
   font-weight: 600;
@@ -520,11 +455,8 @@
 
 .login-description {
   max-width: 390px;
-
   margin: 0 auto;
-
   color: var(--text-light);
-
   font-size: 13px;
   line-height: 1.7;
 }
@@ -537,9 +469,7 @@
 .role-selector {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-
   gap: 10px;
-
   margin:
     32px 0 26px;
 }
@@ -547,24 +477,16 @@
 .role-option {
   min-width: 0;
   min-height: 74px;
-
   display: flex;
   align-items: center;
-
   gap: 12px;
-
   padding: 12px 14px;
-
   border: 1px solid var(--border);
   border-radius: 12px;
-
   background: #fff;
   color: var(--text);
-
   text-align: left;
-
   cursor: pointer;
-
   transition:
     border-color 0.2s ease,
     background 0.2s ease,
@@ -580,13 +502,11 @@
 
 .role-option.active {
   border-color: #c9943c;
-
   background: linear-gradient(
     135deg,
     #fff9ed,
     #fff3dc
   );
-
   box-shadow:
     0 7px 20px rgba(169, 107, 14, 0.08);
 }
@@ -600,19 +520,20 @@
   width: 37px;
   height: 37px;
   flex: 0 0 37px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
+  overflow: hidden;
   border-radius: 9px;
-
   background: #f7f0e4;
-
   color: var(--primary);
+}
 
-  font-family: "Playfair Display", serif;
-  font-size: 18px;
+.role-iskcon-icon img {
+  width: 27px;
+  height: 27px;
+  display: block;
+  object-fit: contain;
 }
 
 .role-option.active .role-icon {
@@ -621,10 +542,8 @@
 
 .role-text {
   min-width: 0;
-
   display: flex;
   flex-direction: column;
-
   gap: 3px;
 }
 
@@ -632,16 +551,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
   color: var(--text);
-
   font-size: 12px;
   font-weight: 700;
 }
 
 .role-text small {
   color: var(--text-muted);
-
   font-size: 9px;
   line-height: 1.35;
 }
@@ -654,20 +570,17 @@
 .login-form {
   display: flex;
   flex-direction: column;
-
   gap: 20px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-
   gap: 8px;
 }
 
 .form-group label {
   color: var(--text);
-
   font-size: 11px;
   font-weight: 700;
 }
@@ -676,23 +589,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 10px;
 }
 
 .forgot-password {
   flex: 0 0 auto;
-
   padding: 4px 0;
-
   border: 0;
   background: transparent;
-
   color: var(--primary);
-
   font-size: 10px;
   font-weight: 600;
-
   cursor: pointer;
 }
 
@@ -719,20 +626,14 @@
 .input-wrapper input {
   width: 100%;
   height: 50px;
-
   padding: 0 48px 0 43px;
-
   border: 1px solid var(--border);
   border-radius: 10px;
-
   outline: none;
-
   background: #fff;
   color: var(--text);
-
   font-family: inherit;
   font-size: 13px;
-
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -750,7 +651,6 @@
 .input-wrapper input:focus {
   border-color: #c7943e;
   background: #fffdf9;
-
   box-shadow:
     0 0 0 3px rgba(199, 148, 62, 0.11);
 }
@@ -764,16 +664,11 @@
   position: absolute;
   top: 50%;
   left: 16px;
-
   z-index: 2;
-
   transform: translateY(-50%);
-
   color: #a77a38;
-
   font-size: 14px;
   font-weight: 700;
-
   pointer-events: none;
 }
 
@@ -786,22 +681,15 @@
   position: absolute;
   top: 50%;
   right: 13px;
-
   transform: translateY(-50%);
-
   min-width: 36px;
   min-height: 32px;
-
   padding: 5px;
-
   border: 0;
   background: transparent;
-
   color: var(--primary);
-
   font-size: 9px;
   font-weight: 700;
-
   cursor: pointer;
 }
 
@@ -823,13 +711,9 @@
 .login-success {
   display: flex;
   align-items: flex-start;
-
   gap: 10px;
-
   padding: 12px 13px;
-
   border-radius: 9px;
-
   font-size: 10px;
   line-height: 1.5;
 }
@@ -851,15 +735,11 @@
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   border-radius: 50%;
-
   color: #fff;
-
   font-size: 10px;
   font-weight: 700;
 }
@@ -881,33 +761,24 @@
 .login-submit {
   width: 100%;
   min-height: 51px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   gap: 12px;
-
   border: 0;
   border-radius: 10px;
-
   background: linear-gradient(
     135deg,
     var(--primary),
     var(--primary-dark)
   );
-
   color: #fff;
-
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
-
   cursor: pointer;
-
   box-shadow:
     0 8px 20px rgba(160, 101, 20, 0.18);
-
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -916,7 +787,6 @@
 
 .login-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-
   box-shadow:
     0 12px 27px rgba(160, 101, 20, 0.24);
 }
@@ -936,12 +806,9 @@
 .login-spinner {
   width: 15px;
   height: 15px;
-
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #fff;
-
   border-radius: 50%;
-
   animation: login-spin 0.7s linear infinite;
 }
 
@@ -960,23 +827,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   flex-wrap: wrap;
   gap: 5px;
-
   margin-top: 22px;
-
   color: var(--text-muted);
-
   font-size: 10px;
   text-align: center;
 }
 
 .login-register-prompt a {
   color: var(--primary);
-
   font-weight: 700;
-
   text-decoration: none;
 }
 
@@ -993,16 +854,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   gap: 9px;
-
   margin-top: 28px;
   padding-top: 22px;
-
   border-top: 1px solid var(--border);
-
   color: var(--text-muted);
-
   font-size: 9px;
 }
 
@@ -1048,7 +904,6 @@
 
   .login-panel {
     min-height: auto;
-
     padding:
       65px 30px
       70px;
@@ -1091,6 +946,11 @@
     flex-basis: 36px;
   }
 
+  .auth-nav-brand-iskcon img {
+    width: 27px;
+    height: 27px;
+  }
+
   .auth-nav-links {
     gap: 2px;
   }
@@ -1098,7 +958,6 @@
   .auth-nav-link {
     min-height: 38px;
     padding: 0 11px;
-
     font-size: 10px;
   }
 
@@ -1168,15 +1027,16 @@
   .login-om {
     width: 45px;
     height: 45px;
-
     margin-bottom: 15px;
+  }
 
-    font-size: 23px;
+  .login-iskcon-logo img {
+    width: 34px;
+    height: 34px;
   }
 
   .login-visual-label {
     margin-bottom: 9px;
-
     font-size: 9px;
     letter-spacing: 3px;
   }
@@ -1227,10 +1087,12 @@
   .login-brand-mark {
     width: 52px;
     height: 52px;
-
     margin-bottom: 17px;
+  }
 
-    font-size: 26px;
+  .login-brand-iskcon img {
+    width: 38px;
+    height: 38px;
   }
 
   .login-eyebrow {
@@ -1259,8 +1121,11 @@
     width: 32px;
     height: 32px;
     flex-basis: 32px;
+  }
 
-    font-size: 16px;
+  .role-iskcon-icon img {
+    width: 24px;
+    height: 24px;
   }
 
   .role-text strong {
@@ -1273,9 +1138,7 @@
 
   .login-footer {
     flex-direction: column;
-
     gap: 4px;
-
     margin-top: 25px;
   }
 
@@ -1358,8 +1221,11 @@
     width: 33px;
     height: 33px;
     flex-basis: 33px;
+  }
 
-    font-size: 17px;
+  .auth-nav-brand-iskcon img {
+    width: 25px;
+    height: 25px;
   }
 
   .login-visual {
@@ -1403,7 +1269,6 @@
 @media (max-height: 700px) and (min-width: 901px) {
   .login-panel {
     align-items: flex-start;
-
     padding-top: 35px;
     padding-bottom: 35px;
   }

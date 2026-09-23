@@ -9,15 +9,14 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-
 import { useAuth } from "../../context/AuthContext";
 import { auth, db } from "../../services/firebase";
 import krishnaImage from "../../assets/krishna.png";
+import iskconLogo from "../../assets/iskcon-logo.png";
 import "./Register.css";
 
 function Register() {
   const navigate = useNavigate();
-
   const { isAuthenticated } = useAuth();
 
   /*
@@ -39,7 +38,6 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
-
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -334,8 +332,11 @@ function Register() {
           className="auth-nav-brand"
           aria-label="Giri Govardhan BACE Home"
         >
-          <span className="auth-nav-brand-icon">
-            ॐ
+          <span
+            className="auth-nav-brand-icon auth-nav-brand-logo"
+            aria-hidden="true"
+          >
+            <img src={iskconLogo} alt="" />
           </span>
 
           <span className="auth-nav-brand-text">
@@ -376,13 +377,15 @@ function Register() {
               src={krishnaImage}
               alt="Lord Krishna"
             />
-
             <div className="register-image-overlay" />
           </div>
 
           <div className="register-visual-content">
-            <div className="register-om">
-              ॐ
+            <div
+              className="register-om register-iskcon-logo"
+              aria-hidden="true"
+            >
+              <img src={iskconLogo} alt="" />
             </div>
 
             <p className="register-visual-label">
@@ -419,12 +422,14 @@ function Register() {
                 <span aria-hidden="true">
                   ←
                 </span>
-
                 Back to Home
               </Link>
 
-              <div className="register-brand-mark">
-                ॐ
+              <div
+                className="register-brand-mark register-iskcon-mark"
+                aria-hidden="true"
+              >
+                <img src={iskconLogo} alt="" />
               </div>
 
               <p className="register-eyebrow">
@@ -444,8 +449,11 @@ function Register() {
 
             {/* Account Type */}
             <div className="register-account-type">
-              <div className="register-account-icon">
-                ॐ
+              <div
+                className="register-account-icon register-iskcon-account-icon"
+                aria-hidden="true"
+              >
+                <img src={iskconLogo} alt="" />
               </div>
 
               <div>

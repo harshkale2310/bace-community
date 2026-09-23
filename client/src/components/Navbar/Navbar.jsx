@@ -16,6 +16,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 import { db } from "../../services/firebase";
 
+import iskconLogo from "../../assets/iskcon-logo.png";
+
 import "./Navbar.css";
 
 function Navbar() {
@@ -25,12 +27,10 @@ function Navbar() {
   const { toggleSidebar } = useApp();
 
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] =
-    useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] =
-    useState(true);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
 
   const profileRef = useRef(null);
   const notificationRef = useRef(null);
@@ -69,8 +69,7 @@ function Navbar() {
      ROLE
   ========================================================= */
 
-  const isAdministrator =
-    user?.role === "administrator";
+  const isAdministrator = user?.role === "administrator";
 
   const displayRole = isAdministrator
     ? "Administrator"
@@ -84,13 +83,6 @@ function Navbar() {
 
   /* =========================================================
      NOTIFICATION SUBSCRIPTION
-
-     IMPORTANT:
-     The Firestore query filters by recipientId directly.
-
-     Do NOT load the complete notifications collection and
-     filter it in JavaScript. Firestore security rules are
-     evaluated before client-side filtering.
   ========================================================= */
 
   useEffect(() => {
@@ -137,10 +129,7 @@ function Navbar() {
         setNotificationsLoading(false);
       },
       (error) => {
-        console.error(
-          "Failed to load notifications:",
-          error
-        );
+        console.error("Failed to load notifications:", error);
 
         setNotifications([]);
         setNotificationsLoading(false);
@@ -182,9 +171,7 @@ function Navbar() {
     }
 
     const now = new Date();
-
-    const difference =
-      now.getTime() - date.getTime();
+    const difference = now.getTime() - date.getTime();
 
     const minute = 60 * 1000;
     const hour = 60 * minute;
@@ -195,9 +182,7 @@ function Navbar() {
     }
 
     if (difference < hour) {
-      const minutes = Math.floor(
-        difference / minute
-      );
+      const minutes = Math.floor(difference / minute);
 
       return `${minutes} ${
         minutes === 1 ? "minute" : "minutes"
@@ -205,9 +190,7 @@ function Navbar() {
     }
 
     if (difference < day) {
-      const hours = Math.floor(
-        difference / hour
-      );
+      const hours = Math.floor(difference / hour);
 
       return `${hours} ${
         hours === 1 ? "hour" : "hours"
@@ -215,9 +198,7 @@ function Navbar() {
     }
 
     if (difference < 7 * day) {
-      const days = Math.floor(
-        difference / day
-      );
+      const days = Math.floor(difference / day);
 
       return `${days} ${
         days === 1 ? "day" : "days"
@@ -235,9 +216,7 @@ function Navbar() {
      MARK SINGLE NOTIFICATION AS READ
   ========================================================= */
 
-  const markNotificationAsRead = async (
-    notification
-  ) => {
+  const markNotificationAsRead = async (notification) => {
     if (
       !notification?.id ||
       notification.read === true
@@ -247,11 +226,7 @@ function Navbar() {
 
     try {
       await updateDoc(
-        doc(
-          db,
-          "notifications",
-          notification.id
-        ),
+        doc(db, "notifications", notification.id),
         {
           read: true,
         }
@@ -268,20 +243,14 @@ function Navbar() {
      DELETE SINGLE NOTIFICATION
   ========================================================= */
 
-  const deleteNotification = async (
-    notificationId
-  ) => {
+  const deleteNotification = async (notificationId) => {
     if (!notificationId) {
       return;
     }
 
     try {
       await deleteDoc(
-        doc(
-          db,
-          "notifications",
-          notificationId
-        )
+        doc(db, "notifications", notificationId)
       );
     } catch (error) {
       console.error(
@@ -296,11 +265,9 @@ function Navbar() {
   ========================================================= */
 
   const markAllNotificationsAsRead = async () => {
-    const unreadNotifications =
-      notifications.filter(
-        (notification) =>
-          notification.read !== true
-      );
+    const unreadNotifications = notifications.filter(
+      (notification) => notification.read !== true
+    );
 
     if (unreadNotifications.length === 0) {
       return;
@@ -309,20 +276,14 @@ function Navbar() {
     try {
       const batch = writeBatch(db);
 
-      unreadNotifications.forEach(
-        (notification) => {
-          batch.update(
-            doc(
-              db,
-              "notifications",
-              notification.id
-            ),
-            {
-              read: true,
-            }
-          );
-        }
-      );
+      unreadNotifications.forEach((notification) => {
+        batch.update(
+          doc(db, "notifications", notification.id),
+          {
+            read: true,
+          }
+        );
+      });
 
       await batch.commit();
     } catch (error) {
@@ -337,9 +298,7 @@ function Navbar() {
      NOTIFICATION CLICK
   ========================================================= */
 
-  const handleNotificationClick = async (
-    notification
-  ) => {
+  const handleNotificationClick = async (notification) => {
     await markNotificationAsRead(notification);
   };
 
@@ -358,9 +317,7 @@ function Navbar() {
 
       if (
         notificationRef.current &&
-        !notificationRef.current.contains(
-          event.target
-        )
+        !notificationRef.current.contains(event.target)
       ) {
         setNotificationsOpen(false);
       }
@@ -401,10 +358,7 @@ function Navbar() {
   ========================================================= */
 
   const handleNotificationToggle = () => {
-    setNotificationsOpen(
-      (previous) => !previous
-    );
-
+    setNotificationsOpen((previous) => !previous);
     setProfileOpen(false);
   };
 
@@ -413,10 +367,7 @@ function Navbar() {
   ========================================================= */
 
   const handleProfileToggle = () => {
-    setProfileOpen(
-      (previous) => !previous
-    );
-
+    setProfileOpen((previous) => !previous);
     setNotificationsOpen(false);
   };
 
@@ -435,10 +386,7 @@ function Navbar() {
         replace: true,
       });
     } catch (error) {
-      console.error(
-        "Logout failed:",
-        error
-      );
+      console.error("Logout failed:", error);
     }
   };
 
@@ -449,9 +397,7 @@ function Navbar() {
   const handleProfileClick = () => {
     setProfileOpen(false);
 
-    if (
-      user?.role === "administrator"
-    ) {
+    if (user?.role === "administrator") {
       navigate("/settings");
       return;
     }
@@ -480,10 +426,13 @@ function Navbar() {
 
         <div className="navbar-page-title">
           <div
-            className="navbar-title-icon"
+            className="navbar-title-icon navbar-iskcon-logo"
             aria-hidden="true"
           >
-            ॐ
+            <img
+              src={iskconLogo}
+              alt=""
+            />
           </div>
 
           <div className="navbar-title-text">
@@ -514,21 +463,15 @@ function Navbar() {
           <button
             type="button"
             className={`navbar-notification ${
-              notificationsOpen
-                ? "active"
-                : ""
+              notificationsOpen ? "active" : ""
             }`}
-            onClick={
-              handleNotificationToggle
-            }
+            onClick={handleNotificationToggle}
             aria-label={
               unreadCount > 0
                 ? `${unreadCount} unread notifications`
                 : "Notifications"
             }
-            aria-expanded={
-              notificationsOpen
-            }
+            aria-expanded={notificationsOpen}
             aria-haspopup="true"
             title="Notifications"
           >
@@ -550,10 +493,6 @@ function Navbar() {
               </span>
             )}
           </button>
-
-          {/* =================================================
-              NOTIFICATION PANEL
-          ================================================= */}
 
           {notificationsOpen && (
             <div
@@ -622,73 +561,66 @@ function Navbar() {
                     </span>
                   </div>
                 ) : (
-                  notifications.map(
-                    (notification) => {
-                      const isUnread =
-                        notification.read !==
-                        true;
+                  notifications.map((notification) => {
+                    const isUnread =
+                      notification.read !== true;
 
-                      return (
-                        <article
-                          key={
-                            notification.id
+                    return (
+                      <article
+                        key={notification.id}
+                        className={`notification-item ${
+                          isUnread ? "unread" : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="notification-content"
+                          onClick={() =>
+                            handleNotificationClick(
+                              notification
+                            )
                           }
-                          className={`notification-item ${
-                            isUnread
-                              ? "unread"
-                              : ""
-                          }`}
                         >
-                          <button
-                            type="button"
-                            className="notification-content"
-                            onClick={() =>
-                              handleNotificationClick(
-                                notification
-                              )
-                            }
-                          >
-                            <span
-                              className="notification-status-dot"
-                              aria-hidden="true"
-                            />
+                          <span
+                            className="notification-status-dot"
+                            aria-hidden="true"
+                          />
 
-                            <span className="notification-content-main">
-                              <strong>
-                                {notification.title ||
-                                  "Notification"}
-                              </strong>
+                          <span className="notification-content-main">
+                            <strong>
+                              {notification.title ||
+                                "Notification"}
+                            </strong>
 
-                              <span>
-                                {notification.message ||
-                                  ""}
-                              </span>
-
-                              <small>
-                                {formatNotificationTime(
-                                  notification.createdAt
-                                )}
-                              </small>
+                            <span>
+                              {notification.message ||
+                                ""}
                             </span>
-                          </button>
 
-                          <button
-                            type="button"
-                            className="notification-delete"
-                            onClick={() =>
-                              deleteNotification(
-                                notification.id
-                              )
-                            }
-                            aria-label="Clear notification"
-                            title="Clear notification"
-                          >
-                            ×
-                          </button>
-                        </article>
-                      );
-                    }
-                  )
+                            <small>
+                              {formatNotificationTime(
+                                notification.createdAt
+                              )}
+                            </small>
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="notification-delete"
+                          onClick={() =>
+                            deleteNotification(
+                              notification.id
+                            )
+                          }
+                          aria-label="Clear notification"
+                          title="Clear notification"
+                        >
+                          ×
+                        </button>
+                      </article>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -706,9 +638,7 @@ function Navbar() {
           <button
             type="button"
             className={`profile-trigger ${
-              profileOpen
-                ? "active"
-                : ""
+              profileOpen ? "active" : ""
             }`}
             onClick={handleProfileToggle}
             aria-expanded={profileOpen}
@@ -734,19 +664,13 @@ function Navbar() {
 
             <span
               className={`profile-arrow ${
-                profileOpen
-                  ? "open"
-                  : ""
+                profileOpen ? "open" : ""
               }`}
               aria-hidden="true"
             >
               ▾
             </span>
           </button>
-
-          {/* =================================================
-              PROFILE DROPDOWN
-          ================================================= */}
 
           {profileOpen && (
             <div
@@ -786,9 +710,7 @@ function Navbar() {
                 type="button"
                 className="profile-menu-item"
                 role="menuitem"
-                onClick={
-                  handleProfileClick
-                }
+                onClick={handleProfileClick}
               >
                 <span
                   className="profile-menu-icon"

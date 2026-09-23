@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   doc,
   getDoc,
@@ -26,7 +32,6 @@ const DEFAULT_SETTINGS = {
   leaveApproval: true,
   notifications: true,
 
-  // IMPORTANT:
   // Admin decides when Sadhana tracking begins.
   trackingStartDate: "",
 };
@@ -115,18 +120,26 @@ const normalizeSettings = (value = {}) => ({
 });
 
 const formatTime = (time) => {
-  if (!time) return "Not configured";
+  if (!time) {
+    return "Not configured";
+  }
 
   const [hours, minutes] = time.split(":").map(Number);
 
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes)
+  ) {
     return time;
   }
 
   const suffix = hours >= 12 ? "PM" : "AM";
   const displayHour = hours % 12 || 12;
 
-  return `${displayHour}:${String(minutes).padStart(2, "0")} ${suffix}`;
+  return `${displayHour}:${String(minutes).padStart(
+    2,
+    "0"
+  )} ${suffix}`;
 };
 
 const formatDate = (dateValue) => {
@@ -166,8 +179,13 @@ const formatDate = (dateValue) => {
 function Settings() {
   const { user, isAdministrator } = useAuth();
 
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(
+    DEFAULT_SETTINGS
+  );
+
+  const [savedSettings, setSavedSettings] = useState(
+    DEFAULT_SETTINGS
+  );
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -176,9 +194,11 @@ function Settings() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [activeSection, setActiveSection] = useState("general");
+  const [activeSection, setActiveSection] =
+    useState("general");
 
   const successTimerRef = useRef(null);
+  const saveSettingsRef = useRef(null);
 
   /* =========================================================
      UNSAVED CHANGES
@@ -395,7 +415,7 @@ function Settings() {
      SAVE SETTINGS
      ========================================================= */
 
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     if (!isAdministrator || !user?.uid) {
       setError("Administrator access is required.");
       return;
@@ -411,11 +431,15 @@ function Settings() {
       setError(validationError);
 
       if (
-        validationError.toLowerCase().includes("date")
+        validationError
+          .toLowerCase()
+          .includes("date")
       ) {
         setActiveSection("sadhana");
       } else if (
-        validationError.toLowerCase().includes("time")
+        validationError
+          .toLowerCase()
+          .includes("time")
       ) {
         setActiveSection("schedule");
       } else {
@@ -476,7 +500,9 @@ function Settings() {
       await setDoc(
         settingsRef,
         settingsToSave,
-        { merge: true }
+        {
+          merge: true,
+        }
       );
 
       const normalizedSavedSettings =
@@ -500,7 +526,23 @@ function Settings() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [
+    hasUnsavedChanges,
+    isAdministrator,
+    saving,
+    settings,
+    showSuccess,
+    user?.uid,
+  ]);
+
+  /*
+   * Keep the latest save function available to
+   * the keyboard shortcut without creating stale
+   * closures.
+   */
+  useEffect(() => {
+    saveSettingsRef.current = saveSettings;
+  }, [saveSettings]);
 
   /* =========================================================
      CTRL + S
@@ -514,7 +556,10 @@ function Settings() {
         hasUnsavedChanges
       ) {
         event.preventDefault();
-        saveSettings();
+
+        if (saveSettingsRef.current) {
+          saveSettingsRef.current();
+        }
       }
     };
 
@@ -1147,6 +1192,7 @@ function Settings() {
 
               <div className="tracking-start-info">
 
+                {/* Sadhana Om intentionally retained */}
                 <div className="tracking-start-icon">
                   ॐ
                 </div>

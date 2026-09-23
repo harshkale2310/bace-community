@@ -1,6 +1,8 @@
+
 import { Link } from "react-router-dom";
 
 import krishnaImage from "../../assets/krishna.png";
+import iskconLogo from "../../assets/iskcon-logo.png";
 
 import "./Landing.css";
 
@@ -15,8 +17,11 @@ function Landing() {
 
         <div className="landing-brand">
 
-          <div className="landing-brand-symbol">
-            ॐ
+          <div className="landing-brand-symbol landing-iskcon-symbol">
+            <img
+              src={iskconLogo}
+              alt="ISKCON"
+            />
           </div>
 
           <div className="landing-brand-text">
@@ -25,11 +30,13 @@ function Landing() {
 
         </div>
 
+
         <nav className="landing-nav">
           <a href="#home">Home</a>
           <a href="#features">Features</a>
           <a href="#about">About</a>
         </nav>
+
 
         <Link
           to="/login"
@@ -70,8 +77,12 @@ function Landing() {
             </div>
 
 
-            <div className="landing-symbol">
-              ॐ
+            {/* ISKCON LOGO */}
+            <div className="landing-symbol landing-hero-iskcon-logo">
+              <img
+                src={iskconLogo}
+                alt="ISKCON"
+              />
             </div>
 
 
@@ -91,7 +102,7 @@ function Landing() {
 
 
             {/* ------------------------------------------------------
-                ACTIONS
+                ACTION
             ------------------------------------------------------- */}
             <div className="landing-actions">
 
@@ -156,6 +167,7 @@ function Landing() {
               <div className="landing-highlight-divider"></div>
 
 
+              {/* OM KEPT FOR SADHANA */}
               <div className="landing-highlight">
 
                 <span className="landing-highlight-icon">
@@ -182,7 +194,7 @@ function Landing() {
 
 
         {/* ==========================================================
-            IMAGE
+            KRISHNA IMAGE
         =========================================================== */}
         <div className="landing-image-section">
 
@@ -199,11 +211,18 @@ function Landing() {
           </div>
 
 
-          {/* Decorative OM */}
-          <div className="landing-floating-symbol landing-symbol-one">
-            ॐ
+          {/* ISKCON FLOATING LOGO */}
+          <div className="landing-floating-symbol landing-symbol-one landing-iskcon-floating">
+
+            <img
+              src={iskconLogo}
+              alt="ISKCON"
+            />
+
           </div>
 
+
+          {/* STAR DECORATION */}
           <div className="landing-floating-symbol landing-symbol-two">
             ✦
           </div>
@@ -279,7 +298,7 @@ function Landing() {
           </div>
 
 
-          {/* SADHANA */}
+          {/* SADHANA — OM KEPT */}
           <div className="landing-feature-card">
 
             <div className="landing-feature-icon sadhana">
@@ -371,9 +390,17 @@ function Landing() {
           ✦
         </div>
 
-        <div className="landing-message-symbol">
-          ॐ
+
+        {/* ISKCON LOGO */}
+        <div className="landing-message-symbol landing-message-iskcon">
+
+          <img
+            src={iskconLogo}
+            alt="ISKCON"
+          />
+
         </div>
+
 
         <blockquote>
           “Service to Krishna is the
@@ -404,6 +431,7 @@ function Landing() {
 
         </div>
 
+
         <Link
           to="/login"
           className="landing-cta-button"
@@ -422,8 +450,14 @@ function Landing() {
 
         <div className="landing-footer-brand">
 
-          <div className="landing-footer-symbol">
-            ॐ
+          {/* ISKCON LOGO */}
+          <div className="landing-footer-symbol landing-footer-iskcon">
+
+            <img
+              src={iskconLogo}
+              alt="ISKCON"
+            />
+
           </div>
 
           <div>

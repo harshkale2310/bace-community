@@ -3,6 +3,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 
+import iskconLogo from "../../assets/iskcon-logo.png";
+
 import "./Sidebar.css";
 
 /* ==========================================================================
@@ -216,12 +218,12 @@ function Sidebar() {
         <div className="sidebar-brand">
           <button
             type="button"
-            className="sidebar-brand-mark"
+            className="sidebar-brand-mark sidebar-brand-logo"
             onClick={handleBrandClick}
             aria-label="Go to dashboard"
             title="Dashboard"
           >
-            ॐ
+            <img src={iskconLogo} alt="" />
           </button>
 
           <button
@@ -334,10 +336,10 @@ function Sidebar() {
 
         <div className="sidebar-footer">
           <div
-            className="sidebar-footer-symbol"
+            className="sidebar-footer-symbol sidebar-footer-logo"
             aria-hidden="true"
           >
-            ॐ
+            <img src={iskconLogo} alt="" />
           </div>
 
           <div className="sidebar-footer-content">

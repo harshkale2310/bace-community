@@ -9,7 +9,6 @@
   top: 0;
   left: 0;
   right: 0;
-
   z-index: 1100;
 
   width: 100%;
@@ -36,17 +35,21 @@
 
 .navbar::after {
   content: "";
+
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
+
   height: 1px;
+
   background: linear-gradient(
     90deg,
     transparent,
     rgba(138, 67, 22, 0.18),
     transparent
   );
+
   pointer-events: none;
 }
 
@@ -95,10 +98,7 @@
     transform 0.2s ease;
 }
 
-.sidebar-toggle:hover {
-  background: var(--surface-soft);
-}
-
+.sidebar-toggle:hover,
 .sidebar-toggle:focus-visible {
   background: var(--surface-soft);
 }
@@ -122,10 +122,7 @@
     transform 0.2s ease;
 }
 
-.sidebar-toggle:hover span:nth-child(1) {
-  width: 17px;
-}
-
+.sidebar-toggle:hover span:nth-child(1),
 .sidebar-toggle:hover span:nth-child(3) {
   width: 17px;
 }
@@ -142,6 +139,10 @@
 
   overflow: hidden;
 }
+
+/* ==========================================================================
+   ISKCON LOGO
+========================================================================== */
 
 .navbar-title-icon {
   width: 42px;
@@ -163,15 +164,34 @@
     #f9e4b7
   );
 
-  color: #a86b00;
-
-  font-size: 23px;
-  font-weight: 600;
-
   box-shadow:
     inset 0 0 0 1px
     rgba(168, 107, 0, 0.08);
+
+  overflow: hidden;
+
+  box-sizing: border-box;
 }
+
+.navbar-iskcon-logo {
+  padding: 4px;
+}
+
+.navbar-iskcon-logo img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: contain;
+  object-position: center;
+
+  transform: scale(1.06);
+}
+
+/* ==========================================================================
+   BRAND TEXT
+========================================================================== */
 
 .navbar-title-text {
   min-width: 0;
@@ -195,7 +215,6 @@
 
   font-size: 17px;
   font-weight: 700;
-
   line-height: 1.2;
 }
 
@@ -235,7 +254,6 @@
 
 .navbar-notification-wrapper {
   position: relative;
-
   flex-shrink: 0;
 }
 
@@ -287,7 +305,6 @@
   color: #555;
 
   font-size: 24px;
-
   line-height: 1;
 
   transform: rotate(-12deg);
@@ -324,7 +341,6 @@
 
   font-size: 9px;
   font-weight: 800;
-
   line-height: 1;
 }
 
@@ -399,7 +415,6 @@
 
   font-size: 15px;
   font-weight: 700;
-
   line-height: 1.3;
 }
 
@@ -469,7 +484,6 @@
 
 .notification-list::-webkit-scrollbar-thumb {
   border-radius: 10px;
-
   background: #d9d9d9;
 }
 
@@ -534,7 +548,6 @@
   background: transparent;
 
   font-family: inherit;
-
   text-align: left;
 
   cursor: pointer;
@@ -544,7 +557,8 @@
   background: #f8f8f8;
 }
 
-.notification-item.unread .notification-content:hover {
+.notification-item.unread
+.notification-content:hover {
   background: #fff4df;
 }
 
@@ -565,7 +579,8 @@
   background: transparent;
 }
 
-.notification-item.unread .notification-status-dot {
+.notification-item.unread
+.notification-status-dot {
   background: #c47a16;
 }
 
@@ -588,7 +603,6 @@
 
   font-size: 12px;
   font-weight: 700;
-
   line-height: 1.35;
 }
 
@@ -599,7 +613,6 @@
 
   font-size: 11px;
   font-weight: 500;
-
   line-height: 1.45;
 }
 
@@ -628,6 +641,7 @@
   justify-content: center;
 
   margin-top: 7px;
+
   padding: 0;
 
   border: none;
@@ -641,7 +655,6 @@
 
   font-size: 20px;
   font-weight: 400;
-
   line-height: 1;
 
   cursor: pointer;
@@ -654,7 +667,6 @@
 
 .notification-delete:hover {
   background: #fff0ee;
-
   color: #b42318;
 }
 
@@ -722,7 +734,6 @@
 
 .navbar-profile {
   position: relative;
-
   flex-shrink: 0;
 }
 
@@ -755,7 +766,6 @@
 
 .profile-trigger:hover {
   background: var(--surface-soft);
-
   border-color: var(--border);
 }
 
@@ -835,7 +845,6 @@
 
   font-size: 13px;
   font-weight: 700;
-
   line-height: 1.3;
 }
 
@@ -848,7 +857,6 @@
 
   font-size: 11px;
   font-weight: 500;
-
   line-height: 1.2;
 }
 
@@ -864,7 +872,6 @@
   color: #777;
 
   font-size: 16px;
-
   line-height: 1;
 
   transition:
@@ -874,7 +881,6 @@
 
 .profile-arrow.open {
   color: #a86b00;
-
   transform: rotate(180deg);
 }
 
@@ -952,7 +958,6 @@
 
   font-size: 14px;
   font-weight: 700;
-
   line-height: 1.3;
 }
 
@@ -970,7 +975,6 @@
   color: #888;
 
   font-size: 11px;
-
   line-height: 1.3;
 }
 
@@ -988,14 +992,12 @@
   border-radius: 20px;
 
   background: #fff5df;
-
   color: #9a650b;
 
   font-size: 10px;
   font-weight: 700;
 
   text-transform: uppercase;
-
   letter-spacing: 0.4px;
 
   line-height: 1.2;
@@ -1087,7 +1089,8 @@
   background: #fff3f2;
 }
 
-.profile-menu-item.logout-option .profile-menu-icon {
+.profile-menu-item.logout-option
+.profile-menu-icon {
   background: #fff0ee;
 }
 
@@ -1103,7 +1106,6 @@
 .notification-mark-all:focus-visible,
 .sidebar-toggle:focus-visible {
   outline: 2px solid #c47a16;
-
   outline-offset: 2px;
 }
 
@@ -1123,8 +1125,14 @@
   .navbar-title-icon {
     width: 38px;
     height: 38px;
+  }
 
-    font-size: 21px;
+  .navbar-iskcon-logo {
+    padding: 3px;
+  }
+
+  .navbar-iskcon-logo img {
+    transform: scale(1.08);
   }
 
   .navbar-title-text strong {
@@ -1170,7 +1178,6 @@
 
   .navbar-left {
     flex: 1;
-
     min-width: 0;
 
     overflow: hidden;
@@ -1178,7 +1185,6 @@
 
   .navbar-page-title {
     flex: 1;
-
     min-width: 0;
 
     overflow: hidden;
@@ -1186,7 +1192,6 @@
 
   .navbar-title-text {
     flex: 1;
-
     min-width: 0;
 
     overflow: hidden;
@@ -1194,13 +1199,10 @@
 
   .navbar-title-text strong {
     width: 100%;
-
     max-width: none;
 
     overflow: hidden;
-
     text-overflow: ellipsis;
-
     white-space: nowrap;
 
     font-size: 14px;
@@ -1232,8 +1234,14 @@
     margin-right: 7px;
 
     border-radius: 9px;
+  }
 
-    font-size: 19px;
+  .navbar-iskcon-logo {
+    padding: 2px;
+  }
+
+  .navbar-iskcon-logo img {
+    transform: scale(1.1);
   }
 
   .navbar-notification {
@@ -1324,7 +1332,6 @@
 
   .navbar-left {
     flex: 1;
-
     min-width: 0;
   }
 
@@ -1334,13 +1341,11 @@
 
   .navbar-title-text {
     flex: 1;
-
     min-width: 0;
   }
 
   .navbar-title-text strong {
     width: 100%;
-
     max-width: none;
 
     font-size: 13px;

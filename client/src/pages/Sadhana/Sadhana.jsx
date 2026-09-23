@@ -66,6 +66,7 @@ const MONTH_NAMES = [
 
 function getToday() {
   const today = new Date();
+
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
@@ -148,17 +149,139 @@ function normalizeStatus(value) {
 }
 
 function statusLabel(value) {
-  if (normalizeStatus(value) === "present") return "Present";
-  if (normalizeStatus(value) === "absent") return "Absent";
+  const status = normalizeStatus(value);
+
+  if (status === "present") return "Present";
+  if (status === "absent") return "Absent";
+  if (status === "late") return "Late";
 
   return "Not marked";
 }
 
 function statusShort(value) {
-  if (normalizeStatus(value) === "present") return "P";
-  if (normalizeStatus(value) === "absent") return "A";
+  const status = normalizeStatus(value);
+
+  if (status === "present") return "P";
+  if (status === "absent") return "A";
+  if (status === "late") return "L";
 
   return "—";
+}
+
+/*
+ * Attendance logic:
+ *
+ * Present = attended
+ * Late    = attended
+ * Absent  = not attended
+ * Blank   = not included in attendance denominator
+ *
+ * This means an old record containing "present" or "absent"
+ * continues to work exactly as before.
+ */
+function isAttendedStatus(value) {
+  const status = normalizeStatus(value);
+
+  return status === "present" || status === "late";
+}
+
+function isMarkedStatus(value) {
+  const status = normalizeStatus(value);
+
+  return (
+    status === "present" ||
+    status === "late" ||
+    status === "absent"
+  );
+}
+
+function calculateAttendanceStats(records, field) {
+  const present = records.filter(
+    (record) =>
+      normalizeStatus(record[field]) === "present"
+  ).length;
+
+  const late = records.filter(
+    (record) =>
+      normalizeStatus(record[field]) === "late"
+  ).length;
+
+  const absent = records.filter(
+    (record) =>
+      normalizeStatus(record[field]) === "absent"
+  ).length;
+
+  const marked = present + late + absent;
+  const attended = present + late;
+
+  const percentage =
+    marked > 0
+      ? Math.round((attended / marked) * 100)
+      : 0;
+
+  return {
+    present,
+    late,
+    absent,
+    marked,
+    attended,
+    percentage,
+  };
+}
+
+function calculateCombinedAttendanceStats(records) {
+  const mangal = calculateAttendanceStats(
+    records,
+    "mangalArti"
+  );
+
+  const morningClass = calculateAttendanceStats(
+    records,
+    "morningClass"
+  );
+
+  const attended =
+    mangal.attended + morningClass.attended;
+
+  const marked =
+    mangal.marked + morningClass.marked;
+
+  const percentage =
+    marked > 0
+      ? Math.round((attended / marked) * 100)
+      : 0;
+
+  return {
+    attended,
+    marked,
+    percentage,
+  };
+}
+
+function calculateSubmissionStats(
+  monthDates,
+  records
+) {
+  const submitted = records.length;
+
+  const possible = monthDates.length;
+
+  const notSubmitted = Math.max(
+    0,
+    possible - submitted
+  );
+
+  const percentage =
+    possible > 0
+      ? Math.round((submitted / possible) * 100)
+      : 0;
+
+  return {
+    submitted,
+    notSubmitted,
+    possible,
+    percentage,
+  };
 }
 
 function toNumber(value) {
@@ -204,7 +327,9 @@ function buildDailyReportRows({
 
   monthDates.forEach((date) => {
     reportDevotees.forEach((devotee) => {
-      const record = recordMap.get(`${devotee.uid}_${date}`);
+      const record = recordMap.get(
+        `${devotee.uid}_${date}`
+      );
 
       rows.push({
         Date: date,
@@ -212,35 +337,79 @@ function buildDailyReportRows({
         Devotee: getDisplayName(devotee),
         Email: devotee.email || "",
         Department: devotee.department || "",
-        "Sadhana Status": record ? "Submitted" : "Not Submitted",
-        "Japa Rounds": record ? toNumber(record.rounds) : 0,
+
+        "Sadhana Status": record
+          ? "Submitted"
+          : "Not Submitted",
+
+        "Japa Rounds": record
+          ? toNumber(record.rounds)
+          : 0,
+
         "Mangal Arti": record
           ? statusLabel(record.mangalArti)
           : "Not marked",
+
+        "Mangal Arti Code": record
+          ? statusShort(record.mangalArti)
+          : "—",
+
         "Morning Class": record
           ? statusLabel(record.morningClass)
           : "Not marked",
+
+        "Morning Class Code": record
+          ? statusShort(record.morningClass)
+          : "—",
+
         "To Bed": record?.toBed || "",
         "Wake Up": record?.wakeUp || "",
-        "Day Rest (hrs)": record ? toNumber(record.dayRest) : 0,
-        "M.P. Report": record?.morningProgramReport || "",
-        "Adhyayan Topic": record?.adhyyanBookTopic || "",
-        "Adhyayan Time": record?.adhyyanTime || "",
-        "Shravan Topic": record?.shravanSpeakerTopic || "",
-        "Shravan Time": record?.shravanTime || "",
-        Seva: record?.sevaDescription || "",
-        "Seva Time": record?.sevaTime || "",
+
+        "Day Rest (hrs)": record
+          ? toNumber(record.dayRest)
+          : 0,
+
+        "M.P. Report":
+          record?.morningProgramReport || "",
+
+        "Adhyayan Topic":
+          record?.adhyyanBookTopic || "",
+
+        "Adhyayan Time":
+          record?.adhyyanTime || "",
+
+        "Shravan Topic":
+          record?.shravanSpeakerTopic || "",
+
+        "Shravan Time":
+          record?.shravanTime || "",
+
+        Seva:
+          record?.sevaDescription || "",
+
+        "Seva Time":
+          record?.sevaTime || "",
+
         "Yoga / Exercise (min)": record
           ? toNumber(record.yogaExercise)
           : 0,
+
         "College / Work (hrs)": record
           ? toNumber(record.collegeWork)
           : 0,
+
         "Study / X-Work (hrs)": record
           ? toNumber(record.studyXWork)
           : 0,
-        Reading: record ? toNumber(record.reading) : 0,
-        Meditation: record ? toNumber(record.meditation) : 0,
+
+        Reading: record
+          ? toNumber(record.reading)
+          : 0,
+
+        Meditation: record
+          ? toNumber(record.meditation)
+          : 0,
+
         Reason: record?.reason || "",
         Notes: record?.notes || "",
       });
@@ -258,7 +427,9 @@ function buildMonthlySummaryRows({
   return reportDevotees.map((devotee) => {
     const devoteeRecords = monthDates
       .map((date) =>
-        recordMap.get(`${devotee.uid}_${date}`)
+        recordMap.get(
+          `${devotee.uid}_${date}`
+        )
       )
       .filter(Boolean);
 
@@ -280,29 +451,33 @@ function buildMonthlySummaryRows({
       0
     );
 
-    const morningProgram = devoteeRecords.filter(
-      (record) => safeText(record.morningProgramReport)
-    ).length;
+    const morningProgram =
+      devoteeRecords.filter((record) =>
+        safeText(record.morningProgramReport)
+      ).length;
 
-    const mangalArtiPresent = devoteeRecords.filter(
-      (record) =>
-        normalizeStatus(record.mangalArti) === "present"
-    ).length;
+    const mangalArtiStats =
+      calculateAttendanceStats(
+        devoteeRecords,
+        "mangalArti"
+      );
 
-    const mangalArtiAbsent = devoteeRecords.filter(
-      (record) =>
-        normalizeStatus(record.mangalArti) === "absent"
-    ).length;
+    const morningClassStats =
+      calculateAttendanceStats(
+        devoteeRecords,
+        "morningClass"
+      );
 
-    const morningClassPresent = devoteeRecords.filter(
-      (record) =>
-        normalizeStatus(record.morningClass) === "present"
-    ).length;
+    const combinedAttendanceStats =
+      calculateCombinedAttendanceStats(
+        devoteeRecords
+      );
 
-    const morningClassAbsent = devoteeRecords.filter(
-      (record) =>
-        normalizeStatus(record.morningClass) === "absent"
-    ).length;
+    const submissionStats =
+      calculateSubmissionStats(
+        monthDates,
+        devoteeRecords
+      );
 
     const totalExercise = devoteeRecords.reduce(
       (total, record) =>
@@ -310,54 +485,112 @@ function buildMonthlySummaryRows({
       0
     );
 
-    const totalCollegeWork = devoteeRecords.reduce(
-      (total, record) =>
-        total + toNumber(record.collegeWork),
-      0
-    );
+    const totalCollegeWork =
+      devoteeRecords.reduce(
+        (total, record) =>
+          total + toNumber(record.collegeWork),
+        0
+      );
 
-    const totalStudyWork = devoteeRecords.reduce(
-      (total, record) =>
-        total + toNumber(record.studyXWork),
-      0
-    );
+    const totalStudyWork =
+      devoteeRecords.reduce(
+        (total, record) =>
+          total + toNumber(record.studyXWork),
+        0
+      );
 
     return {
       Devotee: getDisplayName(devotee),
       Email: devotee.email || "",
       Department: devotee.department || "",
+
       "Days Covered": monthDates.length,
-      "Sadhana Submitted": devoteeRecords.length,
-      "Sadhana Not Submitted": Math.max(
-        0,
-        monthDates.length - devoteeRecords.length
-      ),
+
+      "Sadhana Submitted":
+        submissionStats.submitted,
+
+      "Sadhana Not Submitted":
+        submissionStats.notSubmitted,
+
+      "Sadhana Submission %":
+        submissionStats.percentage,
+
       "Japa Total": rounds,
+
       "Japa Average / Submitted Day":
         devoteeRecords.length > 0
           ? Math.round(
-              (rounds / devoteeRecords.length) * 10
+              (rounds /
+                devoteeRecords.length) *
+                10
             ) / 10
           : 0,
-      "Mangal Arti Present": mangalArtiPresent,
-      "Mangal Arti Absent": mangalArtiAbsent,
-      "Morning Class Present": morningClassPresent,
-      "Morning Class Absent": morningClassAbsent,
-      "Morning Program Recorded": morningProgram,
-      "Adhyayan Entries": devoteeRecords.filter(
-        (record) => safeText(record.adhyyanBookTopic)
-      ).length,
-      "Shravan Entries": devoteeRecords.filter(
-        (record) => safeText(record.shravanSpeakerTopic)
-      ).length,
-      "Seva Entries": devoteeRecords.filter(
-        (record) => safeText(record.sevaDescription)
-      ).length,
-      "Yoga / Exercise Total (min)": totalExercise,
-      "College / Work Total (hrs)": totalCollegeWork,
-      "Study / X-Work Total (hrs)": totalStudyWork,
-      "Reading Total (min)": reading,
-      "Meditation Total (min)": meditation,
+
+      "Mangal Arti Present":
+        mangalArtiStats.present,
+
+      "Mangal Arti Late":
+        mangalArtiStats.late,
+
+      "Mangal Arti Absent":
+        mangalArtiStats.absent,
+
+      "Mangal Arti Marked":
+        mangalArtiStats.marked,
+
+      "Mangal Arti Attendance %":
+        mangalArtiStats.percentage,
+
+      "Morning Class Present":
+        morningClassStats.present,
+
+      "Morning Class Late":
+        morningClassStats.late,
+
+      "Morning Class Absent":
+        morningClassStats.absent,
+
+      "Morning Class Marked":
+        morningClassStats.marked,
+
+      "Morning Class Attendance %":
+        morningClassStats.percentage,
+
+      "Overall Attendance %":
+        combinedAttendanceStats.percentage,
+
+      "Morning Program Recorded":
+        morningProgram,
+
+      "Adhyayan Entries":
+        devoteeRecords.filter((record) =>
+          safeText(record.adhyyanBookTopic)
+        ).length,
+
+      "Shravan Entries":
+        devoteeRecords.filter((record) =>
+          safeText(record.shravanSpeakerTopic)
+        ).length,
+
+      "Seva Entries":
+        devoteeRecords.filter((record) =>
+          safeText(record.sevaDescription)
+        ).length,
+
+      "Yoga / Exercise Total (min)":
+        totalExercise,
+
+      "College / Work Total (hrs)":
+        totalCollegeWork,
+
+      "Study / X-Work Total (hrs)":
+        totalStudyWork,
+
+      "Reading Total (min)":
+        reading,
+
+      "Meditation Total (min)":
+        meditation,
     };
   });
 }
@@ -366,13 +599,33 @@ function createSummaryRows(summaryRows) {
   const totals = summaryRows.reduce(
     (total, row) => {
       total.devotees += 1;
-      total.submitted += row["Sadhana Submitted"];
-      total.notSubmitted += row["Sadhana Not Submitted"];
-      total.rounds += row["Japa Total"];
-      total.mangalPresent += row["Mangal Arti Present"];
-      total.mangalAbsent += row["Mangal Arti Absent"];
-      total.classPresent += row["Morning Class Present"];
-      total.classAbsent += row["Morning Class Absent"];
+
+      total.submitted +=
+        row["Sadhana Submitted"];
+
+      total.notSubmitted +=
+        row["Sadhana Not Submitted"];
+
+      total.rounds +=
+        row["Japa Total"];
+
+      total.mangalPresent +=
+        row["Mangal Arti Present"];
+
+      total.mangalLate +=
+        row["Mangal Arti Late"];
+
+      total.mangalAbsent +=
+        row["Mangal Arti Absent"];
+
+      total.classPresent +=
+        row["Morning Class Present"];
+
+      total.classLate +=
+        row["Morning Class Late"];
+
+      total.classAbsent +=
+        row["Morning Class Absent"];
 
       return total;
     },
@@ -382,8 +635,10 @@ function createSummaryRows(summaryRows) {
       notSubmitted: 0,
       rounds: 0,
       mangalPresent: 0,
+      mangalLate: 0,
       mangalAbsent: 0,
       classPresent: 0,
+      classLate: 0,
       classAbsent: 0,
     }
   );
@@ -410,12 +665,20 @@ function createSummaryRows(summaryRows) {
       Value: totals.mangalPresent,
     },
     {
+      Metric: "Mangal Arti marked Late",
+      Value: totals.mangalLate,
+    },
+    {
       Metric: "Mangal Arti marked Absent",
       Value: totals.mangalAbsent,
     },
     {
       Metric: "Morning Class marked Present",
       Value: totals.classPresent,
+    },
+    {
+      Metric: "Morning Class marked Late",
+      Value: totals.classLate,
     },
     {
       Metric: "Morning Class marked Absent",
@@ -431,7 +694,10 @@ function exportDailyExcel({
 }) {
   const recordMap = new Map(
     records
-      .filter((record) => record.date === selectedDate)
+      .filter(
+        (record) =>
+          record.date === selectedDate
+      )
       .map((record) => [
         `${record.devoteeId}_${record.date}`,
         record,
@@ -445,7 +711,9 @@ function exportDailyExcel({
   });
 
   const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(rows);
 
   worksheet["!cols"] = [
     { wch: 12 },
@@ -456,6 +724,8 @@ function exportDailyExcel({
     { wch: 18 },
     { wch: 12 },
     { wch: 18 },
+    { wch: 18 },
+    { wch: 20 },
     { wch: 20 },
     { wch: 12 },
     { wch: 12 },
@@ -502,10 +772,14 @@ function exportMonthlyExcel({
     trackingStartDate
   );
 
-  const calendarDays = getDaysInMonth(monthKey);
+  const calendarDays =
+    getDaysInMonth(monthKey);
 
-  const monthRecords = records.filter((record) =>
-    String(record.date || "").startsWith(`${monthKey}-`)
+  const monthRecords = records.filter(
+    (record) =>
+      String(record.date || "").startsWith(
+        `${monthKey}-`
+      )
   );
 
   const recordMap = new Map(
@@ -515,17 +789,19 @@ function exportMonthlyExcel({
     ])
   );
 
-  const summaryRows = buildMonthlySummaryRows({
-    monthDates,
-    reportDevotees,
-    recordMap,
-  });
+  const summaryRows =
+    buildMonthlySummaryRows({
+      monthDates,
+      reportDevotees,
+      recordMap,
+    });
 
-  const dailyRows = buildDailyReportRows({
-    monthDates,
-    reportDevotees,
-    recordMap,
-  });
+  const dailyRows =
+    buildDailyReportRows({
+      monthDates,
+      reportDevotees,
+      recordMap,
+    });
 
   const workbook = XLSX.utils.book_new();
 
@@ -536,7 +812,9 @@ function exportMonthlyExcel({
     },
     {
       Field: "Month",
-      Value: formatMonthYear(`${monthKey}-01`),
+      Value: formatMonthYear(
+        `${monthKey}-01`
+      ),
     },
     {
       Field: "Report Status",
@@ -569,28 +847,42 @@ function exportMonthlyExcel({
     {
       Field: "Future Dates Excluded",
       Value:
-        calendarDays.length > monthDates.length
-          ? calendarDays.length - monthDates.length
+        calendarDays.length >
+        monthDates.length
+          ? calendarDays.length -
+            monthDates.length
           : 0,
+    },
+    {
+      Field: "Attendance Rule",
+      Value:
+        "Present + Late = Attended; Absent = Not Attended; Blank = Not Marked",
     },
   ];
 
   const overviewSheet =
-    XLSX.utils.json_to_sheet(overviewRows);
+    XLSX.utils.json_to_sheet(
+      overviewRows
+    );
 
   const summarySheet =
-    XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.json_to_sheet(
+      summaryRows
+    );
 
   const dailySheet =
-    XLSX.utils.json_to_sheet(dailyRows);
+    XLSX.utils.json_to_sheet(
+      dailyRows
+    );
 
-  const totalsSheet = XLSX.utils.json_to_sheet(
-    createSummaryRows(summaryRows)
-  );
+  const totalsSheet =
+    XLSX.utils.json_to_sheet(
+      createSummaryRows(summaryRows)
+    );
 
   overviewSheet["!cols"] = [
-    { wch: 24 },
-    { wch: 34 },
+    { wch: 26 },
+    { wch: 80 },
   ];
 
   summarySheet["!cols"] = [
@@ -600,19 +892,28 @@ function exportMonthlyExcel({
     { wch: 15 },
     { wch: 18 },
     { wch: 20 },
-    { wch: 14 },
-    { wch: 24 },
-    { wch: 24 },
-    { wch: 24 },
-    { wch: 24 },
-    { wch: 24 },
+    { wch: 20 },
     { wch: 18 },
-    { wch: 18 },
+    { wch: 20 },
     { wch: 18 },
     { wch: 20 },
     { wch: 20 },
+    { wch: 18 },
     { wch: 20 },
     { wch: 20 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 22 },
     { wch: 22 },
   ];
 
@@ -625,6 +926,8 @@ function exportMonthlyExcel({
     { wch: 18 },
     { wch: 12 },
     { wch: 18 },
+    { wch: 18 },
+    { wch: 20 },
     { wch: 20 },
     { wch: 12 },
     { wch: 12 },
@@ -688,29 +991,54 @@ function Sadhana() {
 
   const [devotees, setDevotees] = useState([]);
   const [records, setRecords] = useState([]);
-  const [reportRecords, setReportRecords] = useState([]);
+  const [reportRecords, setReportRecords] =
+    useState([]);
+
   const [selectedDate, setSelectedDate] =
     useState(getToday());
+
   const [reportMonth, setReportMonth] =
     useState(getMonthKey(getToday()));
-  const [ownRecord, setOwnRecord] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(true);
+
+  const [ownRecord, setOwnRecord] =
+    useState(null);
+
+  const [form, setForm] =
+    useState(EMPTY_FORM);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const [reportLoading, setReportLoading] =
     useState(false);
-  const [saving, setSaving] = useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [exporting, setExporting] = useState(false);
+
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const [exporting, setExporting] =
+    useState(false);
+
   const [trackingStartDate, setTrackingStartDate] =
     useState(getToday());
-  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  const [refreshNonce, setRefreshNonce] =
+    useState(0);
 
   const todayDate = getToday();
 
   useEffect(() => {
-    if (!isAdministrator || !user?.uid) return undefined;
+    if (
+      !isAdministrator ||
+      !user?.uid
+    ) {
+      return undefined;
+    }
 
     let cancelled = false;
 
@@ -727,11 +1055,13 @@ function Sadhana() {
 
         if (
           settingsSnapshot.exists() &&
-          settingsSnapshot.data().trackingStartDate
+          settingsSnapshot.data()
+            .trackingStartDate
         ) {
           setTrackingStartDate(
             String(
-              settingsSnapshot.data().trackingStartDate
+              settingsSnapshot.data()
+                .trackingStartDate
             )
           );
 
@@ -745,14 +1075,17 @@ function Sadhana() {
             settingsRef,
             {
               trackingStartDate: launchDate,
-              updatedAt: serverTimestamp(),
+              updatedAt:
+                serverTimestamp(),
               updatedBy: user.uid,
             },
             { merge: true }
           );
 
           if (!cancelled) {
-            setTrackingStartDate(launchDate);
+            setTrackingStartDate(
+              launchDate
+            );
           }
         } catch (settingsError) {
           console.error(
@@ -761,7 +1094,9 @@ function Sadhana() {
           );
 
           if (!cancelled) {
-            setTrackingStartDate(getToday());
+            setTrackingStartDate(
+              getToday()
+            );
           }
         }
       },
@@ -772,7 +1107,9 @@ function Sadhana() {
         );
 
         if (!cancelled) {
-          setTrackingStartDate(getToday());
+          setTrackingStartDate(
+            getToday()
+          );
         }
       }
     );
@@ -783,12 +1120,19 @@ function Sadhana() {
     };
   }, [isAdministrator, user?.uid]);
 
-  const isToday = selectedDate === todayDate;
-  const isPastDate = selectedDate < todayDate;
-  const isFutureDate = selectedDate > todayDate;
+  const isToday =
+    selectedDate === todayDate;
+
+  const isPastDate =
+    selectedDate < todayDate;
+
+  const isFutureDate =
+    selectedDate > todayDate;
 
   const canEditToday =
-    isDevotee && !!user?.uid && isToday;
+    isDevotee &&
+    !!user?.uid &&
+    isToday;
 
   useEffect(() => {
     if (!isAdministrator) {
@@ -804,12 +1148,13 @@ function Sadhana() {
     const unsubscribe = onSnapshot(
       devoteesQuery,
       (snapshot) => {
-        const devoteeData = snapshot.docs.map(
-          (item) => ({
-            uid: item.id,
-            ...item.data(),
-          })
-        );
+        const devoteeData =
+          snapshot.docs.map(
+            (item) => ({
+              uid: item.id,
+              ...item.data(),
+            })
+          );
 
         devoteeData.sort((a, b) =>
           String(a.name || "").localeCompare(
@@ -832,7 +1177,8 @@ function Sadhana() {
         setDevotees([]);
 
         setError(
-          firebaseError.code === "permission-denied"
+          firebaseError.code ===
+            "permission-denied"
             ? "Firebase permission denied while loading devotees."
             : "Unable to load devotees. Please try again."
         );
@@ -854,13 +1200,18 @@ function Sadhana() {
   );
 
   const reportDevotees = useMemo(() => {
-    if (reportMonth === getCurrentMonthKey()) {
+    if (
+      reportMonth ===
+      getCurrentMonthKey()
+    ) {
       return activeDevotees;
     }
 
     return devotees.filter(
       (devotee) =>
-        normalizeStatus(devotee.status) !== "deleted"
+        normalizeStatus(
+          devotee.status
+        ) !== "deleted"
     );
   }, [
     devotees,
@@ -871,23 +1222,15 @@ function Sadhana() {
   const devoteeMap = useMemo(() => {
     const map = {};
 
-    activeDevotees.forEach((devotee) => {
-      map[devotee.uid] = devotee;
-    });
+    activeDevotees.forEach(
+      (devotee) => {
+        map[devotee.uid] = devotee;
+      }
+    );
 
     return map;
   }, [activeDevotees]);
 
-  /*
-   * IMPORTANT FIX:
-   *
-   * Admin daily records previously used getDocs().
-   * That meant an already-open admin page would not see a
-   * devotee's newly submitted record until refresh.
-   *
-   * We now use onSnapshot() so Firestore pushes the change
-   * immediately.
-   */
   useEffect(() => {
     if (!user?.uid) {
       setRecords([]);
@@ -913,10 +1256,12 @@ function Sadhana() {
           if (cancelled) return;
 
           setRecords(
-            snapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }))
+            snapshot.docs.map(
+              (item) => ({
+                id: item.id,
+                ...item.data(),
+              })
+            )
           );
 
           setLoading(false);
@@ -933,7 +1278,8 @@ function Sadhana() {
           setLoading(false);
 
           setError(
-            firebaseError.code === "permission-denied"
+            firebaseError.code ===
+              "permission-denied"
               ? "Firebase permission denied while loading daily Sadhana records."
               : "Unable to load daily Sadhana records. Please try again."
           );
@@ -946,12 +1292,13 @@ function Sadhana() {
       };
     }
 
-    /*
-     * Devotees continue listening only to their own records.
-     */
     const ownQuery = query(
       collection(db, "sadhana"),
-      where("devoteeId", "==", user.uid)
+      where(
+        "devoteeId",
+        "==",
+        user.uid
+      )
     );
 
     const unsubscribe = onSnapshot(
@@ -960,10 +1307,12 @@ function Sadhana() {
         if (cancelled) return;
 
         setRecords(
-          snapshot.docs.map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }))
+          snapshot.docs.map(
+            (item) => ({
+              id: item.id,
+              ...item.data(),
+            })
+          )
         );
 
         setLoading(false);
@@ -980,7 +1329,8 @@ function Sadhana() {
         setLoading(false);
 
         setError(
-          firebaseError.code === "permission-denied"
+          firebaseError.code ===
+            "permission-denied"
             ? "Firebase permission denied while loading your Sadhana records."
             : "Unable to load your Sadhana records. Please try again."
         );
@@ -998,18 +1348,6 @@ function Sadhana() {
     refreshNonce,
   ]);
 
-  /*
-   * IMPORTANT FIX:
-   *
-   * Monthly reports also previously used getDocs().
-   * This means the September report could remain at:
-   *
-   * Submitted: 0
-   *
-   * even after the devotee submitted 22-09-2026.
-   *
-   * onSnapshot() now keeps the report data synchronized.
-   */
   useEffect(() => {
     if (
       !isAdministrator ||
@@ -1022,10 +1360,11 @@ function Sadhana() {
       return undefined;
     }
 
-    const reportDaysForQuery = getReportDays(
-      reportMonth,
-      trackingStartDate
-    );
+    const reportDaysForQuery =
+      getReportDays(
+        reportMonth,
+        trackingStartDate
+      );
 
     if (!reportDaysForQuery.length) {
       setReportRecords([]);
@@ -1036,7 +1375,9 @@ function Sadhana() {
 
     let cancelled = false;
 
-    const startDate = reportDaysForQuery[0];
+    const startDate =
+      reportDaysForQuery[0];
+
     const endDate =
       reportDaysForQuery[
         reportDaysForQuery.length - 1
@@ -1056,10 +1397,12 @@ function Sadhana() {
         if (cancelled) return;
 
         setReportRecords(
-          snapshot.docs.map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }))
+          snapshot.docs.map(
+            (item) => ({
+              id: item.id,
+              ...item.data(),
+            })
+          )
         );
 
         setReportLoading(false);
@@ -1076,7 +1419,8 @@ function Sadhana() {
         setReportLoading(false);
 
         setError(
-          firebaseError.code === "permission-denied"
+          firebaseError.code ===
+            "permission-denied"
             ? "Firebase permission denied while loading the monthly report."
             : "Unable to load monthly report data. Please try again."
         );
@@ -1098,14 +1442,17 @@ function Sadhana() {
     if (!isAdministrator) {
       return records.filter(
         (record) =>
-          record.devoteeId === user?.uid
+          record.devoteeId ===
+          user?.uid
       );
     }
 
     return records.filter(
       (record) =>
         !!record.devoteeId &&
-        !!devoteeMap[record.devoteeId]
+        !!devoteeMap[
+          record.devoteeId
+        ]
     );
   }, [
     records,
@@ -1115,7 +1462,10 @@ function Sadhana() {
   ]);
 
   useEffect(() => {
-    if (!isDevotee || !user?.uid) {
+    if (
+      !isDevotee ||
+      !user?.uid
+    ) {
       setOwnRecord(null);
       return;
     }
@@ -1123,7 +1473,8 @@ function Sadhana() {
     setOwnRecord(
       validRecords.find(
         (item) =>
-          item.devoteeId === user.uid &&
+          item.devoteeId ===
+            user.uid &&
           item.date === selectedDate
       ) || null
     );
@@ -1139,41 +1490,93 @@ function Sadhana() {
 
     if (ownRecord) {
       setForm({
-        toBed: ownRecord.toBed || "",
-        wakeUp: ownRecord.wakeUp || "",
-        dayRest: toNumber(ownRecord.dayRest),
+        toBed:
+          ownRecord.toBed || "",
+
+        wakeUp:
+          ownRecord.wakeUp || "",
+
+        dayRest:
+          toNumber(
+            ownRecord.dayRest
+          ),
+
         morningProgramReport:
-          ownRecord.morningProgramReport || "",
-        rounds: toNumber(ownRecord.rounds),
-        mangalArti: ownRecord.mangalArti || "",
-        morningClass: ownRecord.morningClass || "",
+          ownRecord.morningProgramReport ||
+          "",
+
+        rounds:
+          toNumber(
+            ownRecord.rounds
+          ),
+
+        mangalArti:
+          ownRecord.mangalArti ||
+          "",
+
+        morningClass:
+          ownRecord.morningClass ||
+          "",
+
         adhyyanBookTopic:
-          ownRecord.adhyyanBookTopic || "",
-        adhyyanTime: ownRecord.adhyyanTime || "",
+          ownRecord.adhyyanBookTopic ||
+          "",
+
+        adhyyanTime:
+          ownRecord.adhyyanTime ||
+          "",
+
         shravanSpeakerTopic:
-          ownRecord.shravanSpeakerTopic || "",
-        shravanTime: ownRecord.shravanTime || "",
+          ownRecord.shravanSpeakerTopic ||
+          "",
+
+        shravanTime:
+          ownRecord.shravanTime ||
+          "",
+
         sevaDescription:
-          ownRecord.sevaDescription || "",
-        sevaTime: ownRecord.sevaTime || "",
-        yogaExercise: toNumber(
-          ownRecord.yogaExercise
-        ),
-        collegeWork: toNumber(
-          ownRecord.collegeWork
-        ),
-        studyXWork: toNumber(
-          ownRecord.studyXWork
-        ),
-        reason: ownRecord.reason || "",
-        reading: toNumber(ownRecord.reading),
-        meditation: toNumber(
-          ownRecord.meditation
-        ),
-        notes: ownRecord.notes || "",
+          ownRecord.sevaDescription ||
+          "",
+
+        sevaTime:
+          ownRecord.sevaTime ||
+          "",
+
+        yogaExercise:
+          toNumber(
+            ownRecord.yogaExercise
+          ),
+
+        collegeWork:
+          toNumber(
+            ownRecord.collegeWork
+          ),
+
+        studyXWork:
+          toNumber(
+            ownRecord.studyXWork
+          ),
+
+        reason:
+          ownRecord.reason || "",
+
+        reading:
+          toNumber(
+            ownRecord.reading
+          ),
+
+        meditation:
+          toNumber(
+            ownRecord.meditation
+          ),
+
+        notes:
+          ownRecord.notes || "",
       });
     } else {
-      setForm({ ...EMPTY_FORM });
+      setForm({
+        ...EMPTY_FORM,
+      });
     }
 
     setError("");
@@ -1187,15 +1590,22 @@ function Sadhana() {
   const handleChange = (event) => {
     if (!canEditToday) return;
 
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setForm((previous) => ({
       ...previous,
-      [name]: NUMBER_FIELDS.includes(name)
-        ? value === ""
-          ? ""
-          : Number(value)
-        : value,
+
+      [name]:
+        NUMBER_FIELDS.includes(
+          name
+        )
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
     }));
 
     setError("");
@@ -1211,7 +1621,9 @@ function Sadhana() {
     if (!isDevotee) return;
 
     if (!user?.uid) {
-      setError("Your account could not be verified.");
+      setError(
+        "Your account could not be verified."
+      );
       return;
     }
 
@@ -1225,7 +1637,9 @@ function Sadhana() {
     try {
       setSaving(true);
 
-      const recordId = `${user.uid}_${selectedDate}`;
+      const recordId =
+        `${user.uid}_${selectedDate}`;
+
       const recordRef = doc(
         db,
         "sadhana",
@@ -1238,71 +1652,99 @@ function Sadhana() {
           devoteeId: user.uid,
           date: selectedDate,
 
-          toBed: safeText(form.toBed),
-          wakeUp: safeText(form.wakeUp),
-          dayRest: toNumber(form.dayRest),
+          toBed:
+            safeText(form.toBed),
 
-          morningProgramReport: safeText(
-            form.morningProgramReport
-          ),
+          wakeUp:
+            safeText(form.wakeUp),
 
-          rounds: toNumber(form.rounds),
+          dayRest:
+            toNumber(form.dayRest),
 
-          mangalArti: safeText(
-            form.mangalArti
-          ),
+          morningProgramReport:
+            safeText(
+              form.morningProgramReport
+            ),
 
-          morningClass: safeText(
-            form.morningClass
-          ),
+          rounds:
+            toNumber(form.rounds),
 
-          adhyyanBookTopic: safeText(
-            form.adhyyanBookTopic
-          ),
+          /*
+           * Existing values remain:
+           * present / absent
+           *
+           * New value:
+           * late
+           */
+          mangalArti:
+            safeText(form.mangalArti),
 
-          adhyyanTime: safeText(
-            form.adhyyanTime
-          ),
+          morningClass:
+            safeText(form.morningClass),
 
-          shravanSpeakerTopic: safeText(
-            form.shravanSpeakerTopic
-          ),
+          adhyyanBookTopic:
+            safeText(
+              form.adhyyanBookTopic
+            ),
 
-          shravanTime: safeText(
-            form.shravanTime
-          ),
+          adhyyanTime:
+            safeText(
+              form.adhyyanTime
+            ),
 
-          sevaDescription: safeText(
-            form.sevaDescription
-          ),
+          shravanSpeakerTopic:
+            safeText(
+              form.shravanSpeakerTopic
+            ),
 
-          sevaTime: safeText(
-            form.sevaTime
-          ),
+          shravanTime:
+            safeText(
+              form.shravanTime
+            ),
 
-          yogaExercise: toNumber(
-            form.yogaExercise
-          ),
+          sevaDescription:
+            safeText(
+              form.sevaDescription
+            ),
 
-          collegeWork: toNumber(
-            form.collegeWork
-          ),
+          sevaTime:
+            safeText(
+              form.sevaTime
+            ),
 
-          studyXWork: toNumber(
-            form.studyXWork
-          ),
+          yogaExercise:
+            toNumber(
+              form.yogaExercise
+            ),
 
-          reason: safeText(form.reason),
+          collegeWork:
+            toNumber(
+              form.collegeWork
+            ),
 
-          reading: toNumber(form.reading),
+          studyXWork:
+            toNumber(
+              form.studyXWork
+            ),
 
-          meditation: toNumber(
-            form.meditation
-          ),
+          reason:
+            safeText(form.reason),
 
-          notes: safeText(form.notes),
+          reading:
+            toNumber(
+              form.reading
+            ),
 
-          updatedAt: serverTimestamp(),
+          meditation:
+            toNumber(
+              form.meditation
+            ),
+
+          notes:
+            safeText(form.notes),
+
+          updatedAt:
+            serverTimestamp(),
 
           createdAt:
             ownRecord?.createdAt ||
@@ -1321,7 +1763,8 @@ function Sadhana() {
       );
 
       setError(
-        firebaseError.code === "permission-denied"
+        firebaseError.code ===
+          "permission-denied"
           ? "Firebase permission denied. Please check the Sadhana Firestore rules."
           : "Unable to save today's Sadhana. Please try again."
       );
@@ -1334,16 +1777,22 @@ function Sadhana() {
     () =>
       validRecords.filter(
         (record) =>
-          record.date === selectedDate
+          record.date ===
+          selectedDate
       ),
-    [validRecords, selectedDate]
+    [
+      validRecords,
+      selectedDate,
+    ]
   );
 
-  const totalRounds = recordsForDate.reduce(
-    (total, record) =>
-      total + toNumber(record.rounds),
-    0
-  );
+  const totalRounds =
+    recordsForDate.reduce(
+      (total, record) =>
+        total +
+        toNumber(record.rounds),
+      0
+    );
 
   const practiceRecorded =
     recordsForDate.filter(
@@ -1354,33 +1803,45 @@ function Sadhana() {
   const averageRounds =
     practiceRecorded > 0
       ? Math.round(
-          (totalRounds / practiceRecorded) * 10
+          (totalRounds /
+            practiceRecorded) *
+            10
         ) / 10
       : 0;
 
   const completedMonth =
     isCompletedMonth(reportMonth);
 
-  const selectedReportRecords = useMemo(
-    () =>
-      reportRecords.filter((record) =>
-        String(record.date || "").startsWith(
-          `${reportMonth}-`
-        )
-      ),
-    [reportRecords, reportMonth]
-  );
+  const selectedReportRecords =
+    useMemo(
+      () =>
+        reportRecords.filter(
+          (record) =>
+            String(
+              record.date || ""
+            ).startsWith(
+              `${reportMonth}-`
+            )
+        ),
+      [
+        reportRecords,
+        reportMonth,
+      ]
+    );
 
-  const reportRecordMap = useMemo(
-    () =>
-      new Map(
-        selectedReportRecords.map((record) => [
-          `${record.devoteeId}_${record.date}`,
-          record,
-        ])
-      ),
-    [selectedReportRecords]
-  );
+  const reportRecordMap =
+    useMemo(
+      () =>
+        new Map(
+          selectedReportRecords.map(
+            (record) => [
+              `${record.devoteeId}_${record.date}`,
+              record,
+            ]
+          )
+        ),
+      [selectedReportRecords]
+    );
 
   const reportDays = useMemo(
     () =>
@@ -1388,112 +1849,216 @@ function Sadhana() {
         reportMonth,
         trackingStartDate
       ),
-    [reportMonth, trackingStartDate]
+    [
+      reportMonth,
+      trackingStartDate,
+    ]
   );
 
   const reportIsFutureMonth =
-    reportMonth > getCurrentMonthKey();
+    reportMonth >
+    getCurrentMonthKey();
 
-  const reportSubmitted = useMemo(
-    () =>
-      reportDays.reduce(
-        (total, date) =>
-          total +
-          reportDevotees.filter((devotee) =>
+  const reportSubmitted =
+    reportDays.reduce(
+      (total, date) =>
+        total +
+        reportDevotees.filter(
+          (devotee) =>
             reportRecordMap.has(
               `${devotee.uid}_${date}`
             )
-          ).length,
-        0
-      ),
-    [
-      reportDays,
-      reportDevotees,
-      reportRecordMap,
-    ]
-  );
+        ).length,
+      0
+    );
 
   const reportPossible =
     reportDays.length *
     reportDevotees.length;
 
-  const reportNotSubmitted = Math.max(
-    0,
-    reportPossible - reportSubmitted
-  );
+  const reportNotSubmitted =
+    Math.max(
+      0,
+      reportPossible -
+        reportSubmitted
+    );
 
   const reportCompletion =
     reportPossible > 0
       ? Math.round(
-          (reportSubmitted / reportPossible) * 100
+          (reportSubmitted /
+            reportPossible) *
+            100
         )
       : 0;
 
-  const handleDailyExport = () => {
-    if (isFutureDate) {
-      setError(
-        "Daily reports are available only through today."
+  /*
+   * Monthly performance data for admin.
+   *
+   * This is calculated from the same live reportRecords
+   * used by Excel, so the UI and Excel stay consistent.
+   */
+  const monthlyPerformance =
+    useMemo(() => {
+      return reportDevotees.map(
+        (devotee) => {
+          const devoteeRecords =
+            reportDays
+              .map((date) =>
+                reportRecordMap.get(
+                  `${devotee.uid}_${date}`
+                )
+              )
+              .filter(Boolean);
+
+          const submissionStats =
+            calculateSubmissionStats(
+              reportDays,
+              devoteeRecords
+            );
+
+          const mangalArtiStats =
+            calculateAttendanceStats(
+              devoteeRecords,
+              "mangalArti"
+            );
+
+          const morningClassStats =
+            calculateAttendanceStats(
+              devoteeRecords,
+              "morningClass"
+            );
+
+          const combinedStats =
+            calculateCombinedAttendanceStats(
+              devoteeRecords
+            );
+
+          const rounds =
+            devoteeRecords.reduce(
+              (total, record) =>
+                total +
+                toNumber(record.rounds),
+              0
+            );
+
+          const averageRounds =
+            devoteeRecords.length >
+            0
+              ? Math.round(
+                  (rounds /
+                    devoteeRecords.length) *
+                    10
+                ) / 10
+              : 0;
+
+          return {
+            uid: devotee.uid,
+            name:
+              getDisplayName(
+                devotee
+              ),
+            email:
+              devotee.email ||
+              "",
+            department:
+              devotee.department ||
+              "",
+
+            submitted:
+              submissionStats.submitted,
+
+            submissionPercentage:
+              submissionStats.percentage,
+
+            mangalArti:
+              mangalArtiStats,
+
+            morningClass:
+              morningClassStats,
+
+            overallAttendance:
+              combinedStats.percentage,
+
+            rounds,
+            averageRounds,
+          };
+        }
       );
-      return;
-    }
+    }, [
+      reportDevotees,
+      reportDays,
+      reportRecordMap,
+    ]);
 
-    try {
-      setExporting(true);
+  const handleDailyExport =
+    () => {
+      if (isFutureDate) {
+        setError(
+          "Daily reports are available only through today."
+        );
+        return;
+      }
 
-      exportDailyExcel({
-        selectedDate,
-        reportDevotees,
-        records,
-      });
+      try {
+        setExporting(true);
 
-      setSuccess(
-        `Daily Excel report downloaded for ${formatDate(
-          selectedDate
-        )}.`
-      );
-    } catch (exportError) {
-      console.error(
-        "Failed to export daily Sadhana report:",
-        exportError
-      );
+        exportDailyExcel({
+          selectedDate,
+          reportDevotees,
+          records,
+        });
 
-      setError(
-        "Unable to create the Excel report. Please try again."
-      );
-    } finally {
-      setExporting(false);
-    }
-  };
+        setSuccess(
+          `Daily Excel report downloaded for ${formatDate(
+            selectedDate
+          )}.`
+        );
+      } catch (exportError) {
+        console.error(
+          "Failed to export daily Sadhana report:",
+          exportError
+        );
 
-  const handleMonthlyExport = () => {
-    try {
-      setExporting(true);
+        setError(
+          "Unable to create the Excel report. Please try again."
+        );
+      } finally {
+        setExporting(false);
+      }
+    };
 
-      exportMonthlyExcel({
-        monthKey: reportMonth,
-        reportDevotees,
-        records: reportRecords,
-        trackingStartDate,
-      });
+  const handleMonthlyExport =
+    () => {
+      try {
+        setExporting(true);
 
-      setSuccess(
-        `${formatMonthYear(
-          `${reportMonth}-01`
-        )} Excel report downloaded.`
-      );
-    } catch (exportError) {
-      console.error(
-        "Failed to export monthly Sadhana report:",
-        exportError
-      );
+        exportMonthlyExcel({
+          monthKey: reportMonth,
+          reportDevotees,
+          records:
+            reportRecords,
+          trackingStartDate,
+        });
 
-      setError(
-        "Unable to create the monthly Excel report. Please try again."
-      );
-    } finally {
-      setExporting(false);
-    }
-  };
+        setSuccess(
+          `${formatMonthYear(
+            `${reportMonth}-01`
+          )} Excel report downloaded.`
+        );
+      } catch (exportError) {
+        console.error(
+          "Failed to export monthly Sadhana report:",
+          exportError
+        );
+
+        setError(
+          "Unable to create the monthly Excel report. Please try again."
+        );
+      } finally {
+        setExporting(false);
+      }
+    };
 
   if (authLoading || loading) {
     return (
@@ -1502,11 +2067,14 @@ function Sadhana() {
   }
 
   if (isDevotee) {
-    const history = [...validRecords].sort(
-      (a, b) =>
-        String(b.date || "").localeCompare(
-          String(a.date || "")
-        )
+    const history = [
+      ...validRecords,
+    ].sort((a, b) =>
+      String(
+        b.date || ""
+      ).localeCompare(
+        String(a.date || "")
+      )
     );
 
     return (
@@ -1520,8 +2088,9 @@ function Sadhana() {
             <h1>Sadhana</h1>
 
             <p>
-              Record your daily practice in a simple
-              step-by-step format.
+              Record your daily practice
+              in a simple step-by-step
+              format.
             </p>
           </div>
         </header>
@@ -1546,12 +2115,14 @@ function Sadhana() {
 
             <div>
               <strong>
-                How to complete today's card
+                How to complete today's
+                card
               </strong>
 
               <p>
-                Fill what applies to you. Use the short
-                descriptions below instead of guessing
+                Fill what applies to you.
+                Use the short descriptions
+                below instead of guessing
                 what a field means.
               </p>
             </div>
@@ -1560,58 +2131,78 @@ function Sadhana() {
           <div className="sadhana-guide-grid">
             <div>
               <span>01</span>
-              <strong>Sleep &amp; rest</strong>
+              <strong>
+                Sleep &amp; rest
+              </strong>
               <small>
-                Bedtime, wake-up and daytime rest.
+                Bedtime, wake-up and
+                daytime rest.
               </small>
             </div>
 
             <div>
               <span>02</span>
-              <strong>Morning program</strong>
+              <strong>
+                Morning program
+              </strong>
               <small>
-                M.P. report time, Japa, Mangal Arti
-                and class.
+                M.P. report time, Japa,
+                Mangal Arti and class.
               </small>
             </div>
 
             <div>
               <span>03</span>
-              <strong>Adhyayan</strong>
+              <strong>
+                Adhyayan
+              </strong>
               <small>
-                Book or topic studied and time spent.
+                Book or topic studied and
+                time spent.
               </small>
             </div>
 
             <div>
               <span>04</span>
-              <strong>Shravan</strong>
+              <strong>
+                Shravan
+              </strong>
               <small>
-                Speaker or topic heard and time spent.
+                Speaker or topic heard
+                and time spent.
               </small>
             </div>
 
             <div>
               <span>05</span>
-              <strong>Seva</strong>
+              <strong>
+                Seva
+              </strong>
               <small>
-                Service performed and time spent.
+                Service performed and
+                time spent.
               </small>
             </div>
 
             <div>
               <span>06</span>
-              <strong>Work-life</strong>
+              <strong>
+                Work-life
+              </strong>
               <small>
-                Exercise, college/work and study hours.
+                Exercise, college/work
+                and study hours.
               </small>
             </div>
 
             <div>
               <span>07</span>
-              <strong>Reflection</strong>
+              <strong>
+                Reflection
+              </strong>
               <small>
-                Reading, meditation, reason and notes.
+                Reading, meditation,
+                reason and notes.
               </small>
             </div>
           </div>
@@ -1620,16 +2211,20 @@ function Sadhana() {
         <section className="sadhana-card sadhana-card-sheet">
           <div className="sadhana-sheet-heading">
             <div>
-              <strong>SADHANA CARD</strong>
+              <strong>
+                SADHANA CARD
+              </strong>
+
               <span>
-                - for the pleasure of Sri Guru &amp;
-                Gauranga
+                - for the pleasure of Sri
+                Guru &amp; Gauranga
               </span>
             </div>
 
             <small>
-              Today's card is editable. Previous days
-              can be viewed but not changed.
+              Today's card is editable.
+              Previous days can be viewed
+              but not changed.
             </small>
           </div>
 
@@ -1640,8 +2235,9 @@ function Sadhana() {
           </div>
 
           <div className="sadhana-motto">
-            I WOULD PREFER EVEN TO FAIL WITH HONOR
-            THAN TO WIN BY CHEATING.
+            I WOULD PREFER EVEN TO FAIL
+            WITH HONOR THAN TO WIN BY
+            CHEATING.
           </div>
 
           <div className="sadhana-identity-row">
@@ -1656,39 +2252,59 @@ function Sadhana() {
             </label>
 
             <label>
-              <span>Month-Year</span>
+              <span>
+                Month-Year
+              </span>
 
               <strong>
-                {formatMonthYear(selectedDate)}
+                {formatMonthYear(
+                  selectedDate
+                )}
               </strong>
             </label>
           </div>
 
           <div className="sadhana-mobile-note">
-            <strong>Mobile tip:</strong> Complete each
-            section below. Swipe left/right only if you
-            need to see the original card table.
+            <strong>
+              Mobile tip:
+            </strong>{" "}
+            Complete each section below.
+            Swipe left/right only if you
+            need to see the original card
+            table.
           </div>
 
           <div className="sadhana-sheet-scroll">
             <table className="sadhana-sheet-table">
               <thead>
                 <tr>
-                  <th rowSpan="2">Date</th>
+                  <th rowSpan="2">
+                    Date
+                  </th>
 
-                  <th colSpan="3">NIDRA</th>
+                  <th colSpan="3">
+                    NIDRA
+                  </th>
 
                   <th colSpan="4">
                     MORNING PROGRAM
                   </th>
 
-                  <th colSpan="2">ADHYAYAN</th>
+                  <th colSpan="2">
+                    ADHYAYAN
+                  </th>
 
-                  <th colSpan="2">SHRAVAN</th>
+                  <th colSpan="2">
+                    SHRAVAN
+                  </th>
 
-                  <th colSpan="2">SEVA</th>
+                  <th colSpan="2">
+                    SEVA
+                  </th>
 
-                  <th colSpan="3">WORK-LIFE</th>
+                  <th colSpan="3">
+                    WORK-LIFE
+                  </th>
 
                   <th rowSpan="2">
                     Reason
@@ -1698,65 +2314,71 @@ function Sadhana() {
                 </tr>
 
                 <tr>
-                  <th title="Time you went to bed">
+                  <th>
                     To Bed
                   </th>
 
-                  <th title="Time you woke up">
+                  <th>
                     Wake Up
                   </th>
 
-                  <th title="Daytime rest in hours">
+                  <th>
                     Day Rest
                   </th>
 
-                  <th title="Morning program reporting time">
+                  <th>
                     M.P. Report
                   </th>
 
-                  <th title="Number of Japa rounds">
+                  <th>
                     Japa
                   </th>
 
-                  <th title="Mangal Arti attendance">
+                  <th>
                     M.A.
                   </th>
 
-                  <th title="Morning class attendance">
+                  <th>
                     M. Class
                   </th>
 
-                  <th title="Book name or study topic">
+                  <th>
                     Book / Topic
                   </th>
 
-                  <th>Time</th>
+                  <th>
+                    Time
+                  </th>
 
-                  <th title="Speaker name or hearing topic">
+                  <th>
                     Speaker / Topic
                   </th>
 
-                  <th>Time</th>
+                  <th>
+                    Time
+                  </th>
 
-                  <th title="Description of service performed">
+                  <th>
                     Seva
                   </th>
 
-                  <th>Time</th>
+                  <th>
+                    Time
+                  </th>
 
-                  <th title="Yoga or exercise duration in minutes">
+                  <th>
                     Yoga / Exercise
                     <br />
                     (min)
                   </th>
 
-                  <th title="College or work duration in hours">
+                  <th>
                     College / Work
                     <br />
                     (hrs)
                   </th>
 
-                  <th title="Study or extra work duration in hours">
+                  <th>
                     Study / X-Work
                     <br />
                     (hrs)
@@ -1767,16 +2389,24 @@ function Sadhana() {
               <tbody>
                 <tr>
                   <td>
-                    {formatDate(selectedDate)}
+                    {formatDate(
+                      selectedDate
+                    )}
                   </td>
 
                   <td>
                     <input
                       type="time"
                       name="toBed"
-                      value={form.toBed}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.toBed
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1784,9 +2414,15 @@ function Sadhana() {
                     <input
                       type="time"
                       name="wakeUp"
-                      value={form.wakeUp}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.wakeUp
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1796,9 +2432,15 @@ function Sadhana() {
                       min="0"
                       step="0.5"
                       name="dayRest"
-                      value={form.dayRest}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.dayRest
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1809,8 +2451,12 @@ function Sadhana() {
                       value={
                         form.morningProgramReport
                       }
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1819,44 +2465,46 @@ function Sadhana() {
                       type="number"
                       min="0"
                       name="rounds"
-                      value={form.rounds}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.rounds
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
                   <td>
-                    <select
+                    <AttendanceSelect
                       name="mangalArti"
-                      value={form.mangalArti}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
-                    >
-                      <option value="">—</option>
-                      <option value="present">
-                        P
-                      </option>
-                      <option value="absent">
-                        A
-                      </option>
-                    </select>
+                      value={
+                        form.mangalArti
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
+                    />
                   </td>
 
                   <td>
-                    <select
+                    <AttendanceSelect
                       name="morningClass"
-                      value={form.morningClass}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
-                    >
-                      <option value="">—</option>
-                      <option value="present">
-                        P
-                      </option>
-                      <option value="absent">
-                        A
-                      </option>
-                    </select>
+                      value={
+                        form.morningClass
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
+                    />
                   </td>
 
                   <td>
@@ -1866,8 +2514,12 @@ function Sadhana() {
                       value={
                         form.adhyyanBookTopic
                       }
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Book / topic"
                     />
                   </td>
@@ -1876,9 +2528,15 @@ function Sadhana() {
                     <input
                       type="text"
                       name="adhyyanTime"
-                      value={form.adhyyanTime}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.adhyyanTime
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Time"
                     />
                   </td>
@@ -1890,8 +2548,12 @@ function Sadhana() {
                       value={
                         form.shravanSpeakerTopic
                       }
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Speaker / topic"
                     />
                   </td>
@@ -1900,9 +2562,15 @@ function Sadhana() {
                     <input
                       type="text"
                       name="shravanTime"
-                      value={form.shravanTime}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.shravanTime
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Time"
                     />
                   </td>
@@ -1914,8 +2582,12 @@ function Sadhana() {
                       value={
                         form.sevaDescription
                       }
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Seva"
                     />
                   </td>
@@ -1924,9 +2596,15 @@ function Sadhana() {
                     <input
                       type="text"
                       name="sevaTime"
-                      value={form.sevaTime}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.sevaTime
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Time"
                     />
                   </td>
@@ -1936,9 +2614,15 @@ function Sadhana() {
                       type="number"
                       min="0"
                       name="yogaExercise"
-                      value={form.yogaExercise}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.yogaExercise
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1947,9 +2631,15 @@ function Sadhana() {
                       type="number"
                       min="0"
                       name="collegeWork"
-                      value={form.collegeWork}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.collegeWork
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1958,9 +2648,15 @@ function Sadhana() {
                       type="number"
                       min="0"
                       name="studyXWork"
-                      value={form.studyXWork}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.studyXWork
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                     />
                   </td>
 
@@ -1968,9 +2664,15 @@ function Sadhana() {
                     <input
                       type="text"
                       name="reason"
-                      value={form.reason}
-                      onChange={handleChange}
-                      disabled={!canEditToday}
+                      value={
+                        form.reason
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
                       placeholder="Reason"
                     />
                   </td>
@@ -1989,9 +2691,15 @@ function Sadhana() {
                 hint="When you went to sleep"
                 type="time"
                 name="toBed"
-                value={form.toBed}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.toBed
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
@@ -1999,9 +2707,15 @@ function Sadhana() {
                 hint="When you woke up"
                 type="time"
                 name="wakeUp"
-                value={form.wakeUp}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.wakeUp
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
@@ -2011,9 +2725,15 @@ function Sadhana() {
                 min="0"
                 step="0.5"
                 name="dayRest"
-                value={form.dayRest}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.dayRest
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2029,8 +2749,12 @@ function Sadhana() {
                 value={
                   form.morningProgramReport
                 }
-                onChange={handleChange}
-                disabled={!canEditToday}
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
@@ -2039,27 +2763,43 @@ function Sadhana() {
                 type="number"
                 min="0"
                 name="rounds"
-                value={form.rounds}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.rounds
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
-              <MobileSelect
+              <MobileAttendanceSelect
                 label="Mangal Arti"
-                hint="Choose Present or Absent"
                 name="mangalArti"
-                value={form.mangalArti}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.mangalArti
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
-              <MobileSelect
+              <MobileAttendanceSelect
                 label="Morning class"
-                hint="Choose Present or Absent"
                 name="morningClass"
-                value={form.morningClass}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.morningClass
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2074,17 +2814,27 @@ function Sadhana() {
                 value={
                   form.adhyyanBookTopic
                 }
-                onChange={handleChange}
-                disabled={!canEditToday}
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
                 label="Study time"
                 hint="How long?"
                 name="adhyyanTime"
-                value={form.adhyyanTime}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.adhyyanTime
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2099,17 +2849,27 @@ function Sadhana() {
                 value={
                   form.shravanSpeakerTopic
                 }
-                onChange={handleChange}
-                disabled={!canEditToday}
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
                 label="Hearing time"
                 hint="How long?"
                 name="shravanTime"
-                value={form.shravanTime}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.shravanTime
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2121,18 +2881,30 @@ function Sadhana() {
                 label="Seva description"
                 hint="What service did you do?"
                 name="sevaDescription"
-                value={form.sevaDescription}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.sevaDescription
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
                 label="Seva time"
                 hint="How long?"
                 name="sevaTime"
-                value={form.sevaTime}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.sevaTime
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2147,9 +2919,15 @@ function Sadhana() {
                 min="0"
                 step="5"
                 name="yogaExercise"
-                value={form.yogaExercise}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.yogaExercise
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
@@ -2159,9 +2937,15 @@ function Sadhana() {
                 min="0"
                 step="0.5"
                 name="collegeWork"
-                value={form.collegeWork}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.collegeWork
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
 
               <MobileField
@@ -2171,9 +2955,15 @@ function Sadhana() {
                 min="0"
                 step="0.5"
                 name="studyXWork"
-                value={form.studyXWork}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.studyXWork
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
 
@@ -2185,28 +2975,56 @@ function Sadhana() {
                 label="Reason, if any"
                 hint="Optional"
                 name="reason"
-                value={form.reason}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.reason
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </MobileFieldSection>
           </div>
 
           <div className="sadhana-sheet-footer">
-            <span>P = Present</span>
-            <span>A = Absent</span>
-            <span>Day Rest = hours</span>
+            <span>
+              P = Present
+            </span>
+
+            <span>
+              L = Late
+            </span>
+
+            <span>
+              A = Absent
+            </span>
+
+            <span>
+              P + L = Attended
+            </span>
+
+            <span>
+              Day Rest = hours
+            </span>
+
             <span>
               Yoga / Exercise = minutes
             </span>
+
             <span>
               College / Work = hours
             </span>
+
             <span>
-              X-Work = study / extra work hours
+              X-Work = study / extra
+              work hours
             </span>
+
             <span>
-              Optional fields may be left blank
+              Optional fields may be
+              left blank
             </span>
           </div>
         </section>
@@ -2219,63 +3037,97 @@ function Sadhana() {
               </span>
 
               <h2>
-                Personal Practice &amp; Notes
+                Personal Practice &
+                Notes
               </h2>
 
               <p>
-                Use these fields for activities not
-                covered in the main card.
+                Use these fields for
+                activities not covered in
+                the main card.
               </p>
             </div>
 
             {isToday && (
               <span className="sadhana-date-badge">
-                {formatDate(selectedDate)}
+                {formatDate(
+                  selectedDate
+                )}
               </span>
             )}
           </div>
 
           <div className="sadhana-extra-grid">
             <label>
-              <span>Reading (minutes)</span>
-              <small>Time spent reading</small>
+              <span>
+                Reading (minutes)
+              </span>
+
+              <small>
+                Time spent reading
+              </small>
 
               <input
                 type="number"
                 min="0"
                 name="reading"
-                value={form.reading}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.reading
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </label>
 
             <label>
-              <span>Meditation (minutes)</span>
-              <small>Time spent meditating</small>
+              <span>
+                Meditation (minutes)
+              </span>
+
+              <small>
+                Time spent meditating
+              </small>
 
               <input
                 type="number"
                 min="0"
                 name="meditation"
-                value={form.meditation}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.meditation
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
               />
             </label>
 
             <label className="sadhana-full-field">
               <span>Notes</span>
+
               <small>
-                Optional reflection or important detail
+                Optional reflection or
+                important detail
               </small>
 
               <textarea
                 name="notes"
                 rows="4"
-                value={form.notes}
-                onChange={handleChange}
-                disabled={!canEditToday}
+                value={
+                  form.notes
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
                 placeholder="Add a note about today's practice..."
               />
             </label>
@@ -2283,28 +3135,34 @@ function Sadhana() {
 
           {isPastDate && (
             <div className="sadhana-readonly-notice">
-              This is a past record. Past Sadhana
-              records are read-only.
+              This is a past record. Past
+              Sadhana records are
+              read-only.
             </div>
           )}
 
           {isFutureDate && (
             <div className="sadhana-readonly-notice">
-              Future Sadhana records cannot be created
-              yet.
+              Future Sadhana records cannot
+              be created yet.
             </div>
           )}
 
           <div className="sadhana-date-selector">
             <label>
-              <span>View another date</span>
+              <span>
+                View another date
+              </span>
+
               <small>
                 Past dates can be reviewed.
               </small>
 
               <input
                 type="date"
-                value={selectedDate}
+                value={
+                  selectedDate
+                }
                 max={todayDate}
                 onChange={(event) =>
                   setSelectedDate(
@@ -2320,8 +3178,12 @@ function Sadhana() {
               <button
                 type="button"
                 className="sadhana-primary-button"
-                onClick={saveSadhana}
-                disabled={saving}
+                onClick={
+                  saveSadhana
+                }
+                disabled={
+                  saving
+                }
               >
                 {saving
                   ? "Saving..."
@@ -2340,68 +3202,117 @@ function Sadhana() {
                 HISTORY
               </span>
 
-              <h2>My Sadhana History</h2>
+              <h2>
+                My Sadhana History
+              </h2>
 
               <p>
-                Select a previous date to review your
-                submitted record.
+                Select a previous date to
+                review your submitted
+                record.
               </p>
             </div>
           </div>
 
           {history.length === 0 ? (
             <div className="sadhana-empty">
-              <h3>No Sadhana records yet</h3>
+              <h3>
+                No Sadhana records yet
+              </h3>
 
               <p>
-                Your completed daily records will
-                appear here.
+                Your completed daily
+                records will appear here.
               </p>
             </div>
           ) : (
             <div className="sadhana-history-list">
-              {history.map((record) => (
-                <button
-                  type="button"
-                  className={
-                    record.date === selectedDate
-                      ? "sadhana-history-item selected"
-                      : "sadhana-history-item"
-                  }
-                  key={record.id}
-                  onClick={() =>
-                    setSelectedDate(record.date)
-                  }
-                >
-                  <div>
-                    <strong>
-                      {formatDate(record.date)}
-                    </strong>
+              {history.map(
+                (record) => (
+                  <button
+                    type="button"
+                    className={
+                      record.date ===
+                      selectedDate
+                        ? "sadhana-history-item selected"
+                        : "sadhana-history-item"
+                    }
+                    key={
+                      record.id
+                    }
+                    onClick={() =>
+                      setSelectedDate(
+                        record.date
+                      )
+                    }
+                  >
+                    <div>
+                      <strong>
+                        {formatDate(
+                          record.date
+                        )}
+                      </strong>
 
-                    <span>
-                      {toNumber(record.rounds)} Japa
-                      rounds
-                    </span>
-                  </div>
+                      <span>
+                        {toNumber(
+                          record.rounds
+                        )}{" "}
+                        Japa rounds
+                      </span>
+                    </div>
 
-                  <div>
-                    <span>Reading</span>
-                    <strong>
-                      {toNumber(record.reading)} min
-                    </strong>
-                  </div>
+                    <div>
+                      <span>
+                        M.A.
+                      </span>
 
-                  <div>
-                    <span>Meditation</span>
-                    <strong>
-                      {toNumber(
-                        record.meditation
-                      )}{" "}
-                      min
-                    </strong>
-                  </div>
-                </button>
-              ))}
+                      <strong>
+                        {statusShort(
+                          record.mangalArti
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        M. Class
+                      </span>
+
+                      <strong>
+                        {statusShort(
+                          record.morningClass
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Reading
+                      </span>
+
+                      <strong>
+                        {toNumber(
+                          record.reading
+                        )}{" "}
+                        min
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Meditation
+                      </span>
+
+                      <strong>
+                        {toNumber(
+                          record.meditation
+                        )}{" "}
+                        min
+                      </strong>
+                    </div>
+                  </button>
+                )
+              )}
             </div>
           )}
         </section>
@@ -2411,7 +3322,9 @@ function Sadhana() {
 
   if (isAdministrator) {
     const selectedMonthLabel =
-      formatMonthYear(`${reportMonth}-01`);
+      formatMonthYear(
+        `${reportMonth}-01`
+      );
 
     return (
       <div className="sadhana-page">
@@ -2424,8 +3337,9 @@ function Sadhana() {
             <h1>Sadhana</h1>
 
             <p>
-              Monitor daily records, attendance
-              markings and monthly completion across
+              Monitor daily records,
+              attendance markings and
+              monthly completion across
               the devotee community.
             </p>
           </div>
@@ -2435,7 +3349,8 @@ function Sadhana() {
             className="sadhana-secondary-button sadhana-refresh-button"
             onClick={() =>
               setRefreshNonce(
-                (value) => value + 1
+                (value) =>
+                  value + 1
               )
             }
             disabled={loading}
@@ -2461,32 +3376,53 @@ function Sadhana() {
         <section className="sadhana-stats">
           <article className="sadhana-stat">
             <span>Records</span>
+
             <strong>
-              {recordsForDate.length}
+              {
+                recordsForDate.length
+              }
             </strong>
+
             <small>
-              Submitted for selected date
+              Submitted for selected
+              date
             </small>
           </article>
 
           <article className="sadhana-stat">
-            <span>Active Devotees</span>
+            <span>
+              Active Devotees
+            </span>
+
             <strong>
-              {activeDevotees.length}
+              {
+                activeDevotees.length
+              }
             </strong>
+
             <small>
               Current active accounts
             </small>
           </article>
 
           <article className="sadhana-stat">
-            <span>Total Japa</span>
-            <strong>{totalRounds}</strong>
-            <small>Selected date</small>
+            <span>
+              Total Japa
+            </span>
+
+            <strong>
+              {totalRounds}
+            </strong>
+
+            <small>
+              Selected date
+            </small>
           </article>
 
           <article className="sadhana-stat">
-            <span>Submission Rate</span>
+            <span>
+              Submission Rate
+            </span>
 
             <strong>
               {activeDevotees.length
@@ -2499,20 +3435,27 @@ function Sadhana() {
               %
             </strong>
 
-            <small>Selected date</small>
+            <small>
+              Selected date
+            </small>
           </article>
         </section>
 
         <section className="sadhana-toolbar sadhana-admin-toolbar">
           <label>
-            <span>Daily view</span>
+            <span>
+              Daily view
+            </span>
+
             <small>
               Choose a day to monitor.
             </small>
 
             <input
               type="date"
-              value={selectedDate}
+              value={
+                selectedDate
+              }
               max={todayDate}
               onChange={(event) =>
                 setSelectedDate(
@@ -2523,15 +3466,20 @@ function Sadhana() {
           </label>
 
           <label className="sadhana-search">
-            <span>Search devotee</span>
+            <span>
+              Search devotee
+            </span>
 
             <small>
-              Name, email, phone or department
+              Name, email, phone or
+              department
             </small>
 
             <input
               type="search"
-              value={searchTerm}
+              value={
+                searchTerm
+              }
               placeholder="Search..."
               onChange={(event) =>
                 setSearchTerm(
@@ -2551,11 +3499,14 @@ function Sadhana() {
                 REPORTS &amp; EXPORT
               </span>
 
-              <h2>Excel Reports</h2>
+              <h2>
+                Excel Reports
+              </h2>
 
               <p>
-                Reports include only dates from the
-                community tracking start date.
+                Reports include only
+                dates from the community
+                tracking start date.
               </p>
             </div>
 
@@ -2576,16 +3527,24 @@ function Sadhana() {
 
           <div className="sadhana-report-controls">
             <label>
-              <span>Report month</span>
+              <span>
+                Report month
+              </span>
 
               <small>
-                {selectedMonthLabel}
+                {
+                  selectedMonthLabel
+                }
               </small>
 
               <input
                 type="month"
-                value={reportMonth}
-                max={getCurrentMonthKey()}
+                value={
+                  reportMonth
+                }
+                max={
+                  getCurrentMonthKey()
+                }
                 onChange={(event) =>
                   setReportMonth(
                     event.target.value
@@ -2598,9 +3557,12 @@ function Sadhana() {
               <button
                 type="button"
                 className="sadhana-secondary-button"
-                onClick={handleDailyExport}
+                onClick={
+                  handleDailyExport
+                }
                 disabled={
-                  exporting || isFutureDate
+                  exporting ||
+                  isFutureDate
                 }
               >
                 {exporting
@@ -2611,7 +3573,9 @@ function Sadhana() {
               <button
                 type="button"
                 className="sadhana-primary-button"
-                onClick={handleMonthlyExport}
+                onClick={
+                  handleMonthlyExport
+                }
                 disabled={
                   exporting ||
                   reportLoading ||
@@ -2633,47 +3597,73 @@ function Sadhana() {
           </div>
 
           <div className="sadhana-report-start">
-            <span>Tracking started</span>
+            <span>
+              Tracking started
+            </span>
 
             <strong>
-              {formatDate(trackingStartDate)}
+              {formatDate(
+                trackingStartDate
+              )}
             </strong>
 
             <small>
-              Earlier dates are not included in
-              completion totals.
+              Earlier dates are not
+              included in completion
+              totals.
             </small>
           </div>
 
           <div className="sadhana-report-metrics">
             <div>
-              <span>Days counted</span>
-              <strong>{reportDays.length}</strong>
-            </div>
+              <span>
+                Days counted
+              </span>
 
-            <div>
-              <span>Devotees</span>
               <strong>
-                {reportDevotees.length}
+                {reportDays.length}
               </strong>
             </div>
 
             <div>
-              <span>Submitted</span>
+              <span>
+                Devotees
+              </span>
+
+              <strong>
+                {
+                  reportDevotees.length
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Submitted
+              </span>
+
               <strong>
                 {reportSubmitted}
               </strong>
             </div>
 
             <div>
-              <span>Not submitted</span>
+              <span>
+                Not submitted
+              </span>
+
               <strong>
-                {reportNotSubmitted}
+                {
+                  reportNotSubmitted
+                }
               </strong>
             </div>
 
             <div>
-              <span>Completion</span>
+              <span>
+                Completion
+              </span>
+
               <strong>
                 {reportCompletion}%
               </strong>
@@ -2681,18 +3671,126 @@ function Sadhana() {
           </div>
         </section>
 
+        {/* MONTHLY PERFORMANCE */}
+        <MonthlyPerformanceTable
+          performance={
+            monthlyPerformance
+          }
+          monthLabel={
+            selectedMonthLabel
+          }
+          searchTerm={
+            searchTerm
+          }
+          loading={
+            reportLoading
+          }
+        />
+
         <AdminSadhanaTable
-          records={recordsForDate}
-          devotees={activeDevotees}
-          devoteeMap={devoteeMap}
-          searchTerm={searchTerm}
-          selectedDate={selectedDate}
+          records={
+            recordsForDate
+          }
+          devotees={
+            activeDevotees
+          }
+          devoteeMap={
+            devoteeMap
+          }
+          searchTerm={
+            searchTerm
+          }
+          selectedDate={
+            selectedDate
+          }
         />
       </div>
     );
   }
 
   return null;
+}
+
+function AttendanceSelect({
+  name,
+  value,
+  onChange,
+  disabled,
+}) {
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      className={`sadhana-attendance-select sadhana-attendance-${normalizeStatus(
+        value
+      )}`}
+    >
+      <option value="">
+        —
+      </option>
+
+      <option value="present">
+        P
+      </option>
+
+      <option value="late">
+        L
+      </option>
+
+      <option value="absent">
+        A
+      </option>
+    </select>
+  );
+}
+
+function MobileAttendanceSelect({
+  label,
+  name,
+  value,
+  onChange,
+  disabled,
+}) {
+  return (
+    <label className="sadhana-mobile-field">
+      <span>
+        {label}
+      </span>
+
+      <small>
+        P = Present · L = Late · A =
+        Absent
+      </small>
+
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={`sadhana-attendance-select sadhana-attendance-${normalizeStatus(
+          value
+        )}`}
+      >
+        <option value="">
+          Select
+        </option>
+
+        <option value="present">
+          Present (P)
+        </option>
+
+        <option value="late">
+          Late (L)
+        </option>
+
+        <option value="absent">
+          Absent (A)
+        </option>
+      </select>
+    </label>
+  );
 }
 
 function MobileFieldSection({
@@ -2703,8 +3801,13 @@ function MobileFieldSection({
   return (
     <section className="sadhana-mobile-section">
       <div className="sadhana-mobile-section-heading">
-        <strong>{title}</strong>
-        <span>{description}</span>
+        <strong>
+          {title}
+        </strong>
+
+        <span>
+          {description}
+        </span>
       </div>
 
       <div className="sadhana-mobile-grid">
@@ -2727,9 +3830,13 @@ function MobileField({
 }) {
   return (
     <label className="sadhana-mobile-field">
-      <span>{label}</span>
+      <span>
+        {label}
+      </span>
 
-      <small>{hint}</small>
+      <small>
+        {hint}
+      </small>
 
       <input
         type={type}
@@ -2744,35 +3851,310 @@ function MobileField({
   );
 }
 
-function MobileSelect({
-  label,
-  hint,
-  name,
-  value,
-  onChange,
-  disabled,
+function MonthlyPerformanceTable({
+  performance,
+  monthLabel,
+  searchTerm,
+  loading,
 }) {
+  const filteredPerformance =
+    useMemo(() => {
+      if (!searchTerm) {
+        return performance;
+      }
+
+      return performance.filter(
+        (item) => {
+          const searchable = [
+            item.name,
+            item.email,
+            item.department,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return searchable.includes(
+            searchTerm
+          );
+        }
+      );
+    }, [
+      performance,
+      searchTerm,
+    ]);
+
   return (
-    <label className="sadhana-mobile-field">
-      <span>{label}</span>
+    <section className="sadhana-card sadhana-performance-card">
+      <div className="sadhana-card-header">
+        <div>
+          <span className="sadhana-card-eyebrow">
+            MONTHLY PERFORMANCE
+          </span>
 
-      <small>{hint}</small>
+          <h2>
+            Student Attendance
+            Performance
+          </h2>
 
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-      >
-        <option value="">Select</option>
-        <option value="present">
+          <p>
+            {monthLabel} · Late counts as
+            attended. Blank attendance is
+            not included in the attendance
+            percentage.
+          </p>
+        </div>
+
+        {loading && (
+          <span className="sadhana-progress-badge">
+            Updating...
+          </span>
+        )}
+      </div>
+
+      <div className="sadhana-performance-legend">
+        <span>
+          <strong>P</strong>{" "}
           Present
-        </option>
-        <option value="absent">
+        </span>
+
+        <span>
+          <strong>L</strong>{" "}
+          Late
+        </span>
+
+        <span>
+          <strong>A</strong>{" "}
           Absent
-        </option>
-      </select>
-    </label>
+        </span>
+
+        <span>
+          <strong>Overall %</strong>{" "}
+          M.A. + Morning Class
+        </span>
+      </div>
+
+      {filteredPerformance.length ===
+      0 ? (
+        <div className="sadhana-empty">
+          <h3>
+            No performance data
+          </h3>
+
+          <p>
+            No devotee records match the
+            selected month or search.
+          </p>
+        </div>
+      ) : (
+        <div className="sadhana-performance-scroll">
+          <table className="sadhana-performance-table">
+            <thead>
+              <tr>
+                <th>
+                  Student
+                </th>
+
+                <th>
+                  Sadhana
+                </th>
+
+                <th>
+                  M.A.
+                  <br />
+                  P / L / A
+                </th>
+
+                <th>
+                  M.A.
+                  <br />
+                  Attendance
+                </th>
+
+                <th>
+                  M. Class
+                  <br />
+                  P / L / A
+                </th>
+
+                <th>
+                  M. Class
+                  <br />
+                  Attendance
+                </th>
+
+                <th>
+                  Overall
+                  <br />
+                  Attendance
+                </th>
+
+                <th>
+                  Japa
+                  <br />
+                  Avg.
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredPerformance.map(
+                (student) => (
+                  <tr
+                    key={
+                      student.uid
+                    }
+                  >
+                    <td>
+                      <div className="sadhana-performance-person">
+                        <div className="sadhana-avatar">
+                          {getInitials(
+                            student.name
+                          )}
+                        </div>
+
+                        <div>
+                          <strong>
+                            {
+                              student.name
+                            }
+                          </strong>
+
+                          <small>
+                            {
+                              student.department ||
+                              student.email ||
+                              "Devotee"
+                            }
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <strong>
+                        {
+                          student.submissionPercentage
+                        }%
+                      </strong>
+
+                      <small className="sadhana-performance-subtext">
+                        {
+                          student.submitted
+                        }{" "}
+                        submitted
+                      </small>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-attendance-counts">
+                        <b>
+                          {
+                            student
+                              .mangalArti
+                              .present
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .mangalArti
+                              .late
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .mangalArti
+                              .absent
+                          }
+                        </b>
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-percentage-badge">
+                        {
+                          student
+                            .mangalArti
+                            .percentage
+                        }%
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-attendance-counts">
+                        <b>
+                          {
+                            student
+                              .morningClass
+                              .present
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .morningClass
+                              .late
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .morningClass
+                              .absent
+                          }
+                        </b>
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-percentage-badge">
+                        {
+                          student
+                            .morningClass
+                            .percentage
+                        }%
+                      </span>
+                    </td>
+
+                    <td>
+                      <strong className="sadhana-overall-percentage">
+                        {
+                          student.overallAttendance
+                        }%
+                      </strong>
+                    </td>
+
+                    <td>
+                      {
+                        student.averageRounds
+                      }
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="sadhana-performance-note">
+        <strong>
+          Attendance calculation:
+        </strong>{" "}
+        Present and Late are treated as
+        attended. Attendance % =
+        (Present + Late) ÷ (Present + Late
+        + Absent) × 100. Days where no
+        attendance was marked are excluded
+        from that attendance denominator.
+      </div>
+    </section>
   );
 }
 
@@ -2783,44 +4165,62 @@ function AdminSadhanaTable({
   searchTerm,
   selectedDate,
 }) {
-  const recordMap = useMemo(
-    () =>
-      new Map(
-        records.map((record) => [
-          `${record.devoteeId}_${record.date}`,
-          record,
-        ])
-      ),
-    [records]
-  );
+  const recordMap =
+    useMemo(
+      () =>
+        new Map(
+          records.map(
+            (record) => [
+              `${record.devoteeId}_${record.date}`,
+              record,
+            ]
+          )
+        ),
+      [records]
+    );
 
-  const filteredDevotees = useMemo(() => {
-    if (!searchTerm) return devotees;
+  const filteredDevotees =
+    useMemo(() => {
+      if (!searchTerm)
+        return devotees;
 
-    return devotees.filter((devotee) => {
-      const searchable = [
-        devotee.name,
-        devotee.email,
-        devotee.phone,
-        devotee.department,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      return devotees.filter(
+        (devotee) => {
+          const searchable = [
+            devotee.name,
+            devotee.email,
+            devotee.phone,
+            devotee.department,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
 
-      return searchable.includes(searchTerm);
-    });
-  }, [devotees, searchTerm]);
+          return searchable.includes(
+            searchTerm
+          );
+        }
+      );
+    }, [
+      devotees,
+      searchTerm,
+    ]);
 
-  if (filteredDevotees.length === 0) {
+  if (
+    filteredDevotees.length ===
+    0
+  ) {
     return (
       <section className="sadhana-card">
         <div className="sadhana-empty">
-          <h3>No matching devotees</h3>
+          <h3>
+            No matching devotees
+          </h3>
 
           <p>
-            No active devotee matches the current
-            search or no active devotees are available.
+            No active devotee matches
+            the current search or no
+            active devotees are available.
           </p>
         </div>
       </section>
@@ -2835,23 +4235,34 @@ function AdminSadhanaTable({
             DAILY MONITORING
           </span>
 
-          <h2>Community Sadhana</h2>
+          <h2>
+            Community Sadhana
+          </h2>
 
           <p>
-            {formatDate(selectedDate)} · Daily
-            submission status
+            {formatDate(
+              selectedDate
+            )}{" "}
+            · Daily submission status
           </p>
         </div>
       </div>
 
       <div className="sadhana-admin-summary">
         <div>
-          <span>Submitted</span>
-          <strong>{records.length}</strong>
+          <span>
+            Submitted
+          </span>
+
+          <strong>
+            {records.length}
+          </strong>
         </div>
 
         <div>
-          <span>Not submitted</span>
+          <span>
+            Not submitted
+          </span>
 
           <strong>
             {Math.max(
@@ -2863,12 +4274,17 @@ function AdminSadhanaTable({
         </div>
 
         <div>
-          <span>Japa</span>
+          <span>
+            Japa
+          </span>
 
           <strong>
             {records.reduce(
               (sum, record) =>
-                sum + toNumber(record.rounds),
+                sum +
+                toNumber(
+                  record.rounds
+                ),
               0
             )}
           </strong>
@@ -2876,262 +4292,360 @@ function AdminSadhanaTable({
       </div>
 
       <div className="sadhana-admin-mobile-list">
-        {filteredDevotees.map((devotee) => {
-          const record = recordMap.get(
-            `${devotee.uid}_${selectedDate}`
-          );
+        {filteredDevotees.map(
+          (devotee) => {
+            const record =
+              recordMap.get(
+                `${devotee.uid}_${selectedDate}`
+              );
 
-          const name =
-            getDisplayName(devotee);
+            const name =
+              getDisplayName(
+                devotee
+              );
 
-          return (
-            <article
-              className="sadhana-admin-mobile-card"
-              key={devotee.uid}
-            >
-              <div className="sadhana-admin-person">
-                <div className="sadhana-avatar">
-                  {getInitials(name)}
-                </div>
-
-                <div>
-                  <strong>{name}</strong>
-                  <small>
-                    Daily Sadhana
-                  </small>
-                </div>
-              </div>
-
-              <div
-                className={
-                  record
-                    ? "sadhana-submission-status submitted"
-                    : "sadhana-submission-status missing"
+            return (
+              <article
+                className="sadhana-admin-mobile-card"
+                key={
+                  devotee.uid
                 }
               >
-                {record
-                  ? "Submitted"
-                  : "Not submitted"}
-              </div>
+                <div className="sadhana-admin-person">
+                  <div className="sadhana-avatar">
+                    {getInitials(
+                      name
+                    )}
+                  </div>
 
-              <div className="sadhana-admin-mobile-values">
-                <div>
-                  <span>Japa</span>
+                  <div>
+                    <strong>
+                      {name}
+                    </strong>
 
-                  <strong>
-                    {record
-                      ? toNumber(record.rounds)
-                      : 0}
-                  </strong>
+                    <small>
+                      Daily Sadhana
+                    </small>
+                  </div>
                 </div>
 
-                <div>
-                  <span>M.A.</span>
-
-                  <strong>
-                    {record
-                      ? statusLabel(
-                          record.mangalArti
-                        )
-                      : "—"}
-                  </strong>
+                <div
+                  className={
+                    record
+                      ? "sadhana-submission-status submitted"
+                      : "sadhana-submission-status missing"
+                  }
+                >
+                  {record
+                    ? "Submitted"
+                    : "Not submitted"}
                 </div>
 
-                <div>
-                  <span>M. Class</span>
+                <div className="sadhana-admin-mobile-values">
+                  <div>
+                    <span>
+                      Japa
+                    </span>
 
-                  <strong>
-                    {record
-                      ? statusLabel(
-                          record.morningClass
-                        )
-                      : "—"}
-                  </strong>
+                    <strong>
+                      {record
+                        ? toNumber(
+                            record.rounds
+                          )
+                        : 0}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      M.A.
+                    </span>
+
+                    <strong
+                      className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                        record?.mangalArti
+                      )}`}
+                    >
+                      {record
+                        ? statusShort(
+                            record.mangalArti
+                          )
+                        : "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      M. Class
+                    </span>
+
+                    <strong
+                      className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                        record?.morningClass
+                      )}`}
+                    >
+                      {record
+                        ? statusShort(
+                            record.morningClass
+                          )
+                        : "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      M.P. Report
+                    </span>
+
+                    <strong>
+                      {record?.morningProgramReport ||
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Seva
+                    </span>
+
+                    <strong>
+                      {record?.sevaDescription ||
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Work-Life
+                    </span>
+
+                    <strong>
+                      {record
+                        ? `${toNumber(
+                            record.yogaExercise
+                          )} min yoga · ${toNumber(
+                            record.collegeWork
+                          )} hrs work · ${toNumber(
+                            record.studyXWork
+                          )} hrs study`
+                        : "—"}
+                    </strong>
+                  </div>
                 </div>
-
-                <div>
-                  <span>M.P. Report</span>
-
-                  <strong>
-                    {record?.morningProgramReport ||
-                      "—"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Seva</span>
-
-                  <strong>
-                    {record?.sevaDescription ||
-                      "—"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Work-Life</span>
-
-                  <strong>
-                    {record
-                      ? `${toNumber(
-                          record.yogaExercise
-                        )} min yoga · ${toNumber(
-                          record.collegeWork
-                        )} hrs work · ${toNumber(
-                          record.studyXWork
-                        )} hrs study`
-                      : "—"}
-                  </strong>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          }
+        )}
       </div>
 
       <div className="sadhana-table-wrapper sadhana-admin-desktop-table">
         <table className="sadhana-table">
           <thead>
             <tr>
-              <th>Devotee</th>
-              <th>Status</th>
-              <th>Japa</th>
-              <th>M.A.</th>
-              <th>M. Class</th>
-              <th>M.P. Report</th>
-              <th>Adhyayan</th>
-              <th>Shravan</th>
-              <th>Seva</th>
-              <th>Work-Life</th>
-              <th>Reason</th>
+              <th>
+                Devotee
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Japa
+              </th>
+
+              <th>
+                M.A.
+              </th>
+
+              <th>
+                M. Class
+              </th>
+
+              <th>
+                M.P. Report
+              </th>
+
+              <th>
+                Adhyayan
+              </th>
+
+              <th>
+                Shravan
+              </th>
+
+              <th>
+                Seva
+              </th>
+
+              <th>
+                Work-Life
+              </th>
+
+              <th>
+                Reason
+              </th>
             </tr>
           </thead>
 
           <tbody>
-            {filteredDevotees.map((devotee) => {
-              const record = recordMap.get(
-                `${devotee.uid}_${selectedDate}`
-              );
+            {filteredDevotees.map(
+              (devotee) => {
+                const record =
+                  recordMap.get(
+                    `${devotee.uid}_${selectedDate}`
+                  );
 
-              const name =
-                getDisplayName(devotee);
+                const name =
+                  getDisplayName(
+                    devotee
+                  );
 
-              return (
-                <tr key={devotee.uid}>
-                  <td>
-                    <div className="sadhana-devotee">
-                      <div className="sadhana-avatar">
-                        {getInitials(name)}
+                return (
+                  <tr
+                    key={
+                      devotee.uid
+                    }
+                  >
+                    <td>
+                      <div className="sadhana-devotee">
+                        <div className="sadhana-avatar">
+                          {getInitials(
+                            name
+                          )}
+                        </div>
+
+                        <div>
+                          <strong>
+                            {name}
+                          </strong>
+
+                          <small>
+                            {devotee.email ||
+                              "No email available"}
+                          </small>
+                        </div>
                       </div>
+                    </td>
 
-                      <div>
-                        <strong>{name}</strong>
+                    <td>
+                      <span
+                        className={
+                          record
+                            ? "sadhana-submission-status submitted"
+                            : "sadhana-submission-status missing"
+                        }
+                      >
+                        {record
+                          ? "Submitted"
+                          : "Not submitted"}
+                      </span>
+                    </td>
 
-                        <small>
-                          {devotee.email ||
-                            "No email available"}
-                        </small>
-                      </div>
-                    </div>
-                  </td>
+                    <td>
+                      <span className="sadhana-rounds">
+                        {record
+                          ? toNumber(
+                              record.rounds
+                            )
+                          : 0}
+                      </span>
+                    </td>
 
-                  <td>
-                    <span
-                      className={
-                        record
-                          ? "sadhana-submission-status submitted"
-                          : "sadhana-submission-status missing"
-                      }
-                    >
+                    <td>
+                      {record ? (
+                        <span
+                          className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                            record.mangalArti
+                          )}`}
+                        >
+                          {statusShort(
+                            record.mangalArti
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+
+                    <td>
+                      {record ? (
+                        <span
+                          className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                            record.morningClass
+                          )}`}
+                        >
+                          {statusShort(
+                            record.morningClass
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+
+                    <td>
+                      {record?.morningProgramReport ||
+                        "—"}
+                    </td>
+
+                    <td>
+                      {record?.adhyyanBookTopic ||
+                        "—"}
+
+                      {record?.adhyyanTime
+                        ? ` · ${record.adhyyanTime}`
+                        : ""}
+                    </td>
+
+                    <td>
+                      {record?.shravanSpeakerTopic ||
+                        "—"}
+
+                      {record?.shravanTime
+                        ? ` · ${record.shravanTime}`
+                        : ""}
+                    </td>
+
+                    <td>
+                      {record?.sevaDescription ||
+                        "—"}
+
+                      {record?.sevaTime
+                        ? ` · ${record.sevaTime}`
+                        : ""}
+                    </td>
+
+                    <td>
+                      Yoga{" "}
                       {record
-                        ? "Submitted"
-                        : "Not submitted"}
-                    </span>
-                  </td>
-
-                  <td>
-                    <span className="sadhana-rounds">
+                        ? toNumber(
+                            record.yogaExercise
+                          )
+                        : 0}{" "}
+                      min · College/Work{" "}
                       {record
-                        ? toNumber(record.rounds)
-                        : 0}
-                    </span>
-                  </td>
+                        ? toNumber(
+                            record.collegeWork
+                          )
+                        : 0}{" "}
+                      hrs · Study/X-Work{" "}
+                      {record
+                        ? toNumber(
+                            record.studyXWork
+                          )
+                        : 0}{" "}
+                      hrs
+                    </td>
 
-                  <td>
-                    {record
-                      ? statusLabel(
-                          record.mangalArti
-                        )
-                      : "—"}
-                  </td>
-
-                  <td>
-                    {record
-                      ? statusLabel(
-                          record.morningClass
-                        )
-                      : "—"}
-                  </td>
-
-                  <td>
-                    {record?.morningProgramReport ||
-                      "—"}
-                  </td>
-
-                  <td>
-                    {record?.adhyyanBookTopic ||
-                      "—"}
-
-                    {record?.adhyyanTime
-                      ? ` · ${record.adhyyanTime}`
-                      : ""}
-                  </td>
-
-                  <td>
-                    {record?.shravanSpeakerTopic ||
-                      "—"}
-
-                    {record?.shravanTime
-                      ? ` · ${record.shravanTime}`
-                      : ""}
-                  </td>
-
-                  <td>
-                    {record?.sevaDescription ||
-                      "—"}
-
-                    {record?.sevaTime
-                      ? ` · ${record.sevaTime}`
-                      : ""}
-                  </td>
-
-                  <td>
-                    Yoga{" "}
-                    {record
-                      ? toNumber(
-                          record.yogaExercise
-                        )
-                      : 0}{" "}
-                    min · College/Work{" "}
-                    {record
-                      ? toNumber(
-                          record.collegeWork
-                        )
-                      : 0}{" "}
-                    hrs · Study/X-Work{" "}
-                    {record
-                      ? toNumber(
-                          record.studyXWork
-                        )
-                      : 0}{" "}
-                    hrs
-                  </td>
-
-                  <td>
-                    {record?.reason || "—"}
-                  </td>
-                </tr>
-              );
-            })}
+                    <td>
+                      {record?.reason ||
+                        "—"}
+                    </td>
+                  </tr>
+                );
+              }
+            )}
           </tbody>
         </table>
       </div>

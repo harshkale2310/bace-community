@@ -1645,3 +1645,206 @@
   }
 
 } 
+
+/* ============================================================
+   ISKCON LOGO - COMMON
+============================================================ */
+
+.landing-iskcon-symbol {
+  padding: 0 !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+}
+
+.landing-iskcon-symbol img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   HEADER ISKCON LOGO
+============================================================ */
+
+.landing-brand-symbol.landing-iskcon-symbol {
+  width: 48px;
+  height: 48px;
+
+  background: #faf7ef;
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 4px 12px rgba(154, 99, 15, 0.12);
+}
+
+.landing-brand-symbol.landing-iskcon-symbol img {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* ============================================================
+   HERO ISKCON LOGO
+   Replaces the old OM above Giri Govardhan
+============================================================ */
+
+.landing-symbol.landing-hero-iskcon-logo {
+  width: 62px;
+  height: 62px;
+
+  margin-bottom: 18px;
+
+  padding: 0;
+
+  border-radius: 50%;
+
+  overflow: hidden;
+
+  background: #faf7ef;
+
+  box-shadow:
+    0 7px 18px rgba(155, 102, 20, 0.15);
+}
+
+.landing-hero-iskcon-logo img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   FLOATING ISKCON LOGO
+   Replaces the decorative OM near Krishna
+============================================================ */
+
+.landing-floating-symbol.landing-iskcon-floating {
+  width: 58px;
+  height: 58px;
+
+  padding: 0;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  background: #faf7ef;
+
+  box-shadow:
+    0 8px 20px rgba(73, 51, 22, 0.16);
+}
+
+.landing-iskcon-floating img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   SPIRITUAL MESSAGE ISKCON LOGO
+   Replaces the OM above the quote
+============================================================ */
+
+.landing-message-symbol.landing-message-iskcon {
+  width: 65px;
+  height: 65px;
+
+  margin: 0 auto 18px;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  background: #faf7ef;
+
+  box-shadow:
+    0 6px 18px rgba(154, 99, 15, 0.13);
+}
+
+.landing-message-iskcon img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   FOOTER ISKCON LOGO
+============================================================ */
+
+.landing-footer-symbol.landing-footer-iskcon {
+  width: 42px;
+  height: 42px;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  background: #faf7ef;
+}
+
+.landing-footer-iskcon img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 600px) {
+
+  .landing-brand-symbol.landing-iskcon-symbol {
+    width: 42px;
+    height: 42px;
+  }
+
+  .landing-symbol.landing-hero-iskcon-logo {
+    width: 55px;
+    height: 55px;
+
+    margin-bottom: 15px;
+  }
+
+  .landing-floating-symbol.landing-iskcon-floating {
+    width: 48px;
+    height: 48px;
+  }
+
+  .landing-message-symbol.landing-message-iskcon {
+    width: 55px;
+    height: 55px;
+  }
+
+  .landing-footer-symbol.landing-footer-iskcon {
+    width: 38px;
+    height: 38px;
+  }
+
+}
