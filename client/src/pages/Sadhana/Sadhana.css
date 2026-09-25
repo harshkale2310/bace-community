@@ -1419,7 +1419,7 @@
 
 .sadhana-table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1320px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;
@@ -1483,8 +1483,8 @@
 
 .sadhana-table th:nth-child(3),
 .sadhana-table td:nth-child(3) {
-  min-width: 70px;
-  width: 70px;
+  min-width: 82px;
+  width: 82px;
   text-align: center;
 }
 
@@ -1492,19 +1492,24 @@
 .sadhana-table td:nth-child(4),
 .sadhana-table th:nth-child(5),
 .sadhana-table td:nth-child(5) {
-  min-width: 75px;
-  width: 75px;
+  min-width: 82px;
+  width: 82px;
   text-align: center;
 }
 
 .sadhana-table th:nth-child(6),
 .sadhana-table td:nth-child(6) {
+  min-width: 70px;
+  width: 70px;
+  text-align: center;
+}
+
+.sadhana-table th:nth-child(7),
+.sadhana-table td:nth-child(7) {
   min-width: 115px;
   width: 115px;
 }
 
-.sadhana-table th:nth-child(7),
-.sadhana-table td:nth-child(7),
 .sadhana-table th:nth-child(8),
 .sadhana-table td:nth-child(8),
 .sadhana-table th:nth-child(9),
@@ -1512,13 +1517,18 @@
   min-width: 150px;
 }
 
-.sadhana-table th:nth-child(10),
-.sadhana-table td:nth-child(10) {
+.sadhana-table th:nth-child(11),
+.sadhana-table td:nth-child(11) {
   min-width: 220px;
 }
 
-.sadhana-table th:nth-child(11),
-.sadhana-table td:nth-child(11) {
+.sadhana-table th:nth-child(12),
+.sadhana-table td:nth-child(12) {
+  min-width: 220px;
+}
+
+.sadhana-table th:nth-child(13),
+.sadhana-table td:nth-child(13) {
   min-width: 130px;
 }
 

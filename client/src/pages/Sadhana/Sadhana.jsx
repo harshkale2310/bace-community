@@ -4737,6 +4737,26 @@ function AdminSadhanaTable({
                 <div className="sadhana-admin-mobile-values">
                   <div>
                     <span>
+                      To bed
+                    </span>
+
+                    <strong>
+                      {record?.toBed || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Wake up
+                    </span>
+
+                    <strong>
+                      {record?.wakeUp || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
                       Japa
                     </span>
 
@@ -4844,6 +4864,14 @@ function AdminSadhanaTable({
               </th>
 
               <th>
+                To Bed
+              </th>
+
+              <th>
+                Wake Up
+              </th>
+
+              <th>
                 Japa
               </th>
 
@@ -4933,6 +4961,14 @@ function AdminSadhanaTable({
                           ? "Submitted"
                           : "Not submitted"}
                       </span>
+                    </td>
+
+                    <td>
+                      {record?.toBed || "—"}
+                    </td>
+
+                    <td>
+                      {record?.wakeUp || "—"}
                     </td>
 
                     <td>
