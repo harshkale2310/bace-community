@@ -13,13 +13,70 @@ import Loader from "../../components/Common/Loader";
 
 import "./Dashboard.css";
 
+/* ==========================================================================
+   HELPERS
+   ========================================================================== */
+
+function getTodayString() {
+  const now = new Date();
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function normalizeStatus(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function getStatusClass(status) {
+  return String(status || "")
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+}
+
+function getInitial(name, fallback = "D") {
+  if (typeof name !== "string") {
+    return fallback;
+  }
+
+  return (
+    name.trim().charAt(0).toUpperCase() ||
+    fallback
+  );
+}
+
+function getDevoteeName(user) {
+  return (
+    user?.name ||
+    user?.displayName ||
+    user?.fullName ||
+    user?.email ||
+    "Devotee"
+  );
+}
+
+function getJapaRounds(record) {
+  if (!record) return 0;
+
+  const rounds = Number(record.rounds);
+
+  return Number.isFinite(rounds) && rounds >= 0
+    ? rounds
+    : 0;
+}
+
 function getDevoteeRooms(rooms, devoteeId) {
   if (!devoteeId) return [];
 
-  return rooms.filter((room) =>
-    Array.isArray(room.occupants)
-      ? room.occupants.includes(devoteeId)
-      : false
+  return rooms.filter(
+    (room) =>
+      Array.isArray(room.occupants) &&
+      room.occupants.includes(devoteeId)
   );
 }
 
@@ -27,7 +84,8 @@ function getRoomIdentity(room) {
   if (!room) return "";
 
   const floor =
-    room.floor !== undefined && room.floor !== null
+    room.floor !== undefined &&
+    room.floor !== null
       ? `Floor ${room.floor}`
       : "Floor not assigned";
 
@@ -35,71 +93,238 @@ function getRoomIdentity(room) {
     ? `Room ${room.roomNumber}`
     : "Room number not assigned";
 
-  const roomName = room.roomName || "Unnamed Room";
+  const roomName =
+    room.roomName || "Unnamed Room";
 
   return `${floor} · ${roomNumber} · ${roomName}`;
 }
 
+/* ==========================================================================
+   ATTENDANCE LOGIC
+   ========================================================================== */
+
+/*
+ * Morning attendance:
+ *   - Mangal Arti
+ *   - Morning Class
+ *
+ * Evening attendance:
+ *   - Evening Class
+ *
+ * Japa rounds do NOT affect attendance.
+ *
+ * SESSION RULES:
+ *
+ *   Present + Present -> Present
+ *   Present + Late    -> Late
+ *   Late + Present    -> Late
+ *   Late + Late       -> Late
+ *   Absent + Absent   -> Absent
+ *   Missing/mixture   -> Partial
+ *   Nothing marked    -> Not Marked
+ *
+ * IMPORTANT:
+ * "Late" is a valid attendance status.
+ * It must NOT be treated as an unmarked/invalid value.
+ */
+
 function getSessionStatus(values) {
-  const statuses = values.map((value) =>
-    String(value || "").trim().toLowerCase()
-  );
-  const marked = statuses.filter((status) =>
-    ["present", "late", "absent"].includes(status)
+  const normalizedValues = values.map(
+    normalizeStatus
   );
 
-  if (marked.length === 0) return "Not Marked";
-  if (marked.length !== statuses.length) return "Partial";
-  if (statuses.every((status) => status === "present")) return "Present";
-  if (statuses.every((status) => status === "absent")) return "Absent";
-  if (statuses.every((status) => ["present", "late"].includes(status))) {
-    return statuses.includes("late") ? "Late" : "Present";
+  const hasAnyValue = normalizedValues.some(
+    Boolean
+  );
+
+  // Nothing has been entered for this session.
+  if (!hasAnyValue) {
+    return "Not Marked";
   }
 
+  /*
+   * We intentionally do NOT remove empty values here.
+   *
+   * Example:
+   *   [Present, ""] -> Partial
+   *
+   * because Morning has two required programs:
+   * Mangal Arti + Morning Class.
+   */
+
+  const validStatuses = [
+    "present",
+    "late",
+    "absent",
+  ];
+
+  // If one required program is missing, the session is partial.
+  if (
+    normalizedValues.some(
+      (status) => !status
+    )
+  ) {
+    return "Partial";
+  }
+
+  // If an unexpected value exists, don't silently call it Present.
+  if (
+    normalizedValues.some(
+      (status) =>
+        !validStatuses.includes(status)
+    )
+  ) {
+    return "Partial";
+  }
+
+  // All attended and nobody was late.
+  if (
+    normalizedValues.every(
+      (status) => status === "present"
+    )
+  ) {
+    return "Present";
+  }
+
+  // Everyone was absent.
+  if (
+    normalizedValues.every(
+      (status) => status === "absent"
+    )
+  ) {
+    return "Absent";
+  }
+
+  // Everyone attended, but at least one was late.
+  if (
+    normalizedValues.every((status) =>
+      ["present", "late"].includes(status)
+    )
+  ) {
+    return "Late";
+  }
+
+  // Example:
+  // Present + Absent -> Partial
+  // Late + Absent    -> Partial
   return "Partial";
 }
 
 function getMorningStatus(record) {
-  return getSessionStatus([record?.mangalArti, record?.morningClass]);
+  if (!record) {
+    return "Not Marked";
+  }
+
+  return getSessionStatus([
+    record.mangalArti,
+    record.morningClass,
+  ]);
 }
 
 function getEveningStatus(record) {
-  return getSessionStatus([record?.eveningClass]);
-}
-
-function getAttendanceStatus(morning, evening) {
-  if (morning === "Not Marked" && evening === "Not Marked") {
+  if (!record) {
     return "Not Marked";
   }
-  if (morning === "Present" && evening === "Present") return "Present";
-  if (morning === "Absent" && evening === "Absent") return "Absent";
-  if (morning === "Late" && evening === "Late") return "Late";
 
+  return getSessionStatus([
+    record.eveningClass,
+  ]);
+}
+
+/*
+ * OVERALL DAILY ATTENDANCE
+ *
+ * IMPORTANT BUSINESS RULE:
+ *
+ * Late counts as attendance.
+ *
+ * Therefore:
+ *
+ *   Present + Present -> Present
+ *   Present + Late    -> Present
+ *   Late + Present    -> Present
+ *   Late + Late       -> Present
+ *
+ * We use "Late" only at the individual session level.
+ *
+ * If one session is missing or absent while another is attended,
+ * the overall result is Partial.
+ */
+
+function getAttendanceStatus(
+  morning,
+  evening
+) {
+  const attendedStatuses = [
+    "Present",
+    "Late",
+  ];
+
+  // Nothing marked anywhere.
+  if (
+    morning === "Not Marked" &&
+    evening === "Not Marked"
+  ) {
+    return "Not Marked";
+  }
+
+  // Both morning and evening were attended.
+  // Late still counts as attended.
+  if (
+    attendedStatuses.includes(morning) &&
+    attendedStatuses.includes(evening)
+  ) {
+    return "Present";
+  }
+
+  // Both sessions are absent.
+  if (
+    morning === "Absent" &&
+    evening === "Absent"
+  ) {
+    return "Absent";
+  }
+
+  // Everything else is partial.
   return "Partial";
 }
 
+/* ==========================================================================
+   DASHBOARD
+   ========================================================================== */
+
 function Dashboard() {
-  const { user, isAdministrator, isDevotee } = useAuth();
+  const {
+    user,
+    isAdministrator,
+    isDevotee,
+  } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [devotees, setDevotees] = useState([]);
-  const [sadhanaRecords, setSadhanaRecords] = useState([]);
-  const [rooms, setRooms] = useState([]);
   const [error, setError] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const today = useMemo(() => {
-    const now = new Date();
-    return [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-    ].join("-");
-  }, []);
+  const [devotees, setDevotees] = useState([]);
+  const [sadhanaRecords, setSadhanaRecords] =
+    useState([]);
+  const [rooms, setRooms] = useState([]);
+
+  const [refreshKey, setRefreshKey] =
+    useState(0);
+
+  /* ------------------------------------------------------------------------
+     TODAY
+     ------------------------------------------------------------------------ */
+
+  const today = useMemo(
+    () => getTodayString(),
+    []
+  );
 
   const formattedToday = useMemo(
     () =>
-      new Date(`${today}T12:00:00`).toLocaleDateString("en-IN", {
+      new Date(
+        `${today}T12:00:00`
+      ).toLocaleDateString("en-IN", {
         weekday: "long",
         day: "2-digit",
         month: "long",
@@ -108,10 +333,14 @@ function Dashboard() {
     [today]
   );
 
+  /* ------------------------------------------------------------------------
+     LOAD DASHBOARD DATA
+     ------------------------------------------------------------------------ */
+
   useEffect(() => {
     let cancelled = false;
 
-    const loadDashboard = async () => {
+    async function loadDashboard() {
       if (!user) {
         setLoading(false);
         return;
@@ -121,23 +350,47 @@ function Dashboard() {
         setLoading(true);
         setError("");
 
-        const roomsQuery = isAdministrator
-          ? query(collection(db, "rooms"))
-          : query(
-              collection(db, "rooms"),
-              where("occupants", "array-contains", user.uid)
-            );
+        /*
+         * Clear previous data before loading.
+         * This prevents stale admin/devotee data after role changes
+         * or a retry.
+         */
+        setDevotees([]);
+        setSadhanaRecords([]);
+        setRooms([]);
+
+        /* ================================================================
+           ADMIN
+           ================================================================ */
 
         if (isAdministrator) {
+          /*
+           * Query only by role.
+           *
+           * Filtering status client-side avoids requiring a Firestore
+           * composite index on role + status.
+           */
           const devoteesQuery = query(
             collection(db, "users"),
-            where("role", "==", "devotee"),
-            where("status", "==", "active")
+            where(
+              "role",
+              "==",
+              "devotee"
+            )
           );
 
           const sadhanaQuery = query(
             collection(db, "sadhana"),
-            where("date", "==", today)
+            where(
+              "date",
+              "==",
+              today
+            )
+          );
+
+          const roomsQuery = collection(
+            db,
+            "rooms"
           );
 
           const [
@@ -152,61 +405,113 @@ function Dashboard() {
 
           if (cancelled) return;
 
-          const devoteeData = devoteesSnapshot.docs
-            .map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }))
-            .filter(
-              (devotee) =>
-                devotee.role === "devotee" &&
-                devotee.status === "active"
+          const devoteeData =
+            devoteesSnapshot.docs
+              .map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }))
+              .filter((devotee) => {
+                /*
+                 * Treat missing status as active for compatibility
+                 * with existing user records.
+                 */
+                const status =
+                  normalizeStatus(
+                    devotee.status
+                  );
+
+                return (
+                  !status ||
+                  status === "active"
+                );
+              });
+
+          const sadhanaData =
+            sadhanaSnapshot.docs.map(
+              (doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })
             );
 
-          const sadhanaData = sadhanaSnapshot.docs.map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }));
-
-          const roomData = roomsSnapshot.docs.map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }));
+          const roomData =
+            roomsSnapshot.docs.map(
+              (doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })
+            );
 
           setDevotees(devoteeData);
           setSadhanaRecords(sadhanaData);
           setRooms(roomData);
+
+          return;
         }
+
+        /* ================================================================
+           DEVOTEE
+           ================================================================ */
 
         if (isDevotee) {
           const sadhanaQuery = query(
             collection(db, "sadhana"),
-            where("devoteeId", "==", user.uid)
+            where(
+              "devoteeId",
+              "==",
+              user.uid
+            )
           );
 
-          const [sadhanaSnapshot, roomsSnapshot] = await Promise.all([
+          const roomsQuery = query(
+            collection(db, "rooms"),
+            where(
+              "occupants",
+              "array-contains",
+              user.uid
+            )
+          );
+
+          const [
+            sadhanaSnapshot,
+            roomsSnapshot,
+          ] = await Promise.all([
             getDocs(sadhanaQuery),
             getDocs(roomsQuery),
           ]);
 
           if (cancelled) return;
 
-          setSadhanaRecords(
-            sadhanaSnapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            })).filter((record) => record.date === today)
-          );
+          const sadhanaData =
+            sadhanaSnapshot.docs
+              .map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }))
+              .filter(
+                (record) =>
+                  record.date === today
+              );
 
-          setRooms(
-            roomsSnapshot.docs.map((item) => ({
-              id: item.id,
-              ...item.data(),
-            }))
-          );
+          const roomData =
+            roomsSnapshot.docs.map(
+              (doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })
+            );
+
+          setSadhanaRecords(sadhanaData);
+          setRooms(roomData);
+
+          return;
         }
       } catch (err) {
-        console.error("Dashboard loading error:", err);
+        console.error(
+          "Dashboard loading error:",
+          err
+        );
 
         if (!cancelled) {
           setError(
@@ -218,65 +523,166 @@ function Dashboard() {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadDashboard();
 
     return () => {
       cancelled = true;
     };
-  }, [user, isAdministrator, isDevotee, today, refreshKey]);
+  }, [
+    user,
+    isAdministrator,
+    isDevotee,
+    today,
+    refreshKey,
+  ]);
 
-  const currentDevoteeRooms = useMemo(() => {
-    if (!isDevotee || !user?.uid) return [];
-    return getDevoteeRooms(rooms, user.uid);
-  }, [rooms, isDevotee, user]);
+  /* ==========================================================================
+     ADMIN ATTENDANCE
+     ========================================================================== */
 
   const todayAttendance = useMemo(() => {
-    if (!isAdministrator) return [];
+    if (!isAdministrator) {
+      return [];
+    }
 
     return devotees.map((devotee) => {
-      const record = sadhanaRecords.find(
-        (item) =>
-          item.devoteeId === devotee.id &&
-          item.date === today
-      );
+      /*
+       * Sadhana document structure:
+       *
+       * sadhana/{uid}_{YYYY-MM-DD}
+       *
+       * Admin already loaded only today's records.
+       * We still match by devoteeId + date for safety.
+       */
+      const record =
+        sadhanaRecords.find(
+          (item) =>
+            item.devoteeId === devotee.id &&
+            item.date === today
+        ) || null;
 
-      const devoteeRooms = getDevoteeRooms(rooms, devotee.id);
-      const morning = getMorningStatus(record);
-      const evening = getEveningStatus(record);
+      const devoteeRooms =
+        getDevoteeRooms(
+          rooms,
+          devotee.id
+        );
+
+      const morning =
+        getMorningStatus(record);
+
+      const evening =
+        getEveningStatus(record);
+
+      const attendanceStatus =
+        getAttendanceStatus(
+          morning,
+          evening
+        );
 
       return {
         ...devotee,
-        sadhanaRecord: record || null,
-        attendanceStatus: getAttendanceStatus(morning, evening),
+
+        sadhanaRecord: record,
+
         morning,
         evening,
+
+        attendanceStatus,
+
+        japaRounds:
+          getJapaRounds(record),
+
+        mangalArti:
+          record?.mangalArti || "",
+
+        morningClass:
+          record?.morningClass || "",
+
+        eveningClass:
+          record?.eveningClass || "",
+
         roomLabel:
           devoteeRooms.length > 0
-            ? devoteeRooms.map(getRoomIdentity).join(" • ")
+            ? devoteeRooms
+                .map(getRoomIdentity)
+                .join(" • ")
             : "Residence not assigned",
       };
     });
-  }, [devotees, sadhanaRecords, rooms, isAdministrator, today]);
+  }, [
+    devotees,
+    sadhanaRecords,
+    rooms,
+    isAdministrator,
+    today,
+  ]);
+
+  /* ==========================================================================
+     ADMIN STATS
+     ========================================================================== */
 
   const adminStats = useMemo(() => {
-    const total = todayAttendance.length;
-    const present = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Present"
-    ).length;
-    const partial = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Partial"
-    ).length;
-    const absent = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Absent"
-    ).length;
-    const late = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Late"
-    ).length;
-    const notMarked = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Not Marked"
-    ).length;
+    const total =
+      todayAttendance.length;
+
+    /*
+     * Overall Present means both Morning and Evening
+     * are attended.
+     *
+     * Late counts as attended.
+     */
+    const present =
+      todayAttendance.filter(
+        (item) =>
+          item.attendanceStatus ===
+          "Present"
+      ).length;
+
+    const partial =
+      todayAttendance.filter(
+        (item) =>
+          item.attendanceStatus ===
+          "Partial"
+      ).length;
+
+    const absent =
+      todayAttendance.filter(
+        (item) =>
+          item.attendanceStatus ===
+          "Absent"
+      ).length;
+
+    /*
+     * "Late" is a session-level statistic.
+     *
+     * Example:
+     * Morning = Late
+     * Evening = Present
+     *
+     * Overall = Present
+     * Late count = 1
+     */
+    const late =
+      todayAttendance.filter(
+        (item) =>
+          item.morning === "Late" ||
+          item.evening === "Late"
+      ).length;
+
+    const notMarked =
+      todayAttendance.filter(
+        (item) =>
+          item.attendanceStatus ===
+          "Not Marked"
+      ).length;
+
+    const japaCompleted =
+      todayAttendance.filter(
+        (item) =>
+          item.japaRounds > 0
+      ).length;
 
     return {
       total,
@@ -285,606 +691,1164 @@ function Dashboard() {
       absent,
       late,
       notMarked,
-      marked: total - notMarked,
+      japaCompleted,
+      marked:
+        total - notMarked,
     };
   }, [todayAttendance]);
 
-  const devoteeTodayAttendance = useMemo(() => {
-    const record = sadhanaRecords.find((item) => item.date === today);
-    const morning = getMorningStatus(record);
-    const evening = getEveningStatus(record);
+  /* ==========================================================================
+     DEVOTEE TODAY
+     ========================================================================== */
 
-    return {
-      status: getAttendanceStatus(morning, evening),
-      morning,
-      evening,
-    };
-  }, [sadhanaRecords, today]);
+  const devoteeTodayAttendance =
+    useMemo(() => {
+      if (!isDevotee) {
+        return {
+          record: null,
+          status: "Not Marked",
+          morning: "Not Marked",
+          evening: "Not Marked",
+          japaRounds: 0,
+          mangalArti: "",
+          morningClass: "",
+          eveningClass: "",
+        };
+      }
 
-  const roomCount = rooms.length;
-  const occupiedRoomCount = rooms.filter(
-    (room) => Array.isArray(room.occupants) && room.occupants.length > 0
-  ).length;
+      const record =
+        sadhanaRecords.find(
+          (item) =>
+            item.date === today
+        ) || null;
 
-  const getInitial = (name, fallback = "D") =>
-    name?.trim()?.charAt(0)?.toUpperCase() || fallback;
+      const morning =
+        getMorningStatus(record);
+
+      const evening =
+        getEveningStatus(record);
+
+      return {
+        record,
+
+        status:
+          getAttendanceStatus(
+            morning,
+            evening
+          ),
+
+        morning,
+        evening,
+
+        japaRounds:
+          getJapaRounds(record),
+
+        mangalArti:
+          record?.mangalArti || "",
+
+        morningClass:
+          record?.morningClass || "",
+
+        eveningClass:
+          record?.eveningClass || "",
+      };
+    }, [
+      sadhanaRecords,
+      today,
+      isDevotee,
+    ]);
+
+  /* ==========================================================================
+     DEVOTEE ROOMS
+     ========================================================================== */
+
+  const currentDevoteeRooms =
+    useMemo(() => {
+      if (
+        !isDevotee ||
+        !user?.uid
+      ) {
+        return [];
+      }
+
+      return getDevoteeRooms(
+        rooms,
+        user.uid
+      );
+    }, [
+      rooms,
+      isDevotee,
+      user?.uid,
+    ]);
+
+  /* ==========================================================================
+     LOADING
+     ========================================================================== */
 
   if (loading) {
-    return <Loader text="Loading dashboard..." />;
+    return <Loader />;
   }
+
+  /* ==========================================================================
+     RENDER
+     ========================================================================== */
 
   return (
     <div className="dashboard-page">
+
+      {/* ====================================================================
+          HEADER
+          ==================================================================== */}
+
       <header className="dashboard-header">
         <div className="dashboard-header-copy">
+
           <span className="dashboard-eyebrow">
-            {isAdministrator ? "BACE ADMINISTRATION" : "MY BACE"}
+            {isAdministrator
+              ? "BACE ADMINISTRATION"
+              : "MY BACE"}
           </span>
 
           <h1>
             {isAdministrator
               ? "Hare Krishna, Admin 🙏"
               : `Hare Krishna, ${
-                  user?.name?.split(" ")[0] || "Devotee"
+                  getDevoteeName(user).split(
+                    " "
+                  )[0]
                 } 🙏`}
           </h1>
 
           <p>
             {isAdministrator
-              ? "A clear overview of today’s community activity, attendance and administration."
-              : "Your personal overview of today’s attendance and BACE activities."}
+              ? "A clear view of today's Sadhana and community attendance."
+              : "Your Sadhana, attendance and residence at a glance."}
           </p>
+
         </div>
 
-        <div className="dashboard-date" aria-label={`Today is ${formattedToday}`}>
-          <span>Today</span>
-          <strong>{formattedToday}</strong>
+        <div
+          className="dashboard-date"
+          aria-label={`Today is ${formattedToday}`}
+        >
+          <span>
+            Today
+          </span>
+
+          <strong>
+            {formattedToday}
+          </strong>
         </div>
       </header>
 
+      {/* ====================================================================
+          ERROR
+          ==================================================================== */}
+
       {error && (
-        <div className="dashboard-error" role="alert">
+        <div
+          className="dashboard-error"
+          role="alert"
+        >
           <div>
-            <strong>Dashboard unavailable</strong>
-            <span>{error}</span>
+
+            <strong>
+              Dashboard unavailable
+            </strong>
+
+            <span>
+              {error}
+            </span>
+
           </div>
 
           <button
             type="button"
-            onClick={() => setRefreshKey((value) => value + 1)}
             className="dashboard-retry"
+            onClick={() =>
+              setRefreshKey(
+                (value) =>
+                  value + 1
+              )
+            }
           >
             Try again
           </button>
         </div>
       )}
 
+      {/* ====================================================================
+          ADMIN DASHBOARD
+          ==================================================================== */}
+
       {isAdministrator && (
         <>
-          <section className="dashboard-stats" aria-label="Daily summary">
+
+          {/* ----------------------------------------------------------------
+              ADMIN SUMMARY
+              ---------------------------------------------------------------- */}
+
+          <section
+            className="dashboard-stats"
+            aria-label="Daily summary"
+          >
+
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon devotees">D</div>
-              <div>
-                <span>Active Devotees</span>
-                <strong>{adminStats.total}</strong>
-                <small>Currently active</small>
+
+              <div className="dashboard-stat-icon devotees">
+                D
               </div>
+
+              <div>
+                <span>
+                  Active Devotees
+                </span>
+
+                <strong>
+                  {adminStats.total}
+                </strong>
+
+                <small>
+                  Currently active
+                </small>
+              </div>
+
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon present">✓</div>
-              <div>
-                <span>Present Today</span>
-                <strong>{adminStats.present}</strong>
-                <small>Morning and evening</small>
+
+              <div className="dashboard-stat-icon present">
+                ✓
               </div>
+
+              <div>
+                <span>
+                  Present Today
+                </span>
+
+                <strong>
+                  {adminStats.present}
+                </strong>
+
+                <small>
+                  Morning + evening
+                </small>
+              </div>
+
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon partial">◐</div>
-              <div>
-                <span>Needs Attention</span>
-                <strong>{adminStats.partial + adminStats.notMarked}</strong>
-                <small>Partial or not marked</small>
+
+              <div className="dashboard-stat-icon partial">
+                ◐
               </div>
+
+              <div>
+                <span>
+                  Needs Attention
+                </span>
+
+                <strong>
+                  {adminStats.partial +
+                    adminStats.absent +
+                    adminStats.notMarked}
+                </strong>
+
+                <small>
+                  Partial, absent or not marked
+                </small>
+              </div>
+
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon rooms">R</div>
-              <div>
-                <span>Occupied Rooms</span>
-                <strong>{occupiedRoomCount}</strong>
-                <small>{roomCount} rooms recorded</small>
+
+              <div className="dashboard-stat-icon japa">
+                J
               </div>
+
+              <div>
+                <span>
+                  Japa Recorded
+                </span>
+
+                <strong>
+                  {adminStats.japaCompleted}
+                </strong>
+
+                <small>
+                  Devotees with rounds
+                </small>
+              </div>
+
             </div>
+
           </section>
 
+          {/* ----------------------------------------------------------------
+              ADMIN ATTENDANCE
+              ---------------------------------------------------------------- */}
+
           <section className="dashboard-card dashboard-attendance-card">
+
             <div className="dashboard-card-header">
+
               <div>
-                <span className="dashboard-section-label">TODAY</span>
-                <h2>Attendance overview</h2>
+
+                <span className="dashboard-section-label">
+                  TODAY'S SADHANA
+                </span>
+
+                <h2>
+                  Attendance overview
+                </h2>
+
                 <p>
-                  A quick view of attendance for all active devotees.
+                  Live attendance based directly on today's saved Sadhana records.
                 </p>
+
               </div>
 
-              <Link to="/sadhana" className="dashboard-view-all">
+              <Link
+                to="/sadhana"
+                className="dashboard-view-all"
+              >
                 Open Sadhana →
               </Link>
+
             </div>
+
+            {/* SUMMARY STRIP */}
 
             <div className="attendance-summary">
-              <div className="attendance-summary-item present">
-                <span className="summary-dot" />
-                <div>
-                  <strong>{adminStats.present}</strong>
-                  <small>Present</small>
-                </div>
-              </div>
 
-              <div className="attendance-summary-item partial">
-                <span className="summary-dot" />
-                <div>
-                  <strong>{adminStats.partial}</strong>
-                  <small>Partial</small>
-                </div>
-              </div>
+              <AttendanceSummaryItem
+                type="present"
+                count={adminStats.present}
+                label="Present"
+              />
 
-              <div className="attendance-summary-item absent">
-                <span className="summary-dot" />
-                <div>
-                  <strong>{adminStats.absent}</strong>
-                  <small>Absent</small>
-                </div>
-              </div>
+              <AttendanceSummaryItem
+                type="partial"
+                count={adminStats.partial}
+                label="Partial"
+              />
 
-                <div className="attendance-summary-item partial">
-                <span className="summary-dot" />
-                <div>
-                    <strong>{adminStats.late}</strong>
-                    <small>Late</small>
-                </div>
-              </div>
+              <AttendanceSummaryItem
+                type="absent"
+                count={adminStats.absent}
+                label="Absent"
+              />
 
-              <div className="attendance-summary-item not-marked">
-                <span className="summary-dot" />
-                <div>
-                  <strong>{adminStats.notMarked}</strong>
-                  <small>Not marked</small>
-                </div>
-              </div>
+              <AttendanceSummaryItem
+                type="late"
+                count={adminStats.late}
+                label="Late"
+              />
+
+              <AttendanceSummaryItem
+                type="not-marked"
+                count={adminStats.notMarked}
+                label="Not marked"
+              />
+
             </div>
 
+            {/* ============================================================== 
+                DESKTOP TABLE
+                ============================================================== */}
+
             <div className="dashboard-attendance-table-wrapper">
+
               <table className="dashboard-attendance-table">
+
                 <thead>
                   <tr>
-                    <th>Devotee</th>
-                    <th>Residence</th>
-                    <th>Morning</th>
-                    <th>Evening</th>
-                    <th>Overall</th>
+
+                    <th>
+                      Devotee
+                    </th>
+
+                    <th>
+                      Sadhana
+                    </th>
+
+                    <th>
+                      Morning
+                    </th>
+
+                    <th>
+                      Evening
+                    </th>
+
+                    <th>
+                      Overall
+                    </th>
+
                   </tr>
                 </thead>
 
                 <tbody>
+
                   {todayAttendance.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="dashboard-table-empty">
+
+                      <td
+                        colSpan="5"
+                        className="dashboard-table-empty"
+                      >
                         No active devotees are registered yet.
                       </td>
+
                     </tr>
                   ) : (
-                    todayAttendance.map((devotee) => (
-                      <tr key={devotee.id}>
-                        <td>
-                          <div className="dashboard-devotee-cell">
-                            <div className="dashboard-devotee-avatar">
-                              {getInitial(devotee.name)}
+                    todayAttendance.map(
+                      (devotee) => (
+                        <tr
+                          key={devotee.id}
+                        >
+
+                          {/* DEVOTEE */}
+
+                          <td>
+
+                            <div className="dashboard-devotee-cell">
+
+                              <div className="dashboard-devotee-avatar">
+                                {getInitial(
+                                  devotee.name
+                                )}
+                              </div>
+
+                              <div>
+
+                                <strong>
+                                  {devotee.name ||
+                                    "Unnamed Devotee"}
+                                </strong>
+
+                                <span>
+                                  {devotee.roomLabel}
+                                </span>
+
+                              </div>
+
                             </div>
-                            <div>
-                              <strong>
-                                {devotee.name || "Unnamed Devotee"}
-                              </strong>
-                              <span>
-                                {devotee.department || "Active devotee"}
-                              </span>
+
+                          </td>
+
+                          {/* SADHANA */}
+
+                          <td>
+
+                            <div className="dashboard-sadhana-cell">
+
+                              <div className="japa-rounds">
+
+                                <span>
+                                  Japa
+                                </span>
+
+                                <strong>
+                                  {
+                                    devotee.japaRounds
+                                  }
+                                </strong>
+
+                                <small>
+                                  rounds
+                                </small>
+
+                              </div>
+
+                              <SadhanaMiniStatus
+                                label="M.A."
+                                value={
+                                  devotee.mangalArti
+                                }
+                              />
+
+                              <SadhanaMiniStatus
+                                label="M.Class"
+                                value={
+                                  devotee.morningClass
+                                }
+                              />
+
+                              <SadhanaMiniStatus
+                                label="E.Class"
+                                value={
+                                  devotee.eveningClass
+                                }
+                              />
+
                             </div>
-                          </div>
-                        </td>
 
-                        <td>
-                          <div className="dashboard-residence-cell">
-                            <span className="dashboard-residence-icon">
-                              R
-                            </span>
-                            <div>
-                              <span className="dashboard-residence-label">
-                                Residence
-                              </span>
-                              <strong>{devotee.roomLabel}</strong>
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td>
-                          <span
-                            className={`attendance-pill ${devotee.morning
-                              .toLowerCase()
-                              .replace(/\s+/g, "-")}`}
-                          >
-                            {devotee.morning}
-                          </span>
-                        </td>
+                          {/* MORNING */}
 
-                        <td>
-                          <span
-                            className={`attendance-pill ${devotee.evening
-                              .toLowerCase()
-                              .replace(/\s+/g, "-")}`}
-                          >
-                            {devotee.evening}
-                          </span>
-                        </td>
+                          <td>
 
-                        <td>
-                          <span
-                            className={`attendance-pill overall ${devotee.attendanceStatus
-                              .toLowerCase()
-                              .replace(/\s+/g, "-")}`}
-                          >
-                            {devotee.attendanceStatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                            <AttendancePill
+                              status={
+                                devotee.morning
+                              }
+                            />
+
+                          </td>
+
+                          {/* EVENING */}
+
+                          <td>
+
+                            <AttendancePill
+                              status={
+                                devotee.evening
+                              }
+                            />
+
+                          </td>
+
+                          {/* OVERALL */}
+
+                          <td>
+
+                            <AttendancePill
+                              status={
+                                devotee.attendanceStatus
+                              }
+                              overall
+                            />
+
+                          </td>
+
+                        </tr>
+                      )
+                    )
                   )}
+
                 </tbody>
+
               </table>
+
             </div>
 
+            {/* ============================================================== 
+                MOBILE
+                ============================================================== */}
+
             <div className="dashboard-mobile-attendance">
+
               {todayAttendance.length === 0 ? (
                 <div className="dashboard-mobile-empty">
                   No active devotees are registered yet.
                 </div>
               ) : (
-                todayAttendance.map((devotee) => (
-                  <article
-                    key={devotee.id}
-                    className="dashboard-attendance-mobile-card"
-                  >
-                    <div className="dashboard-mobile-person">
-                      <div className="dashboard-devotee-avatar">
-                        {getInitial(devotee.name)}
-                      </div>
-                      <div>
-                        <strong>
-                          {devotee.name || "Unnamed Devotee"}
-                        </strong>
-                        <span>{devotee.roomLabel}</span>
-                      </div>
-                    </div>
+                todayAttendance.map(
+                  (devotee) => (
+                    <article
+                      key={devotee.id}
+                      className="dashboard-attendance-mobile-card"
+                    >
 
-                    <div className="dashboard-mobile-status-grid">
-                      <div>
-                        <small>Morning</small>
-                        <span
-                          className={`attendance-pill ${devotee.morning
-                            .toLowerCase()
-                            .replace(/\s+/g, "-")}`}
-                        >
-                          {devotee.morning}
-                        </span>
-                      </div>
+                      <div className="dashboard-mobile-person">
 
-                      <div>
-                        <small>Evening</small>
-                        <span
-                          className={`attendance-pill ${devotee.evening
-                            .toLowerCase()
-                            .replace(/\s+/g, "-")}`}
-                        >
-                          {devotee.evening}
-                        </span>
+                        <div className="dashboard-devotee-avatar">
+                          {getInitial(
+                            devotee.name
+                          )}
+                        </div>
+
+                        <div>
+
+                          <strong>
+                            {devotee.name ||
+                              "Unnamed Devotee"}
+                          </strong>
+
+                          <span>
+                            {devotee.roomLabel}
+                          </span>
+
+                        </div>
+
+                        <AttendancePill
+                          status={
+                            devotee.attendanceStatus
+                          }
+                          overall
+                          mobile
+                        />
+
                       </div>
 
-                      <div>
-                        <small>Overall</small>
-                        <span
-                          className={`attendance-pill overall ${devotee.attendanceStatus
-                            .toLowerCase()
-                            .replace(/\s+/g, "-")}`}
-                        >
-                          {devotee.attendanceStatus}
-                        </span>
+                      <div className="dashboard-mobile-sadhana">
+
+                        <MobileSadhanaItem
+                          label="Japa"
+                          value={`${devotee.japaRounds} rounds`}
+                        />
+
+                        <MobileSadhanaItem
+                          label="M.A."
+                          value={
+                            devotee.mangalArti ||
+                            "—"
+                          }
+                        />
+
+                        <MobileSadhanaItem
+                          label="M. Class"
+                          value={
+                            devotee.morningClass ||
+                            "—"
+                          }
+                        />
+
+                        <MobileSadhanaItem
+                          label="E. Class"
+                          value={
+                            devotee.eveningClass ||
+                            "—"
+                          }
+                        />
+
                       </div>
-                    </div>
-                  </article>
-                ))
+
+                      <div className="dashboard-mobile-status-grid">
+
+                        <div>
+
+                          <small>
+                            Morning
+                          </small>
+
+                          <AttendancePill
+                            status={
+                              devotee.morning
+                            }
+                          />
+
+                        </div>
+
+                        <div>
+
+                          <small>
+                            Evening
+                          </small>
+
+                          <AttendancePill
+                            status={
+                              devotee.evening
+                            }
+                          />
+
+                        </div>
+
+                      </div>
+
+                    </article>
+                  )
+                )
               )}
+
             </div>
+
           </section>
 
-          <div className="dashboard-grid">
-            <section className="dashboard-card dashboard-activity-card">
-              <div className="dashboard-card-header">
-                <div>
-                  <span className="dashboard-section-label">
-                    QUICK ACCESS
-                  </span>
-                  <h2>Community management</h2>
-                  <p>
-                    Go directly to the areas you manage most often.
-                  </p>
-                </div>
-              </div>
-
-              <div className="dashboard-management-grid">
-                <DashboardLink
-                  to="/devotees"
-                  icon="D"
-                  title="Devotees"
-                  description="Manage active and inactive devotees"
-                />
-                <DashboardLink
-                  to="/sadhana"
-                  icon="S"
-                  title="Sadhana"
-                  description="Review daily practice records"
-                />
-                <DashboardLink
-                  to="/seva"
-                  icon="✦"
-                  title="Seva"
-                  description="Manage seva activities"
-                />
-                <DashboardLink
-                  to="/leave"
-                  icon="L"
-                  title="Leave"
-                  description="Review pending leave requests"
-                />
-                <DashboardLink
-                  to="/rooms"
-                  icon="R"
-                  title="Rooms"
-                  description="Manage residence allocation"
-                />
-              </div>
-            </section>
-
-            <section className="dashboard-card dashboard-profile-card">
-              <div className="dashboard-profile-top">
-                <div className="dashboard-large-avatar">
-                  {getInitial(user?.name, "A")}
-                </div>
-
-                <div>
-                  <span>Administrator</span>
-                  <h3>{user?.name || "BACE Administrator"}</h3>
-                  <p>{user?.email}</p>
-                </div>
-              </div>
-
-              <div className="dashboard-profile-divider" />
-
-              <div className="dashboard-profile-links">
-                <Link to="/settings">
-                  <span>⚙</span>
-                  Settings
-                  <b>→</b>
-                </Link>
-
-                <Link to="/reports">
-                  <span>▤</span>
-                  Reports
-                  <b>→</b>
-                </Link>
-              </div>
-            </section>
-          </div>
         </>
       )}
+
+      {/* ====================================================================
+          DEVOTEE DASHBOARD
+          ==================================================================== */}
 
       {isDevotee && (
         <>
-          <section className="dashboard-stats devotee-stats">
+
+          {/* ----------------------------------------------------------------
+              PERSONAL SUMMARY
+              ---------------------------------------------------------------- */}
+
+          <section
+            className="dashboard-stats devotee-stats"
+            aria-label="My Sadhana summary"
+          >
+
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon present">✓</div>
+
+              <div className="dashboard-stat-icon present">
+                ✓
+              </div>
+
               <div>
-                <span>Today’s Attendance</span>
+
+                <span>
+                  Today's Attendance
+                </span>
+
                 <strong className="stat-text">
-                  {devoteeTodayAttendance.status}
+                  {
+                    devoteeTodayAttendance.status
+                  }
                 </strong>
+
                 <small>
-                  {devoteeTodayAttendance.morning} ·{" "}
-                  {devoteeTodayAttendance.evening}
+                  {
+                    devoteeTodayAttendance.morning
+                  }{" "}
+                  ·{" "}
+                  {
+                    devoteeTodayAttendance.evening
+                  }
                 </small>
+
               </div>
+
             </div>
 
             <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon devotees">M</div>
-              <div>
-                <span>Morning</span>
-                <strong className="stat-text">
-                  {devoteeTodayAttendance.morning}
-                </strong>
-                <small>Morning attendance</small>
-              </div>
-            </div>
 
-            <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon partial">E</div>
-              <div>
-                <span>Evening</span>
-                <strong className="stat-text">
-                  {devoteeTodayAttendance.evening}
-                </strong>
-                <small>Evening attendance</small>
+              <div className="dashboard-stat-icon japa">
+                J
               </div>
-            </div>
 
-            <div className="dashboard-stat-card dashboard-residence-stat">
-              <div className="dashboard-stat-icon rooms">R</div>
               <div>
-                <span>My Residence</span>
-                <strong className="stat-text">
-                  {currentDevoteeRooms.length > 0
-                    ? currentDevoteeRooms.length === 1
-                      ? `Room ${
-                          currentDevoteeRooms[0].roomNumber || "—"
-                        }`
-                      : `${currentDevoteeRooms.length} Rooms`
-                    : "Not Assigned"}
+
+                <span>
+                  Japa Rounds
+                </span>
+
+                <strong>
+                  {
+                    devoteeTodayAttendance.japaRounds
+                  }
                 </strong>
+
                 <small>
-                  {currentDevoteeRooms.length > 0
-                    ? currentDevoteeRooms
-                        .map(getRoomIdentity)
-                        .join(" • ")
-                    : "Residence not assigned"}
+                  Today's saved rounds
                 </small>
+
               </div>
+
             </div>
+
+            <div className="dashboard-stat-card">
+
+              <div className="dashboard-stat-icon devotees">
+                M
+              </div>
+
+              <div>
+
+                <span>
+                  Morning
+                </span>
+
+                <strong className="stat-text">
+                  {
+                    devoteeTodayAttendance.morning
+                  }
+                </strong>
+
+                <small>
+                  M.A. + Morning Class
+                </small>
+
+              </div>
+
+            </div>
+
+            <div className="dashboard-stat-card">
+
+              <div className="dashboard-stat-icon partial">
+                E
+              </div>
+
+              <div>
+
+                <span>
+                  Evening
+                </span>
+
+                <strong className="stat-text">
+                  {
+                    devoteeTodayAttendance.evening
+                  }
+                </strong>
+
+                <small>
+                  Evening Class
+                </small>
+
+              </div>
+
+            </div>
+
           </section>
+
+          {/* ----------------------------------------------------------------
+              TODAY'S SADHANA
+              ---------------------------------------------------------------- */}
+
+          <section className="dashboard-card dashboard-personal-sadhana">
+
+            <div className="dashboard-card-header">
+
+              <div>
+
+                <span className="dashboard-section-label">
+                  TODAY'S SADHANA
+                </span>
+
+                <h2>
+                  My Sadhana
+                </h2>
+
+                <p>
+                  Your attendance and saved practice details for today.
+                </p>
+
+              </div>
+
+              <Link
+                to="/sadhana"
+                className="dashboard-view-all"
+              >
+                Open Sadhana →
+              </Link>
+
+            </div>
+
+            <div className="devotee-sadhana-grid">
+
+              <DevoteeSadhanaItem
+                label="JAPA ROUNDS"
+                value={
+                  devoteeTodayAttendance.japaRounds
+                }
+              />
+
+              <DevoteeSadhanaItem
+                label="MANGAL ARTI"
+                value={
+                  devoteeTodayAttendance.mangalArti ||
+                  "Not Marked"
+                }
+              />
+
+              <DevoteeSadhanaItem
+                label="MORNING CLASS"
+                value={
+                  devoteeTodayAttendance.morningClass ||
+                  "Not Marked"
+                }
+              />
+
+              <DevoteeSadhanaItem
+                label="EVENING CLASS"
+                value={
+                  devoteeTodayAttendance.eveningClass ||
+                  "Not Marked"
+                }
+              />
+
+            </div>
+
+          </section>
+
+          {/* ----------------------------------------------------------------
+              RESIDENCE
+              ---------------------------------------------------------------- */}
 
           {currentDevoteeRooms.length > 0 && (
             <section className="dashboard-card dashboard-residence-card">
+
               <div className="dashboard-card-header">
+
                 <div>
+
                   <span className="dashboard-section-label">
                     MY RESIDENCE
                   </span>
-                  <h2>Current room assignment</h2>
+
+                  <h2>
+                    Current room
+                  </h2>
+
                   <p>
                     Your current residence information from BACE records.
                   </p>
+
                 </div>
 
-                <Link to="/my-room" className="dashboard-view-all">
+                <Link
+                  to="/my-room"
+                  className="dashboard-view-all"
+                >
                   View My Room →
                 </Link>
+
               </div>
 
               <div className="dashboard-residence-list">
-                {currentDevoteeRooms.map((room) => (
-                  <div
-                    key={room.id}
-                    className="dashboard-residence-item"
-                  >
-                    <div className="dashboard-residence-item-icon">
-                      R
-                    </div>
 
-                    <div>
-                      <span>RESIDENCE</span>
-                      <strong>{room.roomName || "Unnamed Room"}</strong>
-                      <p>{getRoomIdentity(room)}</p>
+                {currentDevoteeRooms.map(
+                  (room) => (
+                    <div
+                      key={room.id}
+                      className="dashboard-residence-item"
+                    >
+
+                      <div className="dashboard-residence-item-icon">
+                        R
+                      </div>
+
+                      <div>
+
+                        <span>
+                          RESIDENCE
+                        </span>
+
+                        <strong>
+                          {room.roomName ||
+                            "Unnamed Room"}
+                        </strong>
+
+                        <p>
+                          {getRoomIdentity(
+                            room
+                          )}
+                        </p>
+
+                      </div>
+
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
+
               </div>
+
             </section>
           )}
 
-          <div className="dashboard-grid devotee-dashboard-grid">
-            <section className="dashboard-card dashboard-activity-card">
-              <div className="dashboard-card-header">
-                <div>
-                  <span className="dashboard-section-label">
-                    MY BACE
-                  </span>
-                  <h2>Personal activity</h2>
-                  <p>
-                    Keep your daily BACE activities in one place.
-                  </p>
-                </div>
+          {/* ----------------------------------------------------------------
+              QUICK ACTIONS
+              ---------------------------------------------------------------- */}
+
+          <section className="dashboard-card dashboard-actions-card">
+
+            <div className="dashboard-card-header">
+
+              <div>
+
+                <span className="dashboard-section-label">
+                  MY BACE
+                </span>
+
+                <h2>
+                  Quick actions
+                </h2>
+
+                <p>
+                  Access the areas you use regularly.
+                </p>
+
               </div>
 
-              <div className="dashboard-management-grid">
-                <DashboardLink
-                  to="/devotee-profile"
-                  icon="D"
-                  title="My Profile"
-                  description="View and update your profile"
-                />
-                <DashboardLink
-                  to="/sadhana"
-                  icon="S"
-                  title="Sadhana"
-                  description="Complete your daily practice"
-                />
-                <DashboardLink
-                  to="/seva"
-                  icon="✦"
-                  title="My Seva"
-                  description="View your seva activities"
-                />
-                <DashboardLink
-                  to="/leave"
-                  icon="L"
-                  title="Leave"
-                  description="Submit and manage leave"
-                />
-                <DashboardLink
-                  to="/my-room"
-                  icon="R"
-                  title="My Room"
-                  description="View residence information"
-                />
-              </div>
-            </section>
+            </div>
 
-            <section className="dashboard-card dashboard-profile-card">
-              <div className="dashboard-profile-top">
-                <div className="dashboard-large-avatar">
-                  {getInitial(user?.name, "D")}
-                </div>
+            <div className="dashboard-action-grid">
 
-                <div>
-                  <span>Devotee account</span>
-                  <h3>{user?.name || "Devotee"}</h3>
-                  <p>{user?.email}</p>
-                </div>
-              </div>
+              <DashboardLink
+                to="/sadhana"
+                icon="S"
+                title="Sadhana"
+                description="Complete today's practice"
+              />
 
-              <div className="dashboard-profile-divider" />
+              <DashboardLink
+                to="/devotee-profile"
+                icon="D"
+                title="My Profile"
+                description="View your profile"
+              />
 
-              <div className="dashboard-profile-links">
-                <Link to="/devotee-profile">
-                  <span>♙</span>
-                  My Profile
-                  <b>→</b>
-                </Link>
+              <DashboardLink
+                to="/seva"
+                icon="✦"
+                title="My Seva"
+                description="View your seva"
+              />
 
-                <Link to="/my-reports">
-                  <span>▤</span>
-                  My Reports
-                  <b>→</b>
-                </Link>
-              </div>
-            </section>
-          </div>
+              <DashboardLink
+                to="/leave"
+                icon="L"
+                title="Leave"
+                description="Manage your leave"
+              />
+
+            </div>
+
+          </section>
+
         </>
       )}
+
     </div>
   );
 }
 
-function DashboardLink({ to, icon, title, description }) {
+/* ==========================================================================
+   SMALL COMPONENTS
+   ========================================================================== */
+
+function AttendanceSummaryItem({
+  type,
+  count,
+  label,
+}) {
   return (
-    <Link to={to} className="dashboard-management-item">
-      <span className="management-icon">{icon}</span>
+    <div
+      className={`attendance-summary-item ${type}`}
+    >
+      <span className="summary-dot" />
 
       <div>
-        <strong>{title}</strong>
-        <small>{description}</small>
+
+        <strong>
+          {count}
+        </strong>
+
+        <small>
+          {label}
+        </small>
+
+      </div>
+    </div>
+  );
+}
+
+function AttendancePill({
+  status,
+  overall = false,
+  mobile = false,
+}) {
+  const safeStatus =
+    status || "Not Marked";
+
+  return (
+    <span
+      className={[
+        "attendance-pill",
+        overall ? "overall" : "",
+        mobile ? "mobile-overall" : "",
+        getStatusClass(safeStatus),
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {safeStatus}
+    </span>
+  );
+}
+
+function SadhanaMiniStatus({
+  label,
+  value,
+}) {
+  return (
+    <div className="sadhana-mini-status">
+
+      <span>
+        {label}
+      </span>
+
+      <b
+        className={getStatusClass(value)}
+      >
+        {value || "—"}
+      </b>
+
+    </div>
+  );
+}
+
+function MobileSadhanaItem({
+  label,
+  value,
+}) {
+  return (
+    <div>
+
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+
+    </div>
+  );
+}
+
+function DevoteeSadhanaItem({
+  label,
+  value,
+}) {
+  return (
+    <div className="devotee-sadhana-item">
+
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+
+    </div>
+  );
+}
+
+/* ==========================================================================
+   DASHBOARD LINK
+   ========================================================================== */
+
+function DashboardLink({
+  to,
+  icon,
+  title,
+  description,
+}) {
+  return (
+    <Link
+      to={to}
+      className="dashboard-management-item"
+    >
+
+      <span className="management-icon">
+        {icon}
+      </span>
+
+      <div>
+
+        <strong>
+          {title}
+        </strong>
+
+        <small>
+          {description}
+        </small>
+
       </div>
 
-      <span className="management-arrow">→</span>
+      <span className="management-arrow">
+        →
+      </span>
+
     </Link>
   );
 }
