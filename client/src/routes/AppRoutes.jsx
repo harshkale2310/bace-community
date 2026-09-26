@@ -7,7 +7,6 @@ import Dashboard from "../pages/Dashboard/Dashboard";
 
 import Devotees from "../pages/Devotees/Devotees";
 import DevoteeProfile from "../pages/DevoteeProfile/DevoteeProfile";
-import Attendance from "../pages/Attendance/Attendance";
 import Sadhana from "../pages/Sadhana/Sadhana";
 import Seva from "../pages/Seva/Seva";
 import Leave from "../pages/Leave/Leave";
@@ -85,24 +84,14 @@ function AppRoutes() {
             />
           </Route>
 
-          {/* =====================================================
-              ATTENDANCE
-              Administrator + Devotee
-              
-              Component decides:
-              Administrator -> all devotees
-              Devotee       -> own attendance
-          ===================================================== */}
-
           <Route
             path="/attendance"
-            element={<Attendance />}
+            element={<Navigate to="/sadhana" replace />}
           />
 
-          {/* Optional personal alias */}
           <Route
             path="/my-attendance"
-            element={<Attendance />}
+            element={<Navigate to="/sadhana" replace />}
           />
 
           {/* =====================================================

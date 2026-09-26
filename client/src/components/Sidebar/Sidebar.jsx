@@ -23,11 +23,6 @@ const adminMenu = [
     icon: "♙",
   },
   {
-    label: "Attendance",
-    path: "/attendance",
-    icon: "✓",
-  },
-  {
     label: "Sadhana",
     path: "/sadhana",
     icon: "ॐ",
@@ -68,11 +63,6 @@ const devoteeMenu = [
     label: "My Profile",
     path: "/devotee-profile",
     icon: "♙",
-  },
-  {
-    label: "Attendance",
-    path: "/attendance",
-    icon: "✓",
   },
   {
     label: "Sadhana",

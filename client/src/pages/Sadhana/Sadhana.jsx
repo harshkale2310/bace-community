@@ -21,9 +21,11 @@ const EMPTY_FORM = {
   wakeUp: "",
   dayRest: 0,
   morningProgramReport: "",
+  eveningProgramReport: "",
   rounds: 0,
   mangalArti: "",
   morningClass: "",
+  eveningClass: "",
   adhyyanBookTopic: "",
   adhyyanTime: "",
   shravanSpeakerTopic: "",
@@ -255,11 +257,20 @@ function calculateCombinedAttendanceStats(records) {
     "morningClass"
   );
 
+  const eveningClass = calculateAttendanceStats(
+    records,
+    "eveningClass"
+  );
+
   const attended =
-    mangal.attended + morningClass.attended;
+    mangal.attended +
+    morningClass.attended +
+    eveningClass.attended;
 
   const marked =
-    mangal.marked + morningClass.marked;
+    mangal.marked +
+    morningClass.marked +
+    eveningClass.marked;
 
   const percentage =
     marked > 0
@@ -377,6 +388,14 @@ function buildDailyReportRows({
           ? statusShort(record.morningClass)
           : "—",
 
+        "Evening Class": record
+          ? statusLabel(record.eveningClass)
+          : "Not marked",
+
+        "Evening Class Code": record
+          ? statusShort(record.eveningClass)
+          : "—",
+
         "To Bed": record?.toBed || "",
         "Wake Up": record?.wakeUp || "",
 
@@ -386,6 +405,9 @@ function buildDailyReportRows({
 
         "M.P. Report":
           record?.morningProgramReport || "",
+
+        "E.P. Report":
+          record?.eveningProgramReport || "",
 
         "Adhyayan Topic":
           record?.adhyyanBookTopic || "",
@@ -483,6 +505,12 @@ function buildMonthlySummaryRows({
         "morningClass"
       );
 
+    const eveningClassStats =
+      calculateAttendanceStats(
+        devoteeRecords,
+        "eveningClass"
+      );
+
     const combinedAttendanceStats =
       calculateCombinedAttendanceStats(
         devoteeRecords
@@ -571,11 +599,31 @@ function buildMonthlySummaryRows({
       "Morning Class Attendance %":
         morningClassStats.percentage,
 
+      "Evening Class Present":
+        eveningClassStats.present,
+
+      "Evening Class Late":
+        eveningClassStats.late,
+
+      "Evening Class Absent":
+        eveningClassStats.absent,
+
+      "Evening Class Marked":
+        eveningClassStats.marked,
+
+      "Evening Class Attendance %":
+        eveningClassStats.percentage,
+
       "Overall Attendance %":
         combinedAttendanceStats.percentage,
 
       "Morning Program Recorded":
         morningProgram,
+
+      "Evening Program Recorded":
+        devoteeRecords.filter((record) =>
+          safeText(record.eveningProgramReport)
+        ).length,
 
       "Adhyayan Entries":
         devoteeRecords.filter((record) =>
@@ -642,6 +690,15 @@ function createSummaryRows(summaryRows) {
       total.classAbsent +=
         row["Morning Class Absent"];
 
+      total.eveningClassPresent +=
+        row["Evening Class Present"];
+
+      total.eveningClassLate +=
+        row["Evening Class Late"];
+
+      total.eveningClassAbsent +=
+        row["Evening Class Absent"];
+
       return total;
     },
     {
@@ -655,6 +712,9 @@ function createSummaryRows(summaryRows) {
       classPresent: 0,
       classLate: 0,
       classAbsent: 0,
+      eveningClassPresent: 0,
+      eveningClassLate: 0,
+      eveningClassAbsent: 0,
     }
   );
 
@@ -698,6 +758,18 @@ function createSummaryRows(summaryRows) {
     {
       Metric: "Morning Class marked Absent",
       Value: totals.classAbsent,
+    },
+    {
+      Metric: "Evening Class marked Present",
+      Value: totals.eveningClassPresent,
+    },
+    {
+      Metric: "Evening Class marked Late",
+      Value: totals.eveningClassLate,
+    },
+    {
+      Metric: "Evening Class marked Absent",
+      Value: totals.eveningClassAbsent,
     },
   ];
 }
@@ -1108,6 +1180,11 @@ function exportMonthlyAttendanceExcel({
       "morningClass"
     );
 
+    const eveningClass = calculateAttendanceStats(
+      devoteeRecords,
+      "eveningClass"
+    );
+
     const overall = calculateCombinedAttendanceStats(
       devoteeRecords
     );
@@ -1130,6 +1207,10 @@ function exportMonthlyAttendanceExcel({
       "M. Class Late": morningClass.late,
       "M. Class Absent": morningClass.absent,
       "M. Class %": `${morningClass.percentage}%`,
+      "E. Class Present": eveningClass.present,
+      "E. Class Late": eveningClass.late,
+      "E. Class Absent": eveningClass.absent,
+      "E. Class %": `${eveningClass.percentage}%`,
       "Overall %": `${overall.percentage}%`,
     };
   });
@@ -1160,6 +1241,11 @@ function exportMonthlyAttendanceExcel({
         "M. Class": record
           ? statusShort(record.morningClass)
           : "—",
+        "E. Program Report":
+          record?.eveningProgramReport || "",
+        "E. Class": record
+          ? statusShort(record.eveningClass)
+          : "—",
       });
     }
   }
@@ -1183,6 +1269,10 @@ function exportMonthlyAttendanceExcel({
         "M. Class Late",
         "M. Class Absent",
         "M. Class %",
+        "E. Class Present",
+        "E. Class Late",
+        "E. Class Absent",
+        "E. Class %",
         "Overall %",
       ],
     }
@@ -1198,6 +1288,8 @@ function exportMonthlyAttendanceExcel({
         "Sadhana Submitted",
         "M.A.",
         "M. Class",
+        "E. Program Report",
+        "E. Class",
       ],
     }
   );
@@ -1206,6 +1298,10 @@ function exportMonthlyAttendanceExcel({
     { wch: 24 },
     { wch: 14 },
     { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 12 },
     { wch: 16 },
     { wch: 16 },
     { wch: 12 },
@@ -1225,6 +1321,8 @@ function exportMonthlyAttendanceExcel({
     { wch: 20 },
     { wch: 12 },
     { wch: 16 },
+    { wch: 18 },
+    { wch: 12 },
   ];
 
   XLSX.utils.book_append_sheet(
@@ -1822,6 +1920,10 @@ function Sadhana() {
           ownRecord.morningProgramReport ||
           "",
 
+        eveningProgramReport:
+          ownRecord.eveningProgramReport ||
+          "",
+
         rounds:
           toNumber(
             ownRecord.rounds
@@ -1833,6 +1935,10 @@ function Sadhana() {
 
         morningClass:
           ownRecord.morningClass ||
+          "",
+
+        eveningClass:
+          ownRecord.eveningClass ||
           "",
 
         adhyyanBookTopic:
@@ -1983,6 +2089,11 @@ function Sadhana() {
               form.morningProgramReport
             ),
 
+          eveningProgramReport:
+            safeText(
+              form.eveningProgramReport
+            ),
+
           rounds:
             toNumber(form.rounds),
 
@@ -1998,6 +2109,9 @@ function Sadhana() {
 
           morningClass:
             safeText(form.morningClass),
+
+          eveningClass:
+            safeText(form.eveningClass),
 
           adhyyanBookTopic:
             safeText(
@@ -2246,6 +2360,12 @@ function Sadhana() {
               "morningClass"
             );
 
+          const eveningClassStats =
+            calculateAttendanceStats(
+              devoteeRecords,
+              "eveningClass"
+            );
+
           const combinedStats =
             calculateCombinedAttendanceStats(
               devoteeRecords
@@ -2293,6 +2413,9 @@ function Sadhana() {
 
             morningClass:
               morningClassStats,
+
+            eveningClass:
+              eveningClassStats,
 
             overallAttendance:
               combinedStats.percentage,
@@ -2512,6 +2635,17 @@ function Sadhana() {
             <div>
               <span>03</span>
               <strong>
+                Evening program
+              </strong>
+              <small>
+                E.P. report time and class
+                attendance.
+              </small>
+            </div>
+
+            <div>
+              <span>04</span>
+              <strong>
                 Adhyayan
               </strong>
               <small>
@@ -2521,7 +2655,7 @@ function Sadhana() {
             </div>
 
             <div>
-              <span>04</span>
+              <span>05</span>
               <strong>
                 Shravan
               </strong>
@@ -2532,7 +2666,7 @@ function Sadhana() {
             </div>
 
             <div>
-              <span>05</span>
+              <span>06</span>
               <strong>
                 Seva
               </strong>
@@ -2543,7 +2677,7 @@ function Sadhana() {
             </div>
 
             <div>
-              <span>06</span>
+              <span>07</span>
               <strong>
                 Work-life
               </strong>
@@ -2554,13 +2688,12 @@ function Sadhana() {
             </div>
 
             <div>
-              <span>07</span>
+              <span>08</span>
               <strong>
-                Reflection
+                Daily reflection
               </strong>
               <small>
-                Reading, meditation,
-                reason and notes.
+                Record a reason when needed.
               </small>
             </div>
           </div>
@@ -2624,12 +2757,9 @@ function Sadhana() {
 
           <div className="sadhana-mobile-note">
             <strong>
-              Mobile tip:
+              Mobile filling:
             </strong>{" "}
-            Complete each section below.
-            Swipe left/right only if you
-            need to see the original card
-            table.
+            Fill each section one by one. All fields below use the same saved Sadhana record as the desktop form.
           </div>
 
           <div className="sadhana-sheet-scroll">
@@ -2646,6 +2776,10 @@ function Sadhana() {
 
                   <th colSpan="4">
                     MORNING PROGRAM
+                  </th>
+
+                  <th colSpan="2">
+                    EVENING PROGRAM
                   </th>
 
                   <th colSpan="2">
@@ -2698,6 +2832,14 @@ function Sadhana() {
 
                   <th>
                     M. Class
+                  </th>
+
+                  <th>
+                    E.P. Report
+                  </th>
+
+                  <th>
+                    E. Class
                   </th>
 
                   <th>
@@ -2855,6 +2997,37 @@ function Sadhana() {
                       name="morningClass"
                       value={
                         form.morningClass
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="time"
+                      name="eveningProgramReport"
+                      value={
+                        form.eveningProgramReport
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        !canEditToday
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <AttendanceSelect
+                      name="eveningClass"
+                      value={
+                        form.eveningClass
                       }
                       onChange={
                         handleChange
@@ -3162,7 +3335,42 @@ function Sadhana() {
             </MobileFieldSection>
 
             <MobileFieldSection
-              title="03 · Adhyayan"
+              title="03 · Evening Program"
+              description="Enter your evening report time and class attendance."
+            >
+              <MobileField
+                label="E.P. Report time"
+                hint="Your evening program report time"
+                type="time"
+                name="eveningProgramReport"
+                value={
+                  form.eveningProgramReport
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
+              />
+
+              <MobileAttendanceSelect
+                label="Evening class"
+                name="eveningClass"
+                value={
+                  form.eveningClass
+                }
+                onChange={
+                  handleChange
+                }
+                disabled={
+                  !canEditToday
+                }
+              />
+            </MobileFieldSection>
+
+            <MobileFieldSection
+              title="04 · Adhyayan"
               description="Record what you studied and how long."
             >
               <MobileField
@@ -3197,7 +3405,7 @@ function Sadhana() {
             </MobileFieldSection>
 
             <MobileFieldSection
-              title="04 · Shravan"
+              title="05 · Shravan"
               description="Record the speaker or topic you heard."
             >
               <MobileField
@@ -3232,7 +3440,7 @@ function Sadhana() {
             </MobileFieldSection>
 
             <MobileFieldSection
-              title="05 · Seva"
+              title="06 · Seva"
               description="Record the service you performed."
             >
               <MobileField
@@ -3267,7 +3475,7 @@ function Sadhana() {
             </MobileFieldSection>
 
             <MobileFieldSection
-              title="06 · Work-Life"
+              title="07 · Work-Life"
               description="Use minutes for exercise and hours for work or study."
             >
               <MobileField
@@ -3326,7 +3534,7 @@ function Sadhana() {
             </MobileFieldSection>
 
             <MobileFieldSection
-              title="07 · Reflection"
+              title="08 · Reflection"
               description="Add anything useful for your daily record."
             >
               <MobileField
@@ -3385,172 +3593,68 @@ function Sadhana() {
               left blank
             </span>
           </div>
-        </section>
 
-        <section className="sadhana-card sadhana-extra-card">
-          <div className="sadhana-card-header">
-            <div>
-              <span className="sadhana-card-eyebrow">
-                ADDITIONAL PRACTICE
-              </span>
+          <div className="sadhana-bottom-bar">
+            <div className="sadhana-date-selector">
+              <label>
+                <span>
+                  View another date
+                </span>
 
-              <h2>
-                Personal Practice &
-                Notes
-              </h2>
+                <small>
+                  Past dates can be reviewed.
+                </small>
 
-              <p>
-                Use these fields for
-                activities not covered in
-                the main card.
-              </p>
+                <input
+                  type="date"
+                  value={
+                    selectedDate
+                  }
+                  max={todayDate}
+                  onChange={(event) =>
+                    setSelectedDate(
+                      event.target.value
+                    )
+                  }
+                />
+              </label>
             </div>
 
-            {isToday && (
-              <span className="sadhana-date-badge">
-                {formatDate(
-                  selectedDate
-                )}
-              </span>
+            <div className="sadhana-bottom-status">
+              {isPastDate && (
+                <div className="sadhana-readonly-notice">
+                  This is a past record. Past Sadhana records are read-only.
+                </div>
+              )}
+
+              {isFutureDate && (
+                <div className="sadhana-readonly-notice">
+                  Future Sadhana records cannot be created yet.
+                </div>
+              )}
+            </div>
+
+            {canEditToday && (
+              <div className="sadhana-form-actions">
+                <button
+                  type="button"
+                  className="sadhana-primary-button"
+                  onClick={
+                    saveSadhana
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  {saving
+                    ? "Saving..."
+                    : ownRecord
+                      ? "Update Today's Record"
+                      : "Save Today's Record"}
+                </button>
+              </div>
             )}
           </div>
-
-          <div className="sadhana-extra-grid">
-            <label>
-              <span>
-                Reading (minutes)
-              </span>
-
-              <small>
-                Time spent reading
-              </small>
-
-              <input
-                type="number"
-                min="0"
-                name="reading"
-                value={
-                  form.reading
-                }
-                onChange={
-                  handleChange
-                }
-                disabled={
-                  !canEditToday
-                }
-              />
-            </label>
-
-            <label>
-              <span>
-                Meditation (minutes)
-              </span>
-
-              <small>
-                Time spent meditating
-              </small>
-
-              <input
-                type="number"
-                min="0"
-                name="meditation"
-                value={
-                  form.meditation
-                }
-                onChange={
-                  handleChange
-                }
-                disabled={
-                  !canEditToday
-                }
-              />
-            </label>
-
-            <label className="sadhana-full-field">
-              <span>Notes</span>
-
-              <small>
-                Optional reflection or
-                important detail
-              </small>
-
-              <textarea
-                name="notes"
-                rows="4"
-                value={
-                  form.notes
-                }
-                onChange={
-                  handleChange
-                }
-                disabled={
-                  !canEditToday
-                }
-                placeholder="Add a note about today's practice..."
-              />
-            </label>
-          </div>
-
-          {isPastDate && (
-            <div className="sadhana-readonly-notice">
-              This is a past record. Past
-              Sadhana records are
-              read-only.
-            </div>
-          )}
-
-          {isFutureDate && (
-            <div className="sadhana-readonly-notice">
-              Future Sadhana records cannot
-              be created yet.
-            </div>
-          )}
-
-          <div className="sadhana-date-selector">
-            <label>
-              <span>
-                View another date
-              </span>
-
-              <small>
-                Past dates can be reviewed.
-              </small>
-
-              <input
-                type="date"
-                value={
-                  selectedDate
-                }
-                max={todayDate}
-                onChange={(event) =>
-                  setSelectedDate(
-                    event.target.value
-                  )
-                }
-              />
-            </label>
-          </div>
-
-          {canEditToday && (
-            <div className="sadhana-form-actions">
-              <button
-                type="button"
-                className="sadhana-primary-button"
-                onClick={
-                  saveSadhana
-                }
-                disabled={
-                  saving
-                }
-              >
-                {saving
-                  ? "Saving..."
-                  : ownRecord
-                    ? "Update Today's Record"
-                    : "Save Today's Record"}
-              </button>
-            </div>
-          )}
         </section>
 
         <section className="sadhana-card">
@@ -3645,27 +3749,13 @@ function Sadhana() {
 
                     <div>
                       <span>
-                        Reading
+                        E. Class
                       </span>
 
                       <strong>
-                        {toNumber(
-                          record.reading
-                        )}{" "}
-                        min
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Meditation
-                      </span>
-
-                      <strong>
-                        {toNumber(
-                          record.meditation
-                        )}{" "}
-                        min
+                        {statusShort(
+                          record.eveningClass
+                        )}
                       </strong>
                     </div>
                   </button>
@@ -4323,7 +4413,7 @@ function MonthlyPerformanceTable({
 
         <span>
           <strong>Overall %</strong>{" "}
-          M.A. + Morning Class
+          M.A. + Morning Class + Evening Class
         </span>
       </div>
 
@@ -4372,6 +4462,18 @@ function MonthlyPerformanceTable({
 
                 <th>
                   M. Class
+                  <br />
+                  Attendance
+                </th>
+
+                <th>
+                  E. Class
+                  <br />
+                  P / L / A
+                </th>
+
+                <th>
+                  E. Class
                   <br />
                   Attendance
                 </th>
@@ -4510,6 +4612,44 @@ function MonthlyPerformanceTable({
                         {
                           student
                             .morningClass
+                            .percentage
+                        }%
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-attendance-counts">
+                        <b>
+                          {
+                            student
+                              .eveningClass
+                              .present
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .eveningClass
+                              .late
+                          }
+                        </b>
+                        /
+                        <b>
+                          {
+                            student
+                              .eveningClass
+                              .absent
+                          }
+                        </b>
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="sadhana-percentage-badge">
+                        {
+                          student
+                            .eveningClass
                             .percentage
                         }%
                       </span>
@@ -4807,11 +4947,40 @@ function AdminSadhanaTable({
 
                   <div>
                     <span>
+                      E. Class
+                    </span>
+
+                    <strong
+                      className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                        record?.eveningClass
+                      )}`}
+                    >
+                      {record
+                        ? statusShort(
+                            record.eveningClass
+                          )
+                        : "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
                       M.P. Report
                     </span>
 
                     <strong>
                       {record?.morningProgramReport ||
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      E.P. Report
+                    </span>
+
+                    <strong>
+                      {record?.eveningProgramReport ||
                         "—"}
                     </strong>
                   </div>
@@ -4884,7 +5053,15 @@ function AdminSadhanaTable({
               </th>
 
               <th>
+                E. Class
+              </th>
+
+              <th>
                 M.P. Report
+              </th>
+
+              <th>
+                E.P. Report
               </th>
 
               <th>
@@ -5014,7 +5191,28 @@ function AdminSadhanaTable({
                     </td>
 
                     <td>
+                      {record ? (
+                        <span
+                          className={`sadhana-status-value sadhana-status-${normalizeStatus(
+                            record.eveningClass
+                          )}`}
+                        >
+                          {statusShort(
+                            record.eveningClass
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+
+                    <td>
                       {record?.morningProgramReport ||
+                        "—"}
+                    </td>
+
+                    <td>
+                      {record?.eveningProgramReport ||
                         "—"}
                     </td>
 

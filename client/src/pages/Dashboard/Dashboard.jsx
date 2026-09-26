@@ -13,12 +13,77 @@ import Loader from "../../components/Common/Loader";
 
 import "./Dashboard.css";
 
+function getDevoteeRooms(rooms, devoteeId) {
+  if (!devoteeId) return [];
+
+  return rooms.filter((room) =>
+    Array.isArray(room.occupants)
+      ? room.occupants.includes(devoteeId)
+      : false
+  );
+}
+
+function getRoomIdentity(room) {
+  if (!room) return "";
+
+  const floor =
+    room.floor !== undefined && room.floor !== null
+      ? `Floor ${room.floor}`
+      : "Floor not assigned";
+
+  const roomNumber = room.roomNumber
+    ? `Room ${room.roomNumber}`
+    : "Room number not assigned";
+
+  const roomName = room.roomName || "Unnamed Room";
+
+  return `${floor} · ${roomNumber} · ${roomName}`;
+}
+
+function getSessionStatus(values) {
+  const statuses = values.map((value) =>
+    String(value || "").trim().toLowerCase()
+  );
+  const marked = statuses.filter((status) =>
+    ["present", "late", "absent"].includes(status)
+  );
+
+  if (marked.length === 0) return "Not Marked";
+  if (marked.length !== statuses.length) return "Partial";
+  if (statuses.every((status) => status === "present")) return "Present";
+  if (statuses.every((status) => status === "absent")) return "Absent";
+  if (statuses.every((status) => ["present", "late"].includes(status))) {
+    return statuses.includes("late") ? "Late" : "Present";
+  }
+
+  return "Partial";
+}
+
+function getMorningStatus(record) {
+  return getSessionStatus([record?.mangalArti, record?.morningClass]);
+}
+
+function getEveningStatus(record) {
+  return getSessionStatus([record?.eveningClass]);
+}
+
+function getAttendanceStatus(morning, evening) {
+  if (morning === "Not Marked" && evening === "Not Marked") {
+    return "Not Marked";
+  }
+  if (morning === "Present" && evening === "Present") return "Present";
+  if (morning === "Absent" && evening === "Absent") return "Absent";
+  if (morning === "Late" && evening === "Late") return "Late";
+
+  return "Partial";
+}
+
 function Dashboard() {
   const { user, isAdministrator, isDevotee } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [devotees, setDevotees] = useState([]);
-  const [attendance, setAttendance] = useState([]);
+  const [sadhanaRecords, setSadhanaRecords] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -70,18 +135,18 @@ function Dashboard() {
             where("status", "==", "active")
           );
 
-          const attendanceQuery = query(
-            collection(db, "attendance"),
+          const sadhanaQuery = query(
+            collection(db, "sadhana"),
             where("date", "==", today)
           );
 
           const [
             devoteesSnapshot,
-            attendanceSnapshot,
+            sadhanaSnapshot,
             roomsSnapshot,
           ] = await Promise.all([
             getDocs(devoteesQuery),
-            getDocs(attendanceQuery),
+            getDocs(sadhanaQuery),
             getDocs(roomsQuery),
           ]);
 
@@ -98,7 +163,7 @@ function Dashboard() {
                 devotee.status === "active"
             );
 
-          const attendanceData = attendanceSnapshot.docs.map((item) => ({
+          const sadhanaData = sadhanaSnapshot.docs.map((item) => ({
             id: item.id,
             ...item.data(),
           }));
@@ -109,28 +174,28 @@ function Dashboard() {
           }));
 
           setDevotees(devoteeData);
-          setAttendance(attendanceData);
+          setSadhanaRecords(sadhanaData);
           setRooms(roomData);
         }
 
         if (isDevotee) {
-          const attendanceQuery = query(
-            collection(db, "attendance"),
+          const sadhanaQuery = query(
+            collection(db, "sadhana"),
             where("devoteeId", "==", user.uid)
           );
 
-          const [attendanceSnapshot, roomsSnapshot] = await Promise.all([
-            getDocs(attendanceQuery),
+          const [sadhanaSnapshot, roomsSnapshot] = await Promise.all([
+            getDocs(sadhanaQuery),
             getDocs(roomsQuery),
           ]);
 
           if (cancelled) return;
 
-          setAttendance(
-            attendanceSnapshot.docs.map((item) => ({
+          setSadhanaRecords(
+            sadhanaSnapshot.docs.map((item) => ({
               id: item.id,
               ...item.data(),
-            }))
+            })).filter((record) => record.date === today)
           );
 
           setRooms(
@@ -162,77 +227,38 @@ function Dashboard() {
     };
   }, [user, isAdministrator, isDevotee, today, refreshKey]);
 
-  const getDevoteeRooms = (devoteeId) => {
-    if (!devoteeId) return [];
-
-    return rooms.filter((room) =>
-      Array.isArray(room.occupants)
-        ? room.occupants.includes(devoteeId)
-        : false
-    );
-  };
-
-  const getRoomIdentity = (room) => {
-    if (!room) return "";
-
-    const floor =
-      room.floor !== undefined && room.floor !== null
-        ? `Floor ${room.floor}`
-        : "Floor not assigned";
-
-    const roomNumber = room.roomNumber
-      ? `Room ${room.roomNumber}`
-      : "Room number not assigned";
-
-    const roomName = room.roomName || "Unnamed Room";
-
-    return `${floor} · ${roomNumber} · ${roomName}`;
-  };
-
-  const getAttendanceStatus = (record) => {
-    const morning = record?.morning || "Not Marked";
-    const evening = record?.evening || "Not Marked";
-
-    if (morning === "Present" && evening === "Present") return "Present";
-    if (morning === "Absent" && evening === "Absent") return "Absent";
-    if (morning === "Leave" && evening === "Leave") return "Leave";
-    if (morning === "Not Marked" && evening === "Not Marked") {
-      return "Not Marked";
-    }
-
-    return "Partial";
-  };
-
   const currentDevoteeRooms = useMemo(() => {
     if (!isDevotee || !user?.uid) return [];
-    return getDevoteeRooms(user.uid);
-  }, [rooms, isDevotee, user?.uid]);
+    return getDevoteeRooms(rooms, user.uid);
+  }, [rooms, isDevotee, user]);
 
   const todayAttendance = useMemo(() => {
     if (!isAdministrator) return [];
 
     return devotees.map((devotee) => {
-      const record = attendance.find(
+      const record = sadhanaRecords.find(
         (item) =>
           item.devoteeId === devotee.id &&
           item.date === today
       );
 
-      const devoteeRooms = getDevoteeRooms(devotee.id);
+      const devoteeRooms = getDevoteeRooms(rooms, devotee.id);
+      const morning = getMorningStatus(record);
+      const evening = getEveningStatus(record);
 
       return {
         ...devotee,
-        attendanceRecord: record || null,
-        attendanceStatus: getAttendanceStatus(record),
-        morning: record?.morning || "Not Marked",
-        evening: record?.evening || "Not Marked",
+        sadhanaRecord: record || null,
+        attendanceStatus: getAttendanceStatus(morning, evening),
+        morning,
+        evening,
         roomLabel:
           devoteeRooms.length > 0
             ? devoteeRooms.map(getRoomIdentity).join(" • ")
             : "Residence not assigned",
       };
     });
-  }, [devotees, attendance, rooms, isAdministrator, today]);
+  }, [devotees, sadhanaRecords, rooms, isAdministrator, today]);
 
   const adminStats = useMemo(() => {
     const total = todayAttendance.length;
@@ -245,8 +271,8 @@ function Dashboard() {
     const absent = todayAttendance.filter(
       (item) => item.attendanceStatus === "Absent"
     ).length;
-    const leave = todayAttendance.filter(
-      (item) => item.attendanceStatus === "Leave"
+    const late = todayAttendance.filter(
+      (item) => item.attendanceStatus === "Late"
     ).length;
     const notMarked = todayAttendance.filter(
       (item) => item.attendanceStatus === "Not Marked"
@@ -257,21 +283,23 @@ function Dashboard() {
       present,
       partial,
       absent,
-      leave,
+      late,
       notMarked,
       marked: total - notMarked,
     };
   }, [todayAttendance]);
 
   const devoteeTodayAttendance = useMemo(() => {
-    const record = attendance.find((item) => item.date === today);
+    const record = sadhanaRecords.find((item) => item.date === today);
+    const morning = getMorningStatus(record);
+    const evening = getEveningStatus(record);
 
     return {
-      status: getAttendanceStatus(record),
-      morning: record?.morning || "Not Marked",
-      evening: record?.evening || "Not Marked",
+      status: getAttendanceStatus(morning, evening),
+      morning,
+      evening,
     };
-  }, [attendance, today]);
+  }, [sadhanaRecords, today]);
 
   const roomCount = rooms.length;
   const occupiedRoomCount = rooms.filter(
@@ -381,8 +409,8 @@ function Dashboard() {
                 </p>
               </div>
 
-              <Link to="/attendance" className="dashboard-view-all">
-                Open Attendance →
+              <Link to="/sadhana" className="dashboard-view-all">
+                Open Sadhana →
               </Link>
             </div>
 
@@ -411,11 +439,11 @@ function Dashboard() {
                 </div>
               </div>
 
-              <div className="attendance-summary-item leave">
+                <div className="attendance-summary-item partial">
                 <span className="summary-dot" />
                 <div>
-                  <strong>{adminStats.leave}</strong>
-                  <small>Leave</small>
+                    <strong>{adminStats.late}</strong>
+                    <small>Late</small>
                 </div>
               </div>
 
@@ -601,12 +629,6 @@ function Dashboard() {
                   description="Manage active and inactive devotees"
                 />
                 <DashboardLink
-                  to="/attendance"
-                  icon="✓"
-                  title="Attendance"
-                  description="Mark and review daily attendance"
-                />
-                <DashboardLink
                   to="/sadhana"
                   icon="S"
                   title="Sadhana"
@@ -788,12 +810,6 @@ function Dashboard() {
                   icon="D"
                   title="My Profile"
                   description="View and update your profile"
-                />
-                <DashboardLink
-                  to="/attendance"
-                  icon="✓"
-                  title="Attendance"
-                  description="View your attendance"
                 />
                 <DashboardLink
                   to="/sadhana"
