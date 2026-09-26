@@ -44,10 +44,7 @@ function getInitial(name, fallback = "D") {
     return fallback;
   }
 
-  return (
-    name.trim().charAt(0).toUpperCase() ||
-    fallback
-  );
+  return name.trim().charAt(0).toUpperCase() || fallback;
 }
 
 function getDevoteeName(user) {
@@ -104,28 +101,39 @@ function getRoomIdentity(room) {
    ========================================================================== */
 
 /*
- * Morning attendance:
- *   - Mangal Arti
- *   - Morning Class
+ * MORNING consists of:
  *
- * Evening attendance:
- *   - Evening Class
+ * 1. Mangal Arti
+ * 2. Morning Class
  *
- * Japa rounds do NOT affect attendance.
+ * Exact rules:
  *
- * SESSION RULES:
+ * Mangal Arti = Late + Morning Class = Late
+ *                  -> Morning = Late
  *
- *   Present + Present -> Present
- *   Present + Late    -> Late
- *   Late + Present    -> Late
- *   Late + Late       -> Late
- *   Absent + Absent   -> Absent
- *   Missing/mixture   -> Partial
- *   Nothing marked    -> Not Marked
+ * Mangal Arti = Late + Morning Class = Present
+ *                  -> Morning = Present
  *
- * IMPORTANT:
- * "Late" is a valid attendance status.
- * It must NOT be treated as an unmarked/invalid value.
+ * Mangal Arti = Present + Morning Class = Late
+ *                  -> Morning = Present
+ *
+ * Mangal Arti = Present + Morning Class = Present
+ *                  -> Morning = Present
+ *
+ * Late + Absent
+ *                  -> Partial
+ *
+ * Present + Absent
+ *                  -> Partial
+ *
+ * Absent + Absent
+ *                  -> Absent
+ *
+ * Nothing marked
+ *                  -> Not Marked
+ *
+ * Important:
+ * A single Late is still attendance.
  */
 
 function getSessionStatus(values) {
@@ -133,32 +141,22 @@ function getSessionStatus(values) {
     normalizeStatus
   );
 
-  const hasAnyValue = normalizedValues.some(
-    Boolean
-  );
-
-  // Nothing has been entered for this session.
-  if (!hasAnyValue) {
+  /* Nothing marked */
+  if (
+    normalizedValues.every(
+      (status) => !status
+    )
+  ) {
     return "Not Marked";
   }
 
   /*
-   * We intentionally do NOT remove empty values here.
+   * One required item is missing.
    *
    * Example:
-   *   [Present, ""] -> Partial
-   *
-   * because Morning has two required programs:
-   * Mangal Arti + Morning Class.
+   * Present + ""
+   * Late + ""
    */
-
-  const validStatuses = [
-    "present",
-    "late",
-    "absent",
-  ];
-
-  // If one required program is missing, the session is partial.
   if (
     normalizedValues.some(
       (status) => !status
@@ -167,7 +165,16 @@ function getSessionStatus(values) {
     return "Partial";
   }
 
-  // If an unexpected value exists, don't silently call it Present.
+  const validStatuses = [
+    "present",
+    "late",
+    "absent",
+  ];
+
+  /*
+   * Unknown value should never silently
+   * become Present.
+   */
   if (
     normalizedValues.some(
       (status) =>
@@ -177,16 +184,9 @@ function getSessionStatus(values) {
     return "Partial";
   }
 
-  // All attended and nobody was late.
-  if (
-    normalizedValues.every(
-      (status) => status === "present"
-    )
-  ) {
-    return "Present";
-  }
-
-  // Everyone was absent.
+  /*
+   * Both absent.
+   */
   if (
     normalizedValues.every(
       (status) => status === "absent"
@@ -195,18 +195,44 @@ function getSessionStatus(values) {
     return "Absent";
   }
 
-  // Everyone attended, but at least one was late.
+  /*
+   * BOTH are attended.
+   *
+   * Present + Present -> Present
+   * Late + Present    -> Present
+   * Present + Late    -> Present
+   * Late + Late       -> Late
+   *
+   * This is the important rule requested.
+   */
   if (
     normalizedValues.every((status) =>
       ["present", "late"].includes(status)
     )
   ) {
-    return "Late";
+    /*
+     * Only Late + Late is Late.
+     *
+     * If even one of the two is Present,
+     * Morning is Present.
+     */
+    if (
+      normalizedValues.every(
+        (status) => status === "late"
+      )
+    ) {
+      return "Late";
+    }
+
+    return "Present";
   }
 
-  // Example:
-  // Present + Absent -> Partial
-  // Late + Absent    -> Partial
+  /*
+   * Examples:
+   *
+   * Present + Absent -> Partial
+   * Late + Absent    -> Partial
+   */
   return "Partial";
 }
 
@@ -226,6 +252,14 @@ function getEveningStatus(record) {
     return "Not Marked";
   }
 
+  /*
+   * Evening consists only of Evening Class.
+   *
+   * Present -> Present
+   * Late    -> Late
+   * Absent  -> Absent
+   * Empty   -> Not Marked
+   */
   return getSessionStatus([
     record.eveningClass,
   ]);
@@ -234,21 +268,23 @@ function getEveningStatus(record) {
 /*
  * OVERALL DAILY ATTENDANCE
  *
- * IMPORTANT BUSINESS RULE:
- *
  * Late counts as attendance.
  *
  * Therefore:
  *
- *   Present + Present -> Present
- *   Present + Late    -> Present
- *   Late + Present    -> Present
- *   Late + Late       -> Present
+ * Morning Present + Evening Present -> Present
+ * Morning Present + Evening Late    -> Present
+ * Morning Late    + Evening Present -> Present
+ * Morning Late    + Evening Late    -> Present
  *
- * We use "Late" only at the individual session level.
+ * If one side is absent/missing and the other is attended:
+ * -> Partial
  *
- * If one session is missing or absent while another is attended,
- * the overall result is Partial.
+ * Both absent:
+ * -> Absent
+ *
+ * Nothing marked:
+ * -> Not Marked
  */
 
 function getAttendanceStatus(
@@ -260,7 +296,9 @@ function getAttendanceStatus(
     "Late",
   ];
 
-  // Nothing marked anywhere.
+  /*
+   * Nothing marked anywhere.
+   */
   if (
     morning === "Not Marked" &&
     evening === "Not Marked"
@@ -268,8 +306,11 @@ function getAttendanceStatus(
     return "Not Marked";
   }
 
-  // Both morning and evening were attended.
-  // Late still counts as attended.
+  /*
+   * Both sessions attended.
+   *
+   * Late still counts as attendance.
+   */
   if (
     attendedStatuses.includes(morning) &&
     attendedStatuses.includes(evening)
@@ -277,7 +318,9 @@ function getAttendanceStatus(
     return "Present";
   }
 
-  // Both sessions are absent.
+  /*
+   * Both sessions absent.
+   */
   if (
     morning === "Absent" &&
     evening === "Absent"
@@ -285,7 +328,9 @@ function getAttendanceStatus(
     return "Absent";
   }
 
-  // Everything else is partial.
+  /*
+   * Everything else is partial.
+   */
   return "Partial";
 }
 
@@ -351,9 +396,7 @@ function Dashboard() {
         setError("");
 
         /*
-         * Clear previous data before loading.
-         * This prevents stale admin/devotee data after role changes
-         * or a retry.
+         * Clear old data first.
          */
         setDevotees([]);
         setSadhanaRecords([]);
@@ -367,8 +410,8 @@ function Dashboard() {
           /*
            * Query only by role.
            *
-           * Filtering status client-side avoids requiring a Firestore
-           * composite index on role + status.
+           * Status is filtered in JavaScript so Firestore does not
+           * require a role + status composite index.
            */
           const devoteesQuery = query(
             collection(db, "users"),
@@ -379,6 +422,9 @@ function Dashboard() {
             )
           );
 
+          /*
+           * Admin only needs today's Sadhana.
+           */
           const sadhanaQuery = query(
             collection(db, "sadhana"),
             where(
@@ -388,10 +434,8 @@ function Dashboard() {
             )
           );
 
-          const roomsQuery = collection(
-            db,
-            "rooms"
-          );
+          const roomsQuery =
+            collection(db, "rooms");
 
           const [
             devoteesSnapshot,
@@ -407,14 +451,14 @@ function Dashboard() {
 
           const devoteeData =
             devoteesSnapshot.docs
-              .map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
+              .map((snapshot) => ({
+                id: snapshot.id,
+                ...snapshot.data(),
               }))
               .filter((devotee) => {
                 /*
-                 * Treat missing status as active for compatibility
-                 * with existing user records.
+                 * Missing status is treated as active for compatibility
+                 * with older user documents.
                  */
                 const status =
                   normalizeStatus(
@@ -429,17 +473,17 @@ function Dashboard() {
 
           const sadhanaData =
             sadhanaSnapshot.docs.map(
-              (doc) => ({
-                id: doc.id,
-                ...doc.data(),
+              (snapshot) => ({
+                id: snapshot.id,
+                ...snapshot.data(),
               })
             );
 
           const roomData =
             roomsSnapshot.docs.map(
-              (doc) => ({
-                id: doc.id,
-                ...doc.data(),
+              (snapshot) => ({
+                id: snapshot.id,
+                ...snapshot.data(),
               })
             );
 
@@ -455,6 +499,13 @@ function Dashboard() {
            ================================================================ */
 
         if (isDevotee) {
+          /*
+           * Load the devotee's Sadhana records.
+           *
+           * We filter to today after reading so this works with the
+           * existing Firestore structure without requiring another
+           * composite index.
+           */
           const sadhanaQuery = query(
             collection(db, "sadhana"),
             where(
@@ -464,6 +515,9 @@ function Dashboard() {
             )
           );
 
+          /*
+           * Load rooms where the current devotee is an occupant.
+           */
           const roomsQuery = query(
             collection(db, "rooms"),
             where(
@@ -485,9 +539,9 @@ function Dashboard() {
 
           const sadhanaData =
             sadhanaSnapshot.docs
-              .map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
+              .map((snapshot) => ({
+                id: snapshot.id,
+                ...snapshot.data(),
               }))
               .filter(
                 (record) =>
@@ -496,9 +550,9 @@ function Dashboard() {
 
           const roomData =
             roomsSnapshot.docs.map(
-              (doc) => ({
-                id: doc.id,
-                ...doc.data(),
+              (snapshot) => ({
+                id: snapshot.id,
+                ...snapshot.data(),
               })
             );
 
@@ -549,12 +603,12 @@ function Dashboard() {
 
     return devotees.map((devotee) => {
       /*
-       * Sadhana document structure:
+       * Sadhana structure:
        *
        * sadhana/{uid}_{YYYY-MM-DD}
        *
-       * Admin already loaded only today's records.
-       * We still match by devoteeId + date for safety.
+       * We match by devoteeId and date so the dashboard remains safe
+       * even if an unexpected document is returned.
        */
       const record =
         sadhanaRecords.find(
@@ -628,10 +682,10 @@ function Dashboard() {
       todayAttendance.length;
 
     /*
-     * Overall Present means both Morning and Evening
-     * are attended.
+     * Present means both Morning and Evening
+     * count as attended.
      *
-     * Late counts as attended.
+     * Late counts as attendance.
      */
     const present =
       todayAttendance.filter(
@@ -655,7 +709,7 @@ function Dashboard() {
       ).length;
 
     /*
-     * "Late" is a session-level statistic.
+     * Late is a session-level statistic.
      *
      * Example:
      * Morning = Late
@@ -801,6 +855,7 @@ function Dashboard() {
           ==================================================================== */}
 
       <header className="dashboard-header">
+
         <div className="dashboard-header-copy">
 
           <span className="dashboard-eyebrow">
@@ -839,6 +894,7 @@ function Dashboard() {
             {formattedToday}
           </strong>
         </div>
+
       </header>
 
       {/* ====================================================================
@@ -874,6 +930,7 @@ function Dashboard() {
           >
             Try again
           </button>
+
         </div>
       )}
 
@@ -900,6 +957,7 @@ function Dashboard() {
               </div>
 
               <div>
+
                 <span>
                   Active Devotees
                 </span>
@@ -911,6 +969,7 @@ function Dashboard() {
                 <small>
                   Currently active
                 </small>
+
               </div>
 
             </div>
@@ -922,6 +981,7 @@ function Dashboard() {
               </div>
 
               <div>
+
                 <span>
                   Present Today
                 </span>
@@ -933,6 +993,7 @@ function Dashboard() {
                 <small>
                   Morning + evening
                 </small>
+
               </div>
 
             </div>
@@ -944,6 +1005,7 @@ function Dashboard() {
               </div>
 
               <div>
+
                 <span>
                   Needs Attention
                 </span>
@@ -957,6 +1019,7 @@ function Dashboard() {
                 <small>
                   Partial, absent or not marked
                 </small>
+
               </div>
 
             </div>
@@ -968,6 +1031,7 @@ function Dashboard() {
               </div>
 
               <div>
+
                 <span>
                   Japa Recorded
                 </span>
@@ -979,6 +1043,7 @@ function Dashboard() {
                 <small>
                   Devotees with rounds
                 </small>
+
               </div>
 
             </div>
@@ -1054,7 +1119,7 @@ function Dashboard() {
 
             </div>
 
-            {/* ============================================================== 
+            {/* ==============================================================
                 DESKTOP TABLE
                 ============================================================== */}
 
@@ -1063,6 +1128,7 @@ function Dashboard() {
               <table className="dashboard-attendance-table">
 
                 <thead>
+
                   <tr>
 
                     <th>
@@ -1086,6 +1152,7 @@ function Dashboard() {
                     </th>
 
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -1234,7 +1301,7 @@ function Dashboard() {
 
             </div>
 
-            {/* ============================================================== 
+            {/* ==============================================================
                 MOBILE
                 ============================================================== */}
 
@@ -1726,6 +1793,7 @@ function AttendanceSummaryItem({
         </small>
 
       </div>
+
     </div>
   );
 }
@@ -1766,7 +1834,9 @@ function SadhanaMiniStatus({
       </span>
 
       <b
-        className={getStatusClass(value)}
+        className={getStatusClass(
+          value
+        )}
       >
         {value || "—"}
       </b>
